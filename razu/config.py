@@ -30,5 +30,5 @@ class Config:
         instance.filename_prefix = f"{instance.RAZU_file_id}-{instance.creator}-{instance.archive}"
         instance.URI_prefix = f"{instance.RAZU_base_URI}{instance.filename_prefix}"
         
-        if instance.save_dir is not None:
+        if instance.save and instance.save_dir is not None:
             os.makedirs(instance.save_dir, exist_ok=True)
