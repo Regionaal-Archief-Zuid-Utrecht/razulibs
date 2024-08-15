@@ -5,6 +5,8 @@ from rdflib import Graph, Namespace, URIRef, Literal, BNode, RDF, RDFS, XSD
 from .incrementer import Incrementer
 from .config import Config
 
+## ACHTERHAALD, zie libs in  /mnt/f/python/razulibs/razu/
+##              script /mnt/f/python/luchtfotos_houten/csv2rdf.py 
 
 MDTO = Namespace("http://www.nationaalarchief.nl/mdto#")
 
@@ -68,8 +70,11 @@ class MDTO_Object(Entity):
     _counter = Incrementer(1)
     _config = Config()
 
-    def __init__(self, type: URIRef = MDTO.Informatieobject):
-        self.id = MDTO_Object._counter.next()
+    def __init__(self, type: URIRef = MDTO.Informatieobject, id = None):
+        if id is None:
+            self.id = MDTO_Object._counter.next()
+        else:
+            self.id = id
         uri = URIRef(f"{MDTO_Object._config.URI_prefix}-{self.id}")
         super().__init__(uri, type)
 
