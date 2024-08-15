@@ -5,9 +5,6 @@ from rdflib import Graph, Namespace, URIRef, Literal, BNode, RDF, RDFS, XSD
 from .incrementer import Incrementer
 from .config import Config
 
-## ACHTERHAALD, zie libs in  /mnt/f/python/razulibs/razu/
-##              script /mnt/f/python/luchtfotos_houten/csv2rdf.py 
-
 MDTO = Namespace("http://www.nationaalarchief.nl/mdto#")
 
 
