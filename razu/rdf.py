@@ -34,6 +34,7 @@ class RDFBase:
                 self.graph.add((subject, prop, value))
         return self
 
+
 class BlankNode(RDFBase):
     def __init__(self, graph, node):
         super().__init__(graph)
@@ -45,6 +46,7 @@ class BlankNode(RDFBase):
         if properties:
             self.add_properties(blank_node, properties)
         return BlankNode(self.graph, blank_node)
+
 
 class Entity(RDFBase):
     def __init__(self, uri: URIRef, type: URIRef):
@@ -72,6 +74,7 @@ class Entity(RDFBase):
     def __iadd__(self, other_graph: Graph):
         other_graph += self.graph
         return other_graph
+
 
 class MDTO_Object(Entity):
     _counter = Incrementer(1)
