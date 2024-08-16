@@ -34,6 +34,17 @@ class RDFBase:
                 self.graph.add((subject, prop, value))
         return self
 
+class BlankNode(RDFBase):
+    def __init__(self, graph, node):
+        super().__init__(graph)
+        self.node = node
+
+    def add_node(self, relation: URIRef, properties: dict = None):
+        blank_node = BNode()
+        self.graph.add((self.node, relation, blank_node))
+        if properties:
+            self.add_properties(blank_node, properties)
+        return BlankNode(self.graph, blank_node)
 
 class Entity(RDFBase):
     def __init__(self, uri: URIRef, type: URIRef):
@@ -62,7 +73,6 @@ class Entity(RDFBase):
         other_graph += self.graph
         return other_graph
 
-
 class MDTO_Object(Entity):
     _counter = Incrementer(1)
     _config = Config()
@@ -77,9 +87,19 @@ class MDTO_Object(Entity):
 
     def MDTO_identificatieKenmerk(self):
         return f"{self._config.filename_prefix}-{self.id}"
+    
+    def add_properties_list(self, list, separator: str, property: URIRef, transform_function: callable):
+        if isinstance(list, str) and list:
+            elements = list.split(separator)
+            for part in elements:
+                value = transform_function(part)
+                self.add_properties({
+                    property: value
+                })
 
     def save(self):
         if self._config.save == True:
             output_file = os.path.join(self._config.save_dir, f"{self._config.filename_prefix}-{self.id}.mdto.json")
             with open(output_file, 'w') as file:
                 file.write(self.graph.serialize(format='json-ld'))
+
