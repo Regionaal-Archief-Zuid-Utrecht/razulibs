@@ -15,6 +15,7 @@ class Config:
             self.RAZU_file_id = "NL-WbDRAZU"
             self._creator = None     # voorbeeld: "G321" voor Gemeente Houten
             self._archive = None     # / toegang, voorbeeld "661" , als in Mais Flexis
+            self._sparql_prefix = "https://api.data.razu.nl/datasets/id/"  # unfold to "https://api.data.razu.nl/datasets/id/{group}/sparql" 
             self.save = False
             self.save_dir = "test"
         self._update_prefixes()
@@ -24,12 +25,20 @@ class Config:
         self.URI_prefix = f"{self.RAZU_base_URI}{self.filename_prefix}"             # voorbeeld ""https://data.razu.nl/NL-WbDRAZU-G312-661"
 
     @classmethod
-    def set_params(cls, save=False, save_dir="test", creator=None, archive=None):
+    def set_params(
+        cls, 
+        save = False, 
+        save_dir = "test", 
+        creator = None, 
+        archive = None, 
+        sparql_prefix = "https://api.data.razu.nl/datasets/id/"  # unfold to "https://api.data.razu.nl/datasets/id/{group}/sparql" 
+    ):
         instance = cls()
         instance.save = save
         instance.save_dir = save_dir
         instance._creator = creator
         instance._archive = archive
+        instance._sparql_prefix = sparql_prefix
         instance._update_prefixes()
         
         if instance.save and instance.save_dir is not None:
@@ -42,3 +51,7 @@ class Config:
     @property
     def archive(self):
         return self._archive
+
+    @property
+    def sparql_prefix(self):
+        return self._sparql_prefix

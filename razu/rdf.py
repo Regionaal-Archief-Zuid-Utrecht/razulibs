@@ -85,7 +85,7 @@ class Entity(RDFBase):
         return other_graph
 
 
-class MDTO_Object(Entity):
+class MDTOObject(Entity):
     _counter = Incrementer(1)
     _config = Config()
 
