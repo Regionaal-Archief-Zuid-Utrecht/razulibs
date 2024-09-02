@@ -68,6 +68,15 @@ class Entity(RDFBase):
         RDFBase.add_properties(self, blank_node, properties)
         return BlankNode(self.graph, blank_node)
     
+    def add_properties_list(self, list, separator: str, property: URIRef, transform_function: callable):
+        if isinstance(list, str) and list:
+            elements = list.split(separator)
+            for part in elements:
+                value = transform_function(part)
+                self.add_properties({
+                    property: value
+                })
+    
     def __iter__(self):
         return iter(self.graph)
     
@@ -90,15 +99,6 @@ class MDTO_Object(Entity):
 
     def MDTO_identificatieKenmerk(self):
         return f"{self._config.filename_prefix}-{self.id}"
-    
-    def add_properties_list(self, list, separator: str, property: URIRef, transform_function: callable):
-        if isinstance(list, str) and list:
-            elements = list.split(separator)
-            for part in elements:
-                value = transform_function(part)
-                self.add_properties({
-                    property: value
-                })
 
     def save(self):
         if self._config.save == True:
