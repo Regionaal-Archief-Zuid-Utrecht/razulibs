@@ -13,9 +13,10 @@ class ConceptResolver:
         return f"""
         PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX schema: <http://schema.org/>
         
         SELECT ?uri WHERE {{
-            ?uri skos:prefLabel|rdfs:label "{label}".
+            ?uri skos:prefLabel|schema:name|rdfs:label "{label}".
         }} LIMIT 1
         """
 
