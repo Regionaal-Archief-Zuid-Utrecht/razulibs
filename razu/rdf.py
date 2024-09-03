@@ -5,7 +5,9 @@ from rdflib import Graph, Namespace, URIRef, Literal, BNode, RDF, RDFS, XSD
 from .incrementer import Incrementer
 from .config import Config
 
+SCHEMA = Namespace("http://schema.org/")
 MDTO = Namespace("http://www.nationaalarchief.nl/mdto#")
+GEO = Namespace("http://www.opengis.net/ont/geosparql#")
 
 
 class RDFBase:
