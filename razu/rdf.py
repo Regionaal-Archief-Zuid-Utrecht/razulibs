@@ -21,8 +21,10 @@ class RDFBase:
                         self.graph.add((subject, prop, nested_blank_node))
                         # Ensure recursive call refers directly to RDFBase method:
                         RDFBase.add_properties(self, nested_blank_node, item)
+                    elif isinstance(item, (URIRef, Literal, BNode)):
+                        self.graph.add((subject, prop, item))
                     else:
-                        raise ValueError("List items must be dictionaries to represent blank nodes.")
+                        raise ValueError("List items must be URIRefs, Literals, BNodes, or dictionaries for blank nodes.")
             elif isinstance(value, dict):
                 nested_blank_node = BNode()
                 self.graph.add((subject, prop, nested_blank_node))
