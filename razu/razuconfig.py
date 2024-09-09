@@ -6,7 +6,9 @@ class RazuConfig(Config):
     def __new__(cls, **initial_settings):
        
         default_settings = {
-            'RAZU_base_URI': "https://data.razu.nl/"
+            "RAZU_base_URI": "https://data.razu.nl/" ,
+            "RAZU_file_id": "NL-WbDRAZU",
+            "sparql_prefix": "https://api.data.razu.nl/datasets/id/"
         }
         
         # If instance existst, remove any default setting that already exists to prevent overwriting
@@ -23,12 +25,25 @@ class RazuConfig(Config):
         return super(RazuConfig, cls).__new__(cls, **default_settings)
 
     @property
-    def filename(self):
-        """Generates a filename based on the client name and company name."""
-        client_name = getattr(self, 'client_name', None)
-        company_name = getattr(self, 'company_name', None)
+    def filename_prefix(self):
+        """Generates a filename prefix like 'NL-WbDRAZU-G312-661'."""
+        RAZU_file_id = getattr(self, 'RAZU_file_id', None)
+        archive_creator_id = getattr(self, 'archive_creator_id', None)
+        archive_id = getattr(self, 'archive_id', None)
 
-        if client_name and company_name:
-            return f"{client_name}-{company_name}.txt"
+        if RAZU_file_id and archive_creator_id and archive_id:
+            return f"{RAZU_file_id}-{archive_creator_id}-{archive_id}-"
         else:
-            raise ValueError("Both 'client_name' and 'company_name' must be set to generate the filename.")
+            raise ValueError("Missing attributes")
+        
+    @property
+    def URI_prefix(self):
+        """Generates a URI prefix like 'https://data.razu.nl/NL-WbDRAZU-G312-661'."""
+        RAZU_base_URI = getattr(self, 'RAZU_base_URI', None)
+        filename_prefix = self.filename_prefix
+
+        if RAZU_base_URI and filename_prefix:
+            return f"{RAZU_base_URI}{filename_prefix}" 
+        else:
+            raise ValueError("Missing attributes")
+

@@ -3,7 +3,7 @@ import os
 from rdflib import Graph, Namespace, URIRef, Literal, BNode, RDF, RDFS, XSD
 
 from .incrementer import Incrementer
-from .config import Config
+from .razuconfig import RazuConfig
 
 SCHEMA = Namespace("http://schema.org/")
 MDTO = Namespace("http://www.nationaalarchief.nl/mdto#")
@@ -91,7 +91,7 @@ class Entity(RDFBase):
 
 class MDTOObject(Entity):
     _counter = Incrementer(1)
-    _config = Config()
+    _config = RazuConfig()
 
     def __init__(self, type: URIRef = MDTO.Informatieobject, id = None):
         if id is None:

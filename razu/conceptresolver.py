@@ -1,11 +1,11 @@
 from SPARQLWrapper import SPARQLWrapper, JSON
 
-from .config import Config
+from .razuconfig import RazuConfig
 
 class ConceptResolver:
 
     def __init__(self, base_url):
-        self.config = Config()
+        self.config = RazuConfig()
         self.base_url = base_url
         self.cache = {}
 
