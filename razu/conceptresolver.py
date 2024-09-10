@@ -16,7 +16,7 @@ class ConceptResolver:
         PREFIX schema: <http://schema.org/>
         
         SELECT ?uri WHERE {{
-            ?uri skos:prefLabel|schema:name|rdfs:label "{label}".
+            ?uri skos:prefLabel|schema:name|rdfs:label|skos:altLabel|skos:notation "{label}".
         }} LIMIT 1
         """
 
