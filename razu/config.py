@@ -42,32 +42,14 @@ class Config:
             self.__setattr__(name, value)
 
     def __setattr__(self, name, value):
-        """Adds a configuration variable or raises an error if it already exists.
-
-        Args:
-            name (str): The name of the configuration variable.
-            value: The value of the configuration variable.
-
-        Raises:
-            ValueError: If the configuration variable is already set.
-        """
+        """Adds a configuration variable or raises an error if it already exists."""
         if name in self.__dict__['_settings']:
             raise ValueError(f"The configuration variable '{name}' cannot be overwritten.")
         else:
             self.__dict__['_settings'][name] = value
 
     def __getattr__(self, name):
-        """Retrieves the value of a configuration variable.
-
-        Args:
-            name (str): The name of the configuration variable.
-
-        Returns:
-            The value of the configuration variable if it exists.
-
-        Raises:
-            AttributeError: If the configuration variable does not exist.
-        """
+        """Retrieves the value of a configuration variable."""
         if name in self.__dict__['_settings']:
             return self.__dict__['_settings'][name]
         else:

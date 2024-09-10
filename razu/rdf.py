@@ -98,11 +98,11 @@ class MDTOObject(Entity):
             self.id = MDTOObject._counter.next()
         else:
             self.id = id
-        uri = URIRef(f"{MDTOObject._config.URI_prefix}-{self.id}")
+        uri = URIRef(f"{MDTOObject._config.URI_prefix}{self.id}")
         super().__init__(uri, type)
 
     def mdto_identificatiekenmerk(self):
-        return f"{self._config.filename_prefix}-{self.id}"
+        return f"{self._config.filename_prefix}{self.id}"
 
     def save(self):
         if self._config.save == True:
