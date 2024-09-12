@@ -38,6 +38,9 @@ Een voorbeeldimplementatie waarbij data uit twee csv-bestanden wordt omgezet naa
 
 Deze code zal, met gegeven brondata, RDF opleveren die in Turtle als volgt geserialiseerd kan worden:
 
+    @prefix mdto: <http://www.nationaalarchief.nl/mdto#> .
+    @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+    
     <https://data.razu.nl/NL-WbDRAZU-G321-661-3> a mdto:Informatieobject ;
         rdfs:label "Luchtfoto gemeente Houten" ;
         mdto:naam "Luchtfoto gemeente Houten" ;
