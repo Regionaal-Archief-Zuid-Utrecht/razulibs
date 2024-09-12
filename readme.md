@@ -10,7 +10,7 @@ Het RAZU werkt hierbij met een op [MDTO](https://www.nationaalarchief.nl/archive
 
 ## Voorbeeld
 
-Een voorbeeldimplementatie waarbij data uit twee csv-bestanden wordt omgezet naar RDF is te vinden in [demo/csv_luchtfotos/csv2rdf.py](./demo/csv_luchtfotos/csv2rdf.py). Centraal voor deze conversie is de `MDTOObject`-class. Deze class kan gebruikt worden om RDF te maken door te werken met sjablonen, in de vorm van Python *dictionaries*, met de gewenste RDF-structuur. Onderstaand voorbeeld, waarbij een [pandas dataframe](https://pandas.pydata.org/) als bron gebruikt wordt, illustreert dit:
+Een voorbeeldimplementatie waarbij data uit twee csv-bestanden wordt omgezet naar RDF is te vinden in [demo/csv_luchtfotos/csv2rdf.py](./razu/demo/csv_luchtfotos/csv2rdf.py). Centraal voor deze conversie is de `MDTOObject`-class. Deze class kan gebruikt worden om RDF te maken door te werken met sjablonen, in de vorm van Python *dictionaries*, met de gewenste RDF-structuur. Onderstaand voorbeeld, waarbij een [pandas dataframe](https://pandas.pydata.org/) als bron gebruikt wordt, illustreert dit:
 
 
     record = MDTOObject()
