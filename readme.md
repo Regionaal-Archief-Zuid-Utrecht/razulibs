@@ -60,6 +60,12 @@ Deze code zal, met gegeven brondata, RDF opleveren die in Turtle als volgt geser
             mdto:identificatieKenmerk "doos: 1984-1 volgnummer: 1" 
         ] .
 
-    
+De datastructuur van `MDOObject` maakt het eenvoudig om in de RDF links te specificeren. Via het MDTO-vocabulaire kopppelen van een record-instantie aan de instantie van een serie, en andersom, kan eenvoudig met:
+
+    serie.add(MDTO.bevatOnderdeel, record.uri)
+    record.add(MDTO.isOnderdeelVan, serie.uri)
 
 
+## Pas op
+Deze code is nog in ontwikkeling en daarmee nog niet stabiel.
+In toekomstige versies zal naar verwachting gewerkt worden aan oa. het kunnen verwerken van andersoortige bronnen (zoals XML), output-validatie en transformatie RDF volgens de officiële MDTO-standaard.
