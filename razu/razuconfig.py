@@ -1,14 +1,14 @@
 from .config import Config
 
 class RazuConfig(Config):
-    """A subclass of Config that adds business-specific logic and default values."""
+    """A subclass of Config for adding business-specific logic and default values."""
 
-    def __new__(cls, **initial_settings):
+    def __new__(cls, **initial_settings) -> "RazuConfig":
        
         default_settings = {
             "RAZU_base_URI": "https://data.razu.nl/" ,
             "RAZU_file_id": "NL-WbDRAZU",
-            "sparql_prefix": "https://api.data.razu.nl/datasets/id/"
+            "sparql_endpoint_prefix": "https://api.data.razu.nl/datasets/id/"
         }
         
         # If instance existst, remove any default setting that already exists to prevent overwriting

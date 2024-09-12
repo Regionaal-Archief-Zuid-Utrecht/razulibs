@@ -15,7 +15,7 @@ class Config:
 
     _instance = None
 
-    def __new__(cls, **initial_settings):
+    def __new__(cls, **initial_settings) -> "Config":
         """Creates a new Config instance or returns the existing instance.
 
         Args:
