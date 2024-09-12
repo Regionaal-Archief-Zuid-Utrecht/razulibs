@@ -67,5 +67,5 @@ De datastructuur van `MDOObject` maakt het eenvoudig om in de RDF links te speci
 
 
 ## Pas op
-Deze code is nog in ontwikkeling en daarmee nog niet stabiel.
+Deze code is nog in ontwikkeling en daarmee nog niet gegarandeerd stabiel.
 In toekomstige versies zal naar verwachting gewerkt worden aan oa. het kunnen verwerken van andersoortige bronnen (zoals XML), output-validatie en transformatie RDF volgens de officiële MDTO-standaard.
