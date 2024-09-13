@@ -187,7 +187,7 @@ if __name__ == "__main__":
         serie.add(MDTO.bevatOnderdeel, record.uri)
         record.add(MDTO.isOnderdeelVan, serie.uri)
 
-        ## RECORD / archiefstuk
+        ## BESTAND
         original_filename = extra.maak_bestandsnaam(row['Doos-nummer'], row['Inventarisnummer'])
         droid_row = droid_df.loc[f"{original_filename}.jpg"]  # TODO: die jpg wordt er bij verzonnen, zou eigenlijk via waardenlijst moeten
 
