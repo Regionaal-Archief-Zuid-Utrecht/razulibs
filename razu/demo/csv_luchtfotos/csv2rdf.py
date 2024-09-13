@@ -99,7 +99,6 @@ if __name__ == "__main__":
 
         ## RECORD / archiefstuk
         record = MDTOObject()
-
         record.add_properties({
             RDFS.label: f"{row['Titel']}",
             MDTO.naam: f"{row['Titel']}",
