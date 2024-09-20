@@ -19,11 +19,17 @@ class ConceptResolver:
 
     Methods:
     --------
-    get_uri(term: str) -> str
+    get_uri(term: str) -> URIRef
         Fetches the URI of the concept matching the provided term, using the cache if available.
     
     get_value(term: str, predicate: URIRef) -> str
         Fetches the value of the provided predicate for the resolved URI of the concept matching the term.
+    """
+
+    PREFIXES = """
+        PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX schema: <http://schema.org/>
     """
 
     def __init__(self, vocabulary: str, endpoint_suffix: str = "/sparql"):
@@ -40,17 +46,46 @@ class ConceptResolver:
         self.endpoint_suffix = endpoint_suffix
         self.cache = {}
 
-    def _build_query(self, term: str) -> str:
-        """ Builds the SPARQL query to resolve a URI for the given term. """
-        return f"""
-        PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-        PREFIX schema: <http://schema.org/>
-        
-        SELECT ?uri WHERE {{
-            ?uri skos:prefLabel|schema:name|rdfs:label|skos:altLabel|schema:identifier "{term}".
-        }} LIMIT 1
+    def _build_query(self, term: str, predicate: URIRef = None) -> str:
         """
+        Builds the SPARQL query to resolve a URI or fetch a value for the given term and predicate.
+
+        If predicate is None, it builds a query to resolve the URI for the term.
+        If predicate is provided, it builds a query to fetch the value for the URI and predicate.
+        """
+
+        if predicate:
+            return f"""
+            {self.PREFIXES}
+            
+            SELECT ?value WHERE {{
+                ?uri <{predicate}> ?value .
+                ?uri skos:prefLabel|schema:name|rdfs:label|skos:altLabel|schema:identifier "{term}".
+            }} LIMIT 1
+            """
+        else:
+            return f"""
+            {self.PREFIXES}
+
+            SELECT ?uri WHERE {{
+                ?uri skos:prefLabel|schema:name|rdfs:label|skos:altLabel|schema:identifier "{term}".
+            }} LIMIT 1
+            """
+
+    def _execute_query(self, query: str) -> dict:
+        """
+        Executes the given SPARQL query and returns the response as a JSON object.
+        """
+        sparql_service = SPARQLWrapper(f"{self.config.sparql_endpoint_prefix}{self.vocabulary}{self.endpoint_suffix}")
+        sparql_service.setQuery(query)
+        sparql_service.setReturnFormat(JSON)
+
+        try:
+            response = sparql_service.query().convert()
+            return response
+        except Exception as e:
+            print(f"Error querying the SPARQL endpoint: {e}")
+            return None
 
     def _fetch_uri(self, term: str) -> URIRef:
         """ Fetches the URI for the given term by querying the SPARQL endpoint.
@@ -60,15 +95,11 @@ class ConceptResolver:
         if term in self.cache and "uri" in self.cache[term]:
             return self.cache[term]["uri"]
 
-        sparql_service = SPARQLWrapper(f"{self.config.sparql_endpoint_prefix}{self.vocabulary}{self.endpoint_suffix}")
         query = self._build_query(term)
-        sparql_service.setQuery(query)
-        sparql_service.setReturnFormat(JSON)
+        response = self._execute_query(query)
 
-        try:
-            response = sparql_service.query().convert()
+        if response:
             bindings = response.get('results', {}).get('bindings', [])
-
             if bindings:
                 uri = URIRef(bindings[0]['uri']['value'])  # URIRef wordt nu gemaakt
             else:
@@ -79,10 +110,7 @@ class ConceptResolver:
                 self.cache[term] = {}
             self.cache[term]["uri"] = uri
             return uri
-
-        except Exception as e:
-            print(f"Error querying the SPARQL endpoint: {e}")
-            return None
+        return None
 
     def get_uri(self, term: str) -> URIRef:
         """ Public method to get the URI of a concept based on the provided term as a URIRef. """
@@ -106,20 +134,11 @@ class ConceptResolver:
         if not uri:
             return None
 
-        query = f"""
-        SELECT ?value WHERE {{
-            <{uri}> <{predicate_str}> ?value .
-        }} LIMIT 1
-        """
+        query = self._build_query(term, predicate)
+        response = self._execute_query(query)
 
-        sparql_service = SPARQLWrapper(f"{self.config.sparql_endpoint_prefix}{self.vocabulary}{self.endpoint_suffix}")
-        sparql_service.setQuery(query)
-        sparql_service.setReturnFormat(JSON)
-
-        try:
-            response = sparql_service.query().convert()
+        if response:
             bindings = response.get('results', {}).get('bindings', [])
-
             if bindings:
                 value = bindings[0]['value']['value']
             else:
@@ -132,6 +151,4 @@ class ConceptResolver:
 
             return value
 
-        except Exception as e:
-            print(f"Error querying the SPARQL endpoint: {e}")
-            return None
+        return None
