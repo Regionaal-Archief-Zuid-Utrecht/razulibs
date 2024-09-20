@@ -1,5 +1,8 @@
-from rdflib import Literal, XSD
 import re
+import os
+from rdflib import Literal, XSD
+from datetime import datetime
+
 
 def date_type(datestring: str) -> Literal:
     """
@@ -27,3 +30,18 @@ def date_type(datestring: str) -> Literal:
         return Literal(datestring, datatype=XSD.gYear)
     else:
         return Literal(datestring)
+
+def get_full_extension(filename: str) -> str:
+    name, ext = os.path.splitext(filename)
+    full_ext = ext
+    
+    while ext:
+        name, ext = os.path.splitext(name)
+        full_ext = ext + full_ext if ext else full_ext
+    
+    return full_ext
+
+def get_last_modified(file_path: str) -> str:
+    timestamp = os.path.getmtime(file_path)
+    last_modified_date = datetime.fromtimestamp(timestamp)
+    return last_modified_date.strftime("%Y-%m-%dT%H:%M:%S")

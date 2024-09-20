@@ -100,7 +100,7 @@ class Entity(RDFBase):
 
     Methods:
     --------
-    add(predicate: URIRef, object: URIRef)
+    add(predicate: URIRef, object)
         Adds a triple to the graph with the entity's URI as the subject.
     add_properties(properties: dict) -> RDFBase
         Adds properties to the entity.
@@ -121,9 +121,12 @@ class Entity(RDFBase):
         self.type = type
         self.graph.add((self.uri, RDF.type, self.type))
 
-    def add(self, predicate: URIRef, object: URIRef):
+    def add(self, predicate: URIRef, object):
         """ Adds a triple to the graph with the entity's URI as the subject. """
-        self.graph.add((self.uri, predicate, object))
+        if isinstance(object, (URIRef, Literal)):
+            self.graph.add((self.uri, predicate, object))
+        else:
+            self.graph.add((self.uri, predicate, Literal(object)))
 
     def add_properties(self, properties: dict) -> "Entity":
         """ Adds properties to the entity's URI. 

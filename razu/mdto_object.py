@@ -38,7 +38,7 @@ class MDTOObject(Entity):
         Serializes and saves the MDTOObject's RDF graph as a JSON-LD file.
     """
     
-    _counter = Incrementer(1)
+    _counter = Incrementer(0)
     _config = RazuConfig()
 
     def __init__(self, type: URIRef = MDTO.Informatieobject, id: int = None):
