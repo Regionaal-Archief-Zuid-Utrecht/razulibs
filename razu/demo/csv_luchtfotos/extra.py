@@ -47,5 +47,5 @@ def maak_bestandsnaam(doosnummer, volgnummer):
     # Zorg dat volgnummer altijd drie posities heeft
     volgnummer = str(volgnummer).zfill(3)
     # Combineer en retourneer het resultaat
-    return f"{jaar}_{nummer}_{volgnummer}"
+    return f"{jaar}_{nummer}_{volgnummer}.jpg"
 

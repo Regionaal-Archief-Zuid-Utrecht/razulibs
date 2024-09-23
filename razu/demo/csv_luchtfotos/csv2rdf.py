@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from rdflib import Graph, Literal, RDF, RDFS, URIRef
-from rdflib.namespace import XSD
+from rdflib.namespace import XSD, SKOS
 
 from razu.mdto_object import MDTOObject, MDTO, SCHEMA, GEO
 from razu.razuconfig import RazuConfig
@@ -18,9 +18,13 @@ if __name__ == "__main__":
     # voor oa. checksum en omvang bestand; TODO beter als dit al aangeleverd is in de metadata
     # en we het in deze stap controleren.
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    meta_df = pd.read_csv(os.path.join(script_dir, './metadata/metadata.csv'), delimiter=';')
-    droid_df = pd.read_csv(os.path.join(script_dir, './metadata/droid.csv'), index_col='NAME')
+    meta_path = os.path.join(script_dir, './metadata/metadata.csv')
+    droid_path = os.path.join(script_dir, './metadata/droid.csv')
+
+    meta_df = pd.read_csv(meta_path, delimiter=';')
+    droid_df = pd.read_csv(droid_path, index_col='NAME')
     droid_df['SIZE'] = droid_df['SIZE'].fillna(0).astype(int)  # forceer deze kolom 'SIZE' als integers
+    checksum_date = razu.util.get_last_modified(droid_path)
 
     graph = Graph()
     graph.bind("rdf", RDF)
@@ -188,7 +192,7 @@ if __name__ == "__main__":
 
         ## BESTAND
         original_filename = extra.maak_bestandsnaam(row['Doos-nummer'], row['Inventarisnummer'])
-        droid_row = droid_df.loc[f"{original_filename}.jpg"]  # TODO: die jpg wordt er bij verzonnen, zou eigenlijk via waardenlijst moeten
+        droid_row = droid_df.loc[original_filename] 
 
         bestand = MDTOObject(type = MDTO.Bestand)
         bestand.add_properties({
@@ -196,18 +200,18 @@ if __name__ == "__main__":
             MDTO.identificatie: {
                 RDF.type: MDTO.IdentificatieGegevens,
                 MDTO.identificatieBron: "Gemeente Houten",
-                MDTO.identificatieKenmerk: f"{original_filename}.jpg" 
+                MDTO.identificatieKenmerk: f"{original_filename}" 
             },
             MDTO.checksum: { 
                 RDF.type: MDTO.ChecksumGegevens,
                 MDTO.checksumAlgoritme: URIRef(algoritmes.get_uri("MD5")),
-                MDTO.checksumDatum: Literal("2024-08-02T00:00:00", datatype=XSD.dateTime),   #TODO: waar halen we deze vandaan?
+                MDTO.checksumDatum: Literal(checksum_date, datatype=XSD.dateTime),
                 MDTO.checksumWaarde: f"{droid_row['MD5_HASH']}"  
             },
             MDTO.bestandsformaat: URIRef(bestandsformaten.get_uri(droid_row['PUID'])),
             MDTO.omvang: Literal(int(droid_row['SIZE']), datatype=XSD.integer),
             # MDTO.omvang: Literal(droid_row['SIZE']),
-            MDTO.URLBestand: Literal(f"https://htn.opslag.razu.nl/{bestand.mdto_identificatiekenmerk()}.jpg", datatype=XSD.anyURI)  # TODO: weer die .jpg !
+            MDTO.URLBestand: Literal(f"https://htn.opslag.razu.nl/{bestand.mdto_identificatiekenmerk()}.{bestandsformaten.get_value(droid_row['PUID'], SKOS.notation)}", datatype=XSD.anyURI)
           })
 
         # relaties bestand en archiefstuk:
