@@ -214,15 +214,12 @@ class Manifest:
         Raises:
             KeyError: If the file entry does not exist in the manifest.
         """
-        relative_path = os.path.relpath(file_path, self.directory)
-        
-        if relative_path in self.files:
-            self.files[relative_path].update(additional_data)  # Update the existing entry with new data
+        if file_path in self.files:
+            self.files[file_path].update(additional_data)  # Update the existing entry with new data
             self.modified = True
             print(f"Updated entry for file '{file_path}' with new data: {additional_data}")
         else:
             raise KeyError(f"File '{file_path}' does not exist in the manifest.")
-
 
 if __name__ == "__main__":
     """
