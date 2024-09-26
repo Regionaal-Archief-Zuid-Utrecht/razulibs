@@ -26,6 +26,7 @@ class ConceptResolver:
         Fetches the value of the provided predicate for the resolved URI of the concept matching the term.
     """
 
+
     PREFIXES = """
         PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -60,7 +61,7 @@ class ConceptResolver:
             
             SELECT ?value WHERE {{
                 ?uri <{predicate}> ?value .
-                ?uri skos:prefLabel|schema:name|rdfs:label|skos:altLabel|schema:identifier "{term}".
+                ?uri skos:prefLabel|schema:name|rdfs:label|skos:altLabel|schema:identifier|skos:notation "{term}".
             }} LIMIT 1
             """
         else:
@@ -68,7 +69,7 @@ class ConceptResolver:
             {self.PREFIXES}
 
             SELECT ?uri WHERE {{
-                ?uri skos:prefLabel|schema:name|rdfs:label|skos:altLabel|schema:identifier "{term}".
+                ?uri skos:prefLabel|schema:name|rdfs:label|skos:altLabel|schema:identifier|skos:notation "{term}".
             }} LIMIT 1
             """
 
