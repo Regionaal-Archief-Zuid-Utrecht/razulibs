@@ -57,7 +57,7 @@ class Manifest:
             dict: A dictionary with the file's checksum and the date it was calculated.
         """
         return {
-            "MD5HashChecksum": self.calculate_md5(file_path),
+            "MD5Hash": self.calculate_md5(file_path),
             "MD5HashDate": datetime.now().isoformat()
         }
     
@@ -137,7 +137,7 @@ class Manifest:
 
         # Verify files listed in the manifest
         for file_path, file_info in self.files.items():
-            expected_checksum = file_info["MD5HashChecksum"]
+            expected_checksum = file_info["MD5Hash"]
             absolute_path = os.path.join(self.directory, file_path)
             if not os.path.exists(absolute_path):
                 errors["missing_files"].append(file_path)
