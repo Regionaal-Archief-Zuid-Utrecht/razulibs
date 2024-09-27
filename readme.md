@@ -13,17 +13,21 @@ Het RAZU werkt hierbij met een op [MDTO](https://www.nationaalarchief.nl/archive
 Een voorbeeldimplementatie waarbij data uit twee csv-bestanden wordt omgezet naar RDF is te vinden in [demo/csv_luchtfotos/csv2rdf.py](./razu/demo/csv_luchtfotos/csv2rdf.py). Centraal voor deze conversie is de `MDTOObject`-class. Deze class kan gebruikt worden om RDF te maken door te werken met sjablonen, in de vorm van Python *dictionaries*, met de gewenste RDF-structuur. Onderstaand voorbeeld, waarbij een [pandas dataframe](https://pandas.pydata.org/) als bron gebruikt wordt, illustreert dit:
 
 
+    actoren = ConceptResolver('actor')
+    aggregatieniveaus = ConceptResolver('aggregatieniveau')
+    soorten = ConceptResolver('soort')
+    
     record = MDTOObject()
 
     record.add_properties({
         RDFS.label: f"{row['Titel']}",
         MDTO.naam: f"{row['Titel']}",
-        MDTO.aggregatieniveau: URIRef(aggregatieniveaus.get_uri("Archiefstuk")), 
-        MDTO.archiefvormer: URIRef(actoren.get_uri("Gemeente Houten")) ,
+        MDTO.aggregatieniveau: URIRef(aggregatieniveaus.get_concept("Archiefstuk").get_uri()), 
+        MDTO.archiefvormer: URIRef(actoren.get_concept("Gemeente Houten").get_uri()) ,
         MDTO.omschrijving: row['Beschrijving voorkant'],
         MDTO.classificatie: [
-            URIRef(soorten.get_uri(row['Soort'])), 
-            URIRef(soorten.get_uri(row['Kleurtype']))
+            URIRef(soorten.get_concept(row['Soort']).get_uri()), 
+            URIRef(soorten.get_concept(row['Kleurtype']).get_uri())
         ],
         MDTO.identificatie: [ {
             RDF.type: MDTO.IdentificatieGegevens,
