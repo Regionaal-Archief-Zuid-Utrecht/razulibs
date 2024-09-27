@@ -5,7 +5,8 @@ from rdflib.namespace import XSD, SKOS
 
 from razu.mdto_object import MDTOObject, MDTO, SCHEMA, GEO
 from razu.razuconfig import RazuConfig
-from razu.conceptresolver import ConceptResolver
+#from razu.conceptresolver import ConceptResolver
+from razu.concept_resolver import ConceptResolver
 
 import razu.util            # generieke functies
 import extra                # code specifiek voor deze import
@@ -63,14 +64,14 @@ if __name__ == "__main__":
                 RDFS.label: "Luchtfoto's Gemeente Houten",
                 MDTO.naam: "Luchtfoto's Gemeente Houten",
                 MDTO.omschrijving: "Gedigitaliseerde luchtfoto's Gemeente Houten",
-                MDTO.archiefvormer: URIRef(actoren.get_uri("Gemeente Houten")),
-                MDTO.aggregatieniveau: URIRef(aggregatieniveaus.get_uri("Archief")), 
+                MDTO.archiefvormer: URIRef(actoren.get_concept("Gemeente Houten").get_uri()),
+                MDTO.aggregatieniveau: URIRef(aggregatieniveaus.get_concept("Archief").get_uri()), 
                 MDTO.identificatie: {
                     RDF.type: MDTO.IdentificatieGegevens,    
                     MDTO.identificatieKenmerk: cfg.archive_id,
                     MDTO.identificatieBron: "Toegangen Regionaal Archief Zuid-Utrecht"
                 },
-                MDTO.waardering: URIRef(waarderingen.get_uri("Blijvend te bewaren"))
+                MDTO.waardering: URIRef(waarderingen.get_concept("Blijvend te bewaren").get_uri())
             })
             # wordt verderop dynamisch toegevoegd: mdto:dekkingInTijd en mdt:bevatOnderdeel
 
@@ -88,8 +89,8 @@ if __name__ == "__main__":
             serie.add_properties({
                 RDFS.label: f"Luchtfoto's Houten serie {row['Serie']}",
                 MDTO.naam: f"Luchtfoto's Houten serie {row['Serie']}",
-                MDTO.aggregatieniveau: URIRef(aggregatieniveaus.get_uri("Serie")),
-                MDTO.archiefvormer: URIRef(actoren.get_uri("Gemeente Houten")),
+                MDTO.aggregatieniveau: URIRef(aggregatieniveaus.get_concept("Serie").get_uri()),
+                MDTO.archiefvormer: URIRef(actoren.get_concept("Gemeente Houten").get_uri()),
                 MDTO.identificatie: {
                     RDF.type: MDTO.IdentificatieGegevens,
                     MDTO.identificatieBron: "Gemeente Houten",
@@ -106,14 +107,14 @@ if __name__ == "__main__":
         record.add_properties({
             RDFS.label: f"{row['Titel']}",
             MDTO.naam: f"{row['Titel']}",
-            MDTO.aggregatieniveau: URIRef(aggregatieniveaus.get_uri("Archiefstuk")), 
-            MDTO.archiefvormer: URIRef(actoren.get_uri("Gemeente Houten")) ,
+            MDTO.aggregatieniveau: URIRef(aggregatieniveaus.get_concept("Archiefstuk").get_uri()), 
+            MDTO.archiefvormer: URIRef(actoren.get_concept("Gemeente Houten").get_uri()) ,
             MDTO.omschrijving: row['Beschrijving voorkant'],
             MDTO.classificatie: [
-                URIRef(soorten.get_uri(row['Soort'])), 
-                URIRef(soorten.get_uri(row['Kleurtype']))
+                URIRef(soorten.get_concept(row['Soort']).get_uri()), 
+                URIRef(soorten.get_concept(row['Kleurtype']).get_uri())
             ],
-            MDTO.dekkingInRuimte: URIRef(locaties.get_uri(row['Plaats 1'])),
+            MDTO.dekkingInRuimte: URIRef(locaties.get_concept(row['Plaats 1']).get_uri()),
             MDTO.identificatie: [
                 {
                     RDF.type: MDTO.IdentificatieGegevens,
@@ -128,8 +129,8 @@ if __name__ == "__main__":
             ],
             MDTO.betrokkene: {
                 RDF.type: MDTO.BetrokkeneGegevens,
-                MDTO.betrokkeneTypeRelatie: URIRef(betrokkenheden.get_uri(row['Betrokkene type'])),
-                MDTO.betrokkeneActor: URIRef(actoren.get_uri(row['Fotograaf naam']))
+                MDTO.betrokkeneTypeRelatie: URIRef(betrokkenheden.get_concept(row['Betrokkene type']).get_uri()),
+                MDTO.betrokkeneActor: URIRef(actoren.get_concept(row['Fotograaf naam']).get_uri())
             },
             MDTO.raadpleeglocatie: {
                 RDF.type: MDTO.RaadpleeglocatieGegevens,
@@ -141,16 +142,16 @@ if __name__ == "__main__":
             MDTO.dekkingInTijd: { 
                 RDF.type: MDTO.DekkingInTijdGegevens,
                 MDTO.dekkingInTijdBeginDatum: razu.util.date_type(row['Datering']) ,
-                MDTO.dekkingInTijdType: URIRef(dekkingintijdtypen.get_uri("Opnamedatum"))
+                MDTO.dekkingInTijdType: URIRef(dekkingintijdtypen.get_concept("Opnamedatum").get_uri())
             },
             MDTO.beperkingGebruik: [
                 { 
                     RDF.type: MDTO.BeperkingGebruikGegevens, 
-                    MDTO.beperkingGebruikType: URIRef(licenties.get_uri(row['Auteursrecht']))
+                    MDTO.beperkingGebruikType: URIRef(licenties.get_concept(row['Auteursrecht']).get_uri())
                 },
                 { 
                     RDF.type: MDTO.BeperkingGebruikGegevens,     
-                    MDTO.beperkingGebruikType: URIRef(openbaarheden.get_uri('Openbaar'))
+                    MDTO.beperkingGebruikType: URIRef(openbaarheden.get_concept('Openbaar').get_uri())
                 }
             ],
             GEO.scale: row['Schaal'],
@@ -173,10 +174,10 @@ if __name__ == "__main__":
 
         # optionele velden voor het archiefstuk:
         if not pd.isna(row['Plaats 2']):
-            record.add(MDTO.dekkingInRuimte, URIRef(locaties.get_uri(row['Plaats 2'])))
+            record.add(MDTO.dekkingInRuimte, URIRef(locaties.get_concept(row['Plaats 2']).get_uri()))
 
         if not pd.isna(row['Plaats 3']):
-            record.add(MDTO.dekkingInRuimte, URIRef(locaties.get_uri(row['Plaats 3'])))
+            record.add(MDTO.dekkingInRuimte, URIRef(locaties.get_concept(row['Plaats 3']).get_uri()))
 
         if not pd.isna(row['Bijzonderheden']):
             record.add_properties({
@@ -204,14 +205,14 @@ if __name__ == "__main__":
             },
             MDTO.checksum: { 
                 RDF.type: MDTO.ChecksumGegevens,
-                MDTO.checksumAlgoritme: URIRef(algoritmes.get_uri("MD5")),
+                MDTO.checksumAlgoritme: URIRef(algoritmes.get_concept("MD5").get_uri()),
                 MDTO.checksumDatum: Literal(checksum_date, datatype=XSD.dateTime),
                 MDTO.checksumWaarde: f"{droid_row['MD5_HASH']}"  
             },
-            MDTO.bestandsformaat: URIRef(bestandsformaten.get_uri(droid_row['PUID'])),
+            MDTO.bestandsformaat: URIRef(bestandsformaten.get_concept(droid_row['PUID']).get_uri()),
             MDTO.omvang: Literal(int(droid_row['SIZE']), datatype=XSD.integer),
             # MDTO.omvang: Literal(droid_row['SIZE']),
-            MDTO.URLBestand: Literal(f"https://htn.opslag.razu.nl/{bestand.mdto_identificatiekenmerk()}.{bestandsformaten.get_value(droid_row['PUID'], SKOS.notation)}", datatype=XSD.anyURI)
+            MDTO.URLBestand: Literal(f"https://htn.opslag.razu.nl/{bestand.mdto_identificatiekenmerk()}.{bestandsformaten.get_concept(droid_row['PUID']).get_value(SKOS.notation)}", datatype=XSD.anyURI)
           })
 
         # relaties bestand en archiefstuk:
@@ -237,7 +238,7 @@ if __name__ == "__main__":
             RDF.type: MDTO.DekkingInTijdGegevens ,
             MDTO.dekkingInTijdBeginDatum: razu.util.date_type(earliest_date) ,
             MDTO.dekkingInTijdEindDatum: razu.util.date_type(latest_date) ,
-            MDTO.dekkingInTijdType: URIRef(dekkingintijdtypen.get_uri("Opnamedatum"))
+            MDTO.dekkingInTijdType: URIRef(dekkingintijdtypen.get_concept("Opnamedatum").get_uri())
         }
     })
 

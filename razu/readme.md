@@ -9,8 +9,9 @@ Centrale class voor generatie van RDF is [`MDTOObject`](mdto_object.py). Deze is
 ## Config en RAZUConfig
 De class [`Config`](config.py) is een generieke *singleton* class voor het vastleggen en opvragen van configuratie-parameters. De subclass hiervan genaamd [`RAZUConfig`](razuconfig.py) vult deze aan met parameter gebaseerde bedrijfslogica (zoals het combineren van parameters tot een nieuwe property) en parameters met *default*  waarden.
 
-## ConceptResolver
-[`ConceptResolver`](conceptresolver.py) kan termen, die gebruikt zijn als naam of label in waardenlijsten, vertalen naar de bijbehorende URI. Dit gebeurt via SPARQL. Om onnodige belasting van endpoints te vermijden gebruikt het daarbij *caching* in de vorm van een *dictionary*.
+## ConceptResolver en Concept
+[`ConceptResolver`](conceptresolver.py) kan op basis van termen die gebruikt zijn als naam of label in waardenlijsten een `Concept` teruggeven. Dit `Concept` kan bevraagd worden, bijvoorbeeld voor de waarde van een specifiek predicaat.  Opvragingen gebeuren via SPARQL. Om onnodige belasting van endpoints te vermijden gebruikt het daarbij *caching* in de vorm van een *dictionary*.
+Een `Concept` kan ook direct geïnstantieerd worden door een bestaande concept-URI op te geven. Gebruikt [`SparqlEndpointManager`](sparql_endpoint_manager.py).
 
 ## Incrementer
 [`Incrementer`](incrementer.py) biedt een eenvoudige teller die gebruikt wordt in `MDTOObject` om unieke URIs of identifiers te kunnen genereren.

@@ -8,7 +8,9 @@ class RazuConfig(Config):
         default_settings = {
             "RAZU_base_URI": "https://data.razu.nl/" ,
             "RAZU_file_id": "NL-WbDRAZU",
-            "sparql_endpoint_prefix": "https://api.data.razu.nl/datasets/id/"
+            "sparql_endpoint_prefix": "https://api.data.razu.nl/datasets/id/",
+            "sparql_endpoint_suffix": "/sparql",
+            "resource_identifier": "id"
         }
         
         # If instance existst, remove any default setting that already exists to prevent overwriting
