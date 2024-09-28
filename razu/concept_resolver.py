@@ -215,3 +215,10 @@ class ConceptResolver:
                 self.cache[term] = concept  # Cache the concept
                 return concept
         return None
+
+    # shortcut methods
+    def get_concept_value(self, term: str, predicate: URIRef) -> str:
+        return self.get_concept(term).get_value(predicate)
+
+    def get_concept_uri(self, term: str) -> URIRef:
+        return self.get_concept(term).get_uri()
