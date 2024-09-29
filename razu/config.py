@@ -6,7 +6,6 @@ class Config:
 
     Attributes:
         _instance (Config): A single instance of the Config class.
-        _settings (dict): Internal storage for configuration settings.
 
     Examples:
         config = Config(myvar="value1", another_var=42)

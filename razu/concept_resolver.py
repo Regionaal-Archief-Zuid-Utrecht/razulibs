@@ -1,6 +1,8 @@
+from typing import Optional
 from SPARQLWrapper import SPARQLWrapper, JSON
 from rdflib import URIRef
 from razu.sparql_endpoint_manager import SparqlEndpointManager 
+
 
 class Concept:
     """
@@ -39,7 +41,7 @@ class Concept:
         self.sparql_endpoint = SparqlEndpointManager.get_endpoint_by_uri(uri)
         self.cache = {}
 
-    def get_value(self, predicate: URIRef) -> str:
+    def get_value(self, predicate: URIRef) -> Optional[str]:
         """
         Fetches the value for a given predicate for this concept.
 
@@ -161,7 +163,7 @@ class ConceptResolver:
         }} LIMIT 1
         """
 
-    def _execute_query(self, query: str) -> dict:
+    def _execute_query(self, query: str) -> Optional[dict]:
         """
         Executes the given SPARQL query and returns the response as a JSON object.
 
@@ -186,7 +188,7 @@ class ConceptResolver:
             print(f"Error querying the SPARQL endpoint: {e}")
             return None
 
-    def get_concept(self, term: str) -> Concept:
+    def get_concept(self, term: str) -> Optional[Concept]:
         """
         Retrieves a Concept object for the given term. Uses caching to avoid
         repeated queries for the same term.

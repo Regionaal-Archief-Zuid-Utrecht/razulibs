@@ -55,7 +55,7 @@ if __name__ == "__main__":
     # behandel nu iedere regel van de metadata csv:
     for index, row in meta_df.iterrows():
 
-        ## ARCHIEF
+        # ARCHIEF
         #  We maken 1x , bij de eerste rij, een object voor de 'toegang' / het archief aan:
         if index == 0:
             archive = MDTOObject()
@@ -74,8 +74,8 @@ if __name__ == "__main__":
             })
             # wordt verderop dynamisch toegevoegd: mdto:dekkingInTijd en mdt:bevatOnderdeel
 
-        ## SERIE
-        if current_serie != row['Serie'] :
+        # SERIE
+        if current_serie != row['Serie']:
             # we zijn bij een nieuwe serie beland (aanname is csv geordend per serie!):
             current_serie = row['Serie']
 
@@ -101,13 +101,13 @@ if __name__ == "__main__":
             archive.add(MDTO.bevatOnderdeel, serie.uri)
             serie.add(MDTO.isOnderdeelVan, archive.uri)
 
-        ## RECORD / archiefstuk
+        # RECORD / archiefstuk
         record = MDTOObject()
         record.add_properties({
             RDFS.label: f"{row['Titel']}",
             MDTO.naam: f"{row['Titel']}",
             MDTO.aggregatieniveau: URIRef(aggregatieniveaus.get_concept_uri("Archiefstuk")),
-            MDTO.archiefvormer: URIRef(actoren.get_concept_uri("Gemeente Houten")) ,
+            MDTO.archiefvormer: URIRef(actoren.get_concept_uri("Gemeente Houten")),
             MDTO.omschrijving: row['Beschrijving voorkant'],
             MDTO.classificatie: [
                 URIRef(soorten.get_concept_uri(row['Soort'])),
@@ -134,13 +134,13 @@ if __name__ == "__main__":
             MDTO.raadpleeglocatie: {
                 RDF.type: MDTO.RaadpleeglocatieGegevens,
                 MDTO.raadpleeglocatieFysiek: {
-                    RDF.type: MDTO.VerwijzingGegevens ,
+                    RDF.type: MDTO.VerwijzingGegevens,
                     MDTO.verwijzingNaam: f"Regionaal Archief Zuid Utrecht {row['Plaats']}" 
                 }
-            } ,
+            },
             MDTO.dekkingInTijd: { 
                 RDF.type: MDTO.DekkingInTijdGegevens,
-                MDTO.dekkingInTijdBeginDatum: razu.util.date_type(row['Datering']) ,
+                MDTO.dekkingInTijdBeginDatum: razu.util.date_type(row['Datering']),
                 MDTO.dekkingInTijdType: URIRef(dekkingintijdtypen.get_concept_uri("Opnamedatum"))
             },
             MDTO.beperkingGebruik: [
@@ -156,7 +156,8 @@ if __name__ == "__main__":
             GEO.scale: row['Schaal'],
             GEO.hasBoundingBox: {
                 RDF.type: GEO.Geometry,
-                GEO.asWKT: Literal(extra.create_polygon(row['Coördinaat - Linksonder'], row['Coördinaat Rechtsboven']), datatype=GEO.wktLiteral),
+                GEO.asWKT: Literal(extra.create_polygon(row['Coördinaat - Linksonder'], row['Coördinaat Rechtsboven']),
+                                   datatype=GEO.wktLiteral),
                 GEO.crs: URIRef("http://www.opengis.net/def/crs/OGC/1.3/CRS84")  
             },
             SCHEMA.width: {
@@ -190,11 +191,11 @@ if __name__ == "__main__":
         serie.add(MDTO.bevatOnderdeel, record.uri)
         record.add(MDTO.isOnderdeelVan, serie.uri)
 
-        ## BESTAND
+        # BESTAND
         original_filename = extra.maak_bestandsnaam(row['Doos-nummer'], row['Inventarisnummer'])
         droid_row = droid_df.loc[original_filename] 
 
-        bestand = MDTOObject(type = MDTO.Bestand)
+        bestand = MDTOObject(rdf_type=MDTO.Bestand)
         bestand.add_properties({
             MDTO.naam: f"{row['Titel']} {row['Doos-nummer']}:{row['Volgnummer']}",
             MDTO.identificatie: {
@@ -211,8 +212,12 @@ if __name__ == "__main__":
             MDTO.bestandsformaat: URIRef(bestandsformaten.get_concept_uri(droid_row['PUID'])),
             MDTO.omvang: Literal(int(droid_row['SIZE']), datatype=XSD.integer),
             # MDTO.omvang: Literal(droid_row['SIZE']),
-            MDTO.URLBestand: Literal(f"https://htn.opslag.razu.nl/{bestand.mdto_identificatiekenmerk()}.{bestandsformaten.get_concept_value(droid_row['PUID'], SKOS.notation)}", datatype=XSD.anyURI)
-          })
+            MDTO.URLBestand: Literal(
+                f"https://htn.opslag.razu.nl/{bestand.mdto_identificatiekenmerk()}"
+                f".{bestandsformaten.get_concept_value(droid_row['PUID'], SKOS.notation)}",
+                datatype=XSD.anyURI
+            )
+        })
 
         # relaties bestand en archiefstuk:
         record.add(MDTO.heeftRepresentatie, bestand.uri)
@@ -232,11 +237,11 @@ if __name__ == "__main__":
             latest_date = row['Datering'] 
 
     # nu alle rijen doorlopen zijn, weten we de dekking in tijd vh archief:
-    archive.add_properties( {
+    archive.add_properties({
         MDTO.dekkingInTijd: {
-            RDF.type: MDTO.DekkingInTijdGegevens ,
-            MDTO.dekkingInTijdBeginDatum: razu.util.date_type(earliest_date) ,
-            MDTO.dekkingInTijdEindDatum: razu.util.date_type(latest_date) ,
+            RDF.type: MDTO.DekkingInTijdGegevens,
+            MDTO.dekkingInTijdBeginDatum: razu.util.date_type(earliest_date),
+            MDTO.dekkingInTijdEindDatum: razu.util.date_type(latest_date),
             MDTO.dekkingInTijdType: URIRef(dekkingintijdtypen.get_concept_uri("Opnamedatum"))
         }
     })

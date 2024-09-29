@@ -17,4 +17,4 @@ Dit script produceert data die gebaseerd in op [MDTO](https://www.nationaalarchi
 De datastructuur biedt per luchtfoto een `MDTO.Bestand` en een `MDTO.Informatieobject`. De informatieobjecten worden geordend per 'serie', die onder een 'archief' vallen.
 
 ## Conceptresolvers
-Om te voorkomen dat er brondata expliciet URIs opgenomen moeten worden, en ook om dit script zo leesbaar mogelijk te maken, wordt er veel gebruik gemaakt van [`ConceptResolver`s](../../conceptresolver.py) die de benodigde URI kunnen achterhalen door de term in een gegeven waardenlijst op te zoeken.
+Om te voorkomen dat er brondata expliciet URIs opgenomen moeten worden, en ook om dit script zo leesbaar mogelijk te maken, wordt er veel gebruik gemaakt van [`ConceptResolver`s](../../concept_resolver.py) die de benodigde URI kunnen achterhalen door de term in een gegeven waardenlijst op te zoeken.
