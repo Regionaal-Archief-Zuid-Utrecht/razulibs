@@ -20,6 +20,7 @@ def test_default_settings():
     assert config.sparql_endpoint_prefix == "https://api.data.razu.nl/datasets/id/"
     assert config.sparql_endpoint_suffix == "/sparql"
     assert config.resource_identifier == "id"
+    assert config.metadata_suffix == "meta"
 
 
 def test_custom_settings():
