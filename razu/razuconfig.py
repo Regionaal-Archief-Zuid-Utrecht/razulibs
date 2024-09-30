@@ -11,7 +11,8 @@ class RazuConfig(Config):
             "RAZU_file_id": "NL-WbDRAZU",
             "sparql_endpoint_prefix": "https://api.data.razu.nl/datasets/id/",
             "sparql_endpoint_suffix": "/sparql",
-            "resource_identifier": "id"
+            "resource_identifier": "id",
+            "metadata_suffix": "meta"
         }
         instance = super(RazuConfig, cls).__new__(cls, **initial_settings)
 
