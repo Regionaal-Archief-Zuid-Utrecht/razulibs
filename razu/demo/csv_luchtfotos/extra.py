@@ -4,10 +4,11 @@ from pyproj import Transformer
 # Code specifiek voor de demo-conversie.
 
 
-### geo-zaken
+# geo-zaken
 
 # Initialiseer de transformer van RD naar WGS84
 transformer = Transformer.from_crs("EPSG:28992", "EPSG:4326")
+
 
 # Functie om een coördinaat-string te parsen
 def parse_rd_coord(coord_string):
@@ -17,9 +18,12 @@ def parse_rd_coord(coord_string):
     return rd_x, rd_y
 
 # Functie om RD naar WGS84 om te zetten
+
+
 def rd_to_wgs84(rd_x, rd_y):
     lon, lat = transformer.transform(rd_x, rd_y)
     return lon, lat
+
 
 # Functie om een POLYGON te maken van RD naar WGS84
 def create_polygon(rd_coord_lu, rd_coord_rb):
@@ -48,4 +52,3 @@ def maak_bestandsnaam(doosnummer, volgnummer):
     volgnummer = str(volgnummer).zfill(3)
     # Combineer en retourneer het resultaat
     return f"{jaar}_{nummer}_{volgnummer}.jpg"
-

@@ -9,6 +9,7 @@ SCHEMA = Namespace("http://schema.org/")
 MDTO = Namespace("http://www.nationaalarchief.nl/mdto#")
 GEO = Namespace("http://www.opengis.net/ont/geosparql#")
 
+
 class MDTOObject(Entity):
     """
     A class representing an MDTO (Metadata Transport Object) within an RDF graph.
@@ -41,7 +42,7 @@ class MDTOObject(Entity):
     _counter = Incrementer(0)
     _config = RazuConfig()
 
-    def __init__(self, type: URIRef = MDTO.Informatieobject, id: int = None):
+    def __init__(self, rdf_type: URIRef = MDTO.Informatieobject, entity_id: int = None):
         """
         Initializes the MDTOObject with a given RDF type and optional ID.
 
@@ -52,15 +53,15 @@ class MDTOObject(Entity):
         -----------
         type : URIRef, optional
             The RDF type of the MDTOObject (default is MDTO.Informatieobject).
-        id : int, optional
+        entity_id : int, optional
             An optional unique identifier for the MDTOObject. If not provided, an ID is generated.
         """
-        if id is None:
+        if entity_id is None:
             self.id = MDTOObject._counter.next()
         else:
-            self.id = id
+            self.id = entity_id
         uri = URIRef(f"{MDTOObject._config.URI_prefix}{self.id}")
-        super().__init__(uri, type)
+        super().__init__(uri, rdf_type)
 
     def mdto_identificatiekenmerk(self) -> str:
         """
@@ -78,7 +79,7 @@ class MDTOObject(Entity):
         is constructed from the filename prefix and the object's ID.
 
         """
-        if self._config.save == True:
+        if self._config.save:
             output_file = os.path.join(self._config.save_dir, f"{self._config.filename_prefix}{self.id}.mdto.json")
             with open(output_file, 'w') as file:
                 file.write(self.graph.serialize(format='json-ld'))

@@ -1,29 +1,25 @@
 from .config import Config
 
+
 class RazuConfig(Config):
     """A subclass of Config for adding business-specific logic and default values."""
 
     def __new__(cls, **initial_settings) -> "RazuConfig":
-       
+
         default_settings = {
-            "RAZU_base_URI": "https://data.razu.nl/" ,
+            "RAZU_base_URI": "https://data.razu.nl/",
             "RAZU_file_id": "NL-WbDRAZU",
             "sparql_endpoint_prefix": "https://api.data.razu.nl/datasets/id/",
             "sparql_endpoint_suffix": "/sparql",
             "resource_identifier": "id"
         }
-        
-        # If instance existst, remove any default setting that already exists to prevent overwriting
-        if cls._instance is not None:
-            for key in list(default_settings):
-                if key in cls._instance.__dict__['_settings']:
-                    del default_settings[key]
+        instance = super(RazuConfig, cls).__new__(cls, **initial_settings)
 
-        # Combine default settings with supplied initial settings:
-        default_settings.update(initial_settings)
-        
-        # Call parent __new__ to process settings:
-        return super(RazuConfig, cls).__new__(cls, **default_settings)
+        for key, value in default_settings.items():
+            if not hasattr(instance, key):
+                setattr(instance, key, value)
+
+        return instance
 
     @property
     def filename_prefix(self):
@@ -40,5 +36,3 @@ class RazuConfig(Config):
             return f"{self.RAZU_base_URI}id/object/{self.filename_prefix}"
         except AttributeError:
             raise ValueError("Missing attributes")
-
-

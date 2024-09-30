@@ -1,5 +1,6 @@
 from rdflib import Graph, URIRef, Literal, BNode, RDF
 
+
 class RDFBase:
     """
     An abstract class for working with RDF graphs.
@@ -21,7 +22,7 @@ class RDFBase:
         """
         self.graph = graph if graph else Graph()
 
-    def add_properties(self, subject: URIRef, properties: dict) -> "RDFBase":
+    def add_properties_x(self, subject: URIRef | BNode, properties: dict) -> "RDFBase":
         """
         Adds properties to the given subject in the RDF graph.
 
@@ -35,7 +36,8 @@ class RDFBase:
         subject : URIRef
             The RDF subject to which properties will be added.
         properties : dict
-            A dictionary where the keys are predicates (URIRefs) and the values are objects (URIRefs, Literals, BNodes, lists, or dictionaries).
+            A dictionary where the keys are predicates (URIRefs) and the values are objects (URIRefs, Literals, BNodes,
+            lists, or dictionaries).
         
         Returns:
         --------
@@ -53,15 +55,17 @@ class RDFBase:
                     if isinstance(item, dict):
                         nested_blank_node = BNode()
                         self.graph.add((subject, prop, nested_blank_node))
-                        RDFBase.add_properties(self, nested_blank_node, item)
+                        RDFBase.add_properties_x(self, nested_blank_node, item)
                     elif isinstance(item, (URIRef, Literal, BNode)):
                         self.graph.add((subject, prop, item))
                     else:
-                        raise ValueError("List items must be URIRefs, Literals, BNodes, or dictionaries for blank nodes.")
+                        raise ValueError(
+                            "List items must be URIRefs, Literals, BNodes, or dictionaries for blank nodes."
+                        )
             elif isinstance(value, dict):
                 nested_blank_node = BNode()
                 self.graph.add((subject, prop, nested_blank_node))
-                RDFBase.add_properties(self, nested_blank_node, value)
+                RDFBase.add_properties_x(self, nested_blank_node, value)
             else:
                 if not isinstance(value, (URIRef, Literal, BNode)):
                     value = Literal(value)
@@ -83,7 +87,7 @@ class BlankNode(RDFBase):
         blank_node = BNode()
         self.graph.add((self.node, relation, blank_node))
         if properties:
-            self.add_properties(blank_node, properties)
+            self.add_properties_x(blank_node, properties)
         return BlankNode(self.graph, blank_node)
 
 
@@ -114,25 +118,26 @@ class Entity(RDFBase):
         Adds another graph's triples to the current graph.
     """
 
-    def __init__(self, uri: URIRef, type: URIRef):
+    def __init__(self, uri: URIRef, rdf_type: URIRef):
         """ Initializes an Entity with a given URI and RDF type. """
         super().__init__()
         self.uri = uri   
-        self.type = type
-        self.graph.add((self.uri, RDF.type, self.type))
+        self.rdf_type = rdf_type
+        self.graph.add((self.uri, RDF.type, self.rdf_type))
 
-    def add(self, predicate: URIRef, object):
+    def add(self, predicate: URIRef, rdf_object):
         """ Adds a triple to the graph with the entity's URI as the subject. """
-        if isinstance(object, (URIRef, Literal)):
-            self.graph.add((self.uri, predicate, object))
+        if isinstance(rdf_object, (URIRef, Literal)):
+            self.graph.add((self.uri, predicate, rdf_object))
         else:
-            self.graph.add((self.uri, predicate, Literal(object)))
+            self.graph.add((self.uri, predicate, Literal(rdf_object)))
 
     def add_properties(self, properties: dict) -> "Entity":
-        """ Adds properties to the entity's URI. 
+        """ Adds properties to the entity's URI.
         Returns the Entity object for optional chaining.
         """
-        return super().add_properties(self.uri, properties)
+        super().add_properties_x(self.uri, properties)
+        return self
 
     def add_node(self, relation: URIRef, node_type: URIRef, properties: dict) -> BlankNode:
         """
@@ -155,10 +160,10 @@ class Entity(RDFBase):
         blank_node = BNode()
         self.graph.add((self.uri, relation, blank_node))
         self.graph.add((blank_node, RDF.type, node_type))
-        RDFBase.add_properties(self, blank_node, properties)
+        RDFBase.add_properties_x(self, blank_node, properties)
         return BlankNode(self.graph, blank_node)
 
-    def add_properties_list(self, list: str, separator: str, property: URIRef, transform_function: callable):
+    def add_properties_list(self, item_list: str, separator: str, rdf_property: URIRef, transform_function: callable):
         """
         Splits a string into a list of items, transforms them, and adds them as properties to the entity.
 
@@ -173,12 +178,12 @@ class Entity(RDFBase):
         transform_function : callable
             A function to transform each item from the split string.
         """
-        if isinstance(list, str) and list:
-            elements = list.split(separator)
+        if isinstance(item_list, str) and item_list:
+            elements = item_list.split(separator)
             for part in elements:
                 value = transform_function(part)
                 self.add_properties({
-                    property: value
+                    rdf_property: value
                 })
 
     def __iter__(self):

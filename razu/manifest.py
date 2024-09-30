@@ -4,6 +4,7 @@ import json
 import sys
 from datetime import datetime
 
+
 class Manifest:
     """
     A class to manage a manifest of files in a directory, ensuring that files are present 
@@ -25,17 +26,17 @@ class Manifest:
         modified (bool): Indicates if the manifest has been modified since it was loaded or created.
     """
     
-    def __init__(self, directory, manifest_file):
+    def __init__(self, manifest_directory, manifest_file):
         """
         Initialize the Manifest object. 
         Load an existing manifest file or mark the manifest as invalid if the file does not exist.
 
         Args:
-            directory (str): The directory to scan for files.
+            manifest_directory (str): The directory to scan for files.
             manifest_file (str): The name of the manifest file.
         """
-        self.directory = directory
-        self.manifest_file = os.path.join(directory, manifest_file)
+        self.directory = manifest_directory
+        self.manifest_file = os.path.join(manifest_directory, manifest_file)
         self.files = {}
         self.is_valid = True
         self.modified = False
@@ -83,7 +84,8 @@ class Manifest:
         self.save()
         print(f"Manifest created: {self.manifest_file}")
 
-    def calculate_md5(self, file_path):
+    @staticmethod
+    def calculate_md5(file_path):
         """
         Calculate the MD5 checksum of a file.
         """
@@ -219,6 +221,7 @@ class Manifest:
             self.modified = True
         else:
             raise KeyError(f"File '{file_path}' does not exist in the manifest.")
+
 
 if __name__ == "__main__":
     """

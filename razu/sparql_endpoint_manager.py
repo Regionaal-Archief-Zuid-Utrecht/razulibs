@@ -1,6 +1,7 @@
 from rdflib import URIRef
 from razu.razuconfig import RazuConfig
 
+
 class SparqlEndpointManager:
     """
     Static class responsible for determining the correct SPARQL endpoint
