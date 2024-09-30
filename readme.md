@@ -1,6 +1,6 @@
 # RAZU libs voor RDF
 
-*Python-bibliotheken ter ondersteuning van het maken van RDF*
+*Python-bibliotheken ter ondersteuning van het maken van RDF en ingest in e-depot*
 
 ## Doel
 

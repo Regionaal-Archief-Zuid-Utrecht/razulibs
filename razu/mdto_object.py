@@ -80,6 +80,6 @@ class MDTOObject(Entity):
 
         """
         if self._config.save:
-            output_file = os.path.join(self._config.save_dir, f"{self._config.filename_prefix}{self.id}.mdto.json")
+            output_file = os.path.join(self._config.save_dir, f"{self._config.filename_prefix}{self.id}.meta.json")
             with open(output_file, 'w') as file:
                 file.write(self.graph.serialize(format='json-ld'))
