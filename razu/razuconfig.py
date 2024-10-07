@@ -24,9 +24,9 @@ class RazuConfig(Config):
 
     @property
     def filename_prefix(self):
-        """Generates a filename prefix like 'NL-WbDRAZU-G312-661-'."""
+        """Generates a filename prefix like 'NL-WbDRAZU-G312-661'."""
         try:
-            return f"{self.RAZU_file_id}-{self.archive_creator_id}-{self.archive_id}-"
+            return f"{self.RAZU_file_id}-{self.archive_creator_id}-{self.archive_id}"
         except AttributeError:
             raise ValueError("Missing attributes")
 

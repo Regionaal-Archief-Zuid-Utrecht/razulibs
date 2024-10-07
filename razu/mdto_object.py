@@ -1,5 +1,5 @@
 import os
-from rdflib import Namespace, URIRef
+from rdflib import Namespace, URIRef, RDF
 from .incrementer import Incrementer
 from .razuconfig import RazuConfig
 from .rdf_structures import Entity
@@ -8,6 +8,7 @@ from .rdf_structures import Entity
 SCHEMA = Namespace("http://schema.org/")
 MDTO = Namespace("http://www.nationaalarchief.nl/mdto#")
 GEO = Namespace("http://www.opengis.net/ont/geosparql#")
+PREMIS = Namespace("http://www.loc.gov/premis/rdf/v3/")
 
 
 class MDTOObject(Entity):
@@ -60,15 +61,22 @@ class MDTOObject(Entity):
             self.id = MDTOObject._counter.next()
         else:
             self.id = entity_id
-        uri = URIRef(f"{MDTOObject._config.URI_prefix}{self.id}")
+        uri = URIRef(f"{MDTOObject._config.URI_prefix}-{self.id}")
         super().__init__(uri, rdf_type)
+        self.add_properties({
+                MDTO.identificatie: {
+                    RDF.type: MDTO.IdentificatieGegevens,
+                    MDTO.identificatieBron: "e-Depot RAZU",
+                    MDTO.identificatieKenmerk: f"{self._config.filename_prefix}-{self.id}" 
+                }
+            })
 
     def mdto_identificatiekenmerk(self) -> str:
         """
         Returns the unique identifier for the MDTOObject based on the configuration.
         The identifier combines the filename prefix from the configuration with the object's ID.
         """
-        return f"{self._config.filename_prefix}{self.id}"
+        return f"{self._config.filename_prefix}-{self.id}"
 
     def save(self) -> None:
         """
@@ -80,6 +88,10 @@ class MDTOObject(Entity):
 
         """
         if self._config.save:
-            output_file = os.path.join(self._config.save_dir, f"{self._config.filename_prefix}{self.id}.{self._config.metadata_suffix}.json")
+            try:
+                save_dir = self._config.save_dir
+            except:
+                save_dir = "sip"
+            output_file = os.path.join(save_dir, f"{self._config.filename_prefix}-{self.id}.{self._config.metadata_suffix}.json")
             with open(output_file, 'w') as file:
                 file.write(self.graph.serialize(format='json-ld'))

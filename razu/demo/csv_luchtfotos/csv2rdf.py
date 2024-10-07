@@ -3,7 +3,7 @@ import pandas as pd
 from rdflib import Graph, Literal, RDF, RDFS, URIRef
 from rdflib.namespace import XSD, SKOS
 
-from razu.mdto_object import MDTOObject, MDTO, SCHEMA, GEO
+from razu.mdto_object import MDTOObject, MDTO, SCHEMA, GEO, PREMIS
 from razu.razuconfig import RazuConfig
 from razu.concept_resolver import ConceptResolver
 
@@ -32,6 +32,7 @@ if __name__ == "__main__":
     graph.bind("mdto", MDTO)
     graph.bind("schema", SCHEMA)
     graph.bind("geo", GEO)
+    graph.bind("premis", PREMIS)
 
     # voor boekhouding rondom serie en datumrange, bij doorlopen csv:
     current_serie = None
@@ -117,7 +118,7 @@ if __name__ == "__main__":
             MDTO.identificatie: [
                 {
                     RDF.type: MDTO.IdentificatieGegevens,
-                    MDTO.identificatieBron: f"RAZU Toegang {cfg.archive_id}",
+                    MDTO.identificatieBron: f"Inventarissen Toegang {cfg.archive_id} RAZU",
                     MDTO.identificatieKenmerk: str(row['Inventarisnummer']) 
                 },
                 {
@@ -197,12 +198,9 @@ if __name__ == "__main__":
 
         bestand = MDTOObject(rdf_type=MDTO.Bestand)
         bestand.add_properties({
+            RDF.type: PREMIS.Object,
             MDTO.naam: f"{row['Titel']} {row['Doos-nummer']}:{row['Volgnummer']}",
-            MDTO.identificatie: {
-                RDF.type: MDTO.IdentificatieGegevens,
-                MDTO.identificatieBron: "Gemeente Houten",
-                MDTO.identificatieKenmerk: f"{original_filename}" 
-            },
+            PREMIS.originalName: original_filename,
             MDTO.checksum: { 
                 RDF.type: MDTO.ChecksumGegevens,
                 MDTO.checksumAlgoritme: URIRef(algoritmes.get_concept_uri("MD5")),
@@ -211,9 +209,8 @@ if __name__ == "__main__":
             },
             MDTO.bestandsformaat: URIRef(bestandsformaten.get_concept_uri(droid_row['PUID'])),
             MDTO.omvang: Literal(int(droid_row['SIZE']), datatype=XSD.integer),
-            # MDTO.omvang: Literal(droid_row['SIZE']),
             MDTO.URLBestand: Literal(
-                f"https://htn.opslag.razu.nl/{bestand.mdto_identificatiekenmerk()}"
+                f"https://{cfg.archive_creator_id.lower()}.opslag.razu.nl/{bestand.mdto_identificatiekenmerk()}"
                 f".{bestandsformaten.get_concept_value(droid_row['PUID'], SKOS.notation)}",
                 datatype=XSD.anyURI
             )

@@ -1,10 +1,8 @@
-import json
 import os
 import sys
 from rdflib import Graph
-from rdflib.namespace import Namespace
 
-from razu.mdto_object import MDTO
+from razu.mdto_object import MDTO, PREMIS
 from razu.manifest import Manifest 
 from razu.concept_resolver import ConceptResolver 
 import razu.util as util
@@ -14,8 +12,6 @@ def enrich_manifest(manifest_file, rdf_directory):
 
     actoren = ConceptResolver("actor")
     manifest = Manifest(rdf_directory, manifest_file)
-
-    # print(manifest.files)
 
     for rdf_file in os.listdir(rdf_directory):
         if rdf_file.endswith('.json') and rdf_file != os.path.basename(manifest_file):
@@ -30,7 +26,6 @@ def enrich_manifest(manifest_file, rdf_directory):
                 "Dataset": dataset
             })
 
-
             rdf_path = os.path.join(rdf_directory, rdf_file)
 
             # RDF-bestand inlezen
@@ -42,10 +37,10 @@ def enrich_manifest(manifest_file, rdf_directory):
             SELECT ?subject ?urlbestand ?bestandsformaat ?original_filename WHERE {
                 ?subject mdto:URLBestand ?urlbestand .
                 ?subject mdto:bestandsformaat ?bestandsformaat .
-                ?subject mdto:identificatie/mdto:identificatieKenmerk ?original_filename
+                ?subject premis:originalName ?original_filename
             }
             """
-            results = g.query(query, initNs={'mdto': MDTO})
+            results = g.query(query, initNs={'mdto': MDTO, 'premis': PREMIS})
 
             # Resultaten verwerken en manifest verrijken
             for row in results:

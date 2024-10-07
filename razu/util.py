@@ -1,5 +1,8 @@
 import re
 import os
+import shutil
+import hashlib
+
 from rdflib import Literal, XSD
 from datetime import datetime
 from .razuconfig import RazuConfig

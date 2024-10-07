@@ -47,20 +47,13 @@ class Manifest:
         else:
             self.is_valid = False  # No manifest yet, cannot be valid
 
-    def create_file_entry(self, file_path):
-        """
-        Helper function to create a manifest entry with the MD5 checksum and date.
-
-        Args:
-            file_path (str): The path to the file.
-
-        Returns:
-            dict: A dictionary with the file's checksum and the date it was calculated.
-        """
-        return {
-            "MD5Hash": self.calculate_md5(file_path),
-            "MD5HashDate": datetime.now().isoformat()
+    def add_entry(self, file_path, md5hash, md5date):
+        self.files[file_path] =  {
+            "MD5Hash": md5hash,
+            "MD5HashDate": md5date
         }
+        self.modified = True
+
     
     def create_from_directory(self):
         """
@@ -79,7 +72,7 @@ class Manifest:
                     continue
                 file_path = os.path.join(root, file)
                 relative_path = os.path.relpath(file_path, self.directory)
-                self.files[relative_path] = self.create_file_entry(file_path)
+                self.add_entry(relative_path, self.calculate_md5(file_path), datetime.now().isoformat())
         self.modified = True
         self.save()
         print(f"Manifest created: {self.manifest_file}")
@@ -115,7 +108,7 @@ class Manifest:
             self.files = json.load(json_file)
         self.modified = False
 
-    def verify(self):
+    def verify(self, ignore_missing=False, ignore_extra=False):
         """
         Verify that all files listed in the manifest exist and have the correct checksums.
         Also, check if there are extra files in the directory that are not listed in the manifest.
@@ -161,21 +154,19 @@ class Manifest:
                 if relative_path not in self.files:
                     errors["extra_files"].append(relative_path)
 
-        # Raise a warning if extra files are found in the directory
-        if errors["extra_files"]:
-            print(f"Error: Extra files found in the directory that are not in the manifest: {errors['extra_files']}")
+        if errors["checksum_mismatch"]:
+            raise ValueError(f"Checksum mismatches: {errors['checksum_mismatch']}")
 
-        # Set validity based on found errors
-        if errors["missing_files"] or errors["checksum_mismatch"] or errors["extra_files"]:
-            self.is_valid = False
-            print("Manifest is invalid.")
-            print(errors)
-        else:
-            self.is_valid = True
-            print("Manifest is valid.")
+        if errors["missing_files"] and not ignore_missing:
+            raise ValueError(f"Missing files: {errors['missing_files']}")
 
-        return errors
+        if errors["extra_files"] and not ignore_extra:
+            raise ValueError(f"Extra files found in the directory: {errors['extra_files']}")
 
+        self.is_valid = True
+        return
+    
+    
     def append(self):
         """
         Append missing files to the manifest by scanning the directory for files that
@@ -196,7 +187,7 @@ class Manifest:
                     continue
                 if relative_path not in self.files:
                     file_path = os.path.join(self.directory, relative_path)
-                    self.files[relative_path] = self.create_file_entry(file_path)
+                    self.add_entry(relative_path, self.calculate_md5(file_path), datetime.now().isoformat())
                     self.modified = True
 
         if self.modified:
@@ -257,13 +248,13 @@ if __name__ == "__main__":
     elif command == "verify":
         try:
             manifest.verify()
-        except FileNotFoundError as e:
+        except ValueError as e:
             print(e)
 
     elif command == "append":
         try:
             manifest.append()
-        except FileNotFoundError as e:
+        except ValueError as e:
             print(e)
 
     else:

@@ -35,7 +35,7 @@ def test_filename_prefix_success():
     """Test dat de filename_prefix correct wordt gegenereerd."""
     config = RazuConfig()
     
-    expected_prefix = "NL-WbDRAZU-G312-661-"
+    expected_prefix = "NL-WbDRAZU-G312-661"
     assert config.filename_prefix == expected_prefix
 
 
