@@ -2,7 +2,7 @@ import os
 import sys
 from rdflib import Graph
 
-from razu.mdto_object import MDTO, PREMIS
+from razu.meta_object import MDTO, PREMIS
 from razu.manifest import Manifest 
 from razu.concept_resolver import ConceptResolver 
 import razu.util as util

@@ -4,7 +4,7 @@ import sys
 import shutil
 import hashlib
 
-from razu.mdto_object import MDTO, PREMIS
+from razu.meta_object import MDTO, PREMIS
 
 
 def md5_checksum(file_path):
