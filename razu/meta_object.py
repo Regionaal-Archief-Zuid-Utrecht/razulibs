@@ -44,7 +44,7 @@ class MetaObject(RDFResource):
     _counter = Incrementer(0)
     _config = RazuConfig()
 
-    def __init__(self, entity_id: int = None, uri: str = None, rdf_type = MDTO.Informatieobject):
+    def __init__(self, entity_id: int = None, rdf_type = MDTO.Informatieobject):
         """
         Initializes the MDTOObject with a given RDF type and optional ID.
 
@@ -58,14 +58,13 @@ class MetaObject(RDFResource):
         entity_id : int, optional
             An optional unique identifier for the MDTOObject. If not provided, an ID is generated.
         """
-        if uri is None:
-            if entity_id is None:
-                self.id = MetaObject._counter.next()
-            else:
-                self.id = entity_id
-            uri = URIRef(f"{MetaObject._config.URI_prefix}-{self.id}")
+
+        if entity_id is None:
+            self.id = MetaObject._counter.next()
         else:
-            self.id = extract_id_from_filename(uri)
+            self.id = entity_id
+        uri = URIRef(f"{MetaObject._config.URI_prefix}-{self.id}")
+
         super().__init__(uri)
         
         self.algoritmes = ConceptResolver("algoritme")
@@ -97,8 +96,8 @@ class MetaObject(RDFResource):
         """
         return f"{self._config.filename_prefix}-{self.id}"
 
-    # def set_type(self, rdf_type: URIRef):
-    #     self.add_properties({RDF.type: rdf_type})
+    def set_type(self, rdf_type: URIRef):
+        self.add_properties({RDF.type: rdf_type})
 
     def set_md5_properties(self, md5checksum, checksum_datetime):
         self.md5checksum = md5checksum

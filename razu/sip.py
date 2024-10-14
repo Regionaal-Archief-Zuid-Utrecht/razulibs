@@ -11,7 +11,6 @@ from .meta_graph import MetaGraph
 from .manifest import Manifest
 
 
-
 class Sip:
     def __init__(self, sip_dir, archive_creator_id, dataset_id: str, newest_id=None) -> None:
         self.sip_dir = sip_dir
@@ -66,9 +65,19 @@ class Sip:
                 add_related_triples_to_meta_object(meta_object, subject)
                 self.store_object(meta_object)
 
-    def create_object(self):
-        self.newest_id += 1
-        return MetaObject(entity_id=self.newest_id)
+    def create_object(self, **kwargs):
+        # TODO: identifiers kunnen de mist in gaan als zowel een uri wordt meegegeven als soms ook vertrouwd wordt op
+        # automatische toekenning met self.newest_id
+        valid_kwargs = {}
+        if 'entity_id' not in kwargs:
+            self.newest_id += 1
+            valid_kwargs['entity_id'] = self.newest_id
+        else:
+            valid_kwargs['entity_id'] = kwargs['entity_id']
+
+        if 'rdf_type' in kwargs:
+            valid_kwargs['rdf_type'] = kwargs['rdf_type']
+        return MetaObject(**valid_kwargs)
 
     def store_object(self, object: MetaObject, source_dir = None):
         # process the metadata-file:
