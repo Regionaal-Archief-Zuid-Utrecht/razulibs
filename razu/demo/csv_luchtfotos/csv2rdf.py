@@ -3,9 +3,10 @@ import pandas as pd
 from rdflib import Graph, Literal, RDF, RDFS, URIRef
 from rdflib.namespace import XSD, SKOS
 
-from razu.mdto_object import MDTOObject, MDTO, SCHEMA, GEO, PREMIS
+from razu.meta_object import MetaObject, MDTO, SCHEMA, GEO, PREMIS
 from razu.razuconfig import RazuConfig
 from razu.concept_resolver import ConceptResolver
+from razu.meta_graph import MetaGraph
 
 import razu.util            # generieke functies
 import extra                # code specifiek voor deze import
@@ -26,13 +27,7 @@ if __name__ == "__main__":
     droid_df['SIZE'] = droid_df['SIZE'].fillna(0).astype(int)  # forceer deze kolom 'SIZE' als integers
     checksum_date = razu.util.get_last_modified(droid_path)
 
-    graph = Graph()
-    graph.bind("rdf", RDF)
-    graph.bind("rdfs", RDFS)
-    graph.bind("mdto", MDTO)
-    graph.bind("schema", SCHEMA)
-    graph.bind("geo", GEO)
-    graph.bind("premis", PREMIS)
+    graph = MetaGraph()
 
     # voor boekhouding rondom serie en datumrange, bij doorlopen csv:
     current_serie = None
@@ -59,7 +54,7 @@ if __name__ == "__main__":
         # ARCHIEF
         #  We maken 1x , bij de eerste rij, een object voor de 'toegang' / het archief aan:
         if index == 0:
-            archive = MDTOObject()
+            archive = MetaObject()
             archive.add_properties({
                 RDFS.label: "Luchtfoto's Gemeente Houten",
                 MDTO.naam: "Luchtfoto's Gemeente Houten",
@@ -85,7 +80,7 @@ if __name__ == "__main__":
                 serie.save()
                 graph += serie
 
-            serie = MDTOObject()
+            serie = MetaObject()
             serie.add_properties({
                 RDFS.label: f"Luchtfoto's Houten serie {row['Serie']}",
                 MDTO.naam: f"Luchtfoto's Houten serie {row['Serie']}",
@@ -103,7 +98,7 @@ if __name__ == "__main__":
             serie.add(MDTO.isOnderdeelVan, archive.uri)
 
         # RECORD / archiefstuk
-        record = MDTOObject()
+        record = MetaObject()
         record.add_properties({
             RDFS.label: f"{row['Titel']}",
             MDTO.naam: f"{row['Titel']}",
@@ -196,7 +191,7 @@ if __name__ == "__main__":
         original_filename = extra.maak_bestandsnaam(row['Doos-nummer'], row['Inventarisnummer'])
         droid_row = droid_df.loc[original_filename] 
 
-        bestand = MDTOObject(rdf_type=MDTO.Bestand)
+        bestand = MetaObject(rdf_type=MDTO.Bestand)
         bestand.add_properties({
             RDF.type: PREMIS.Object,
             MDTO.naam: f"{row['Titel']} {row['Doos-nummer']}:{row['Volgnummer']}",

@@ -1,9 +1,11 @@
 import os
 from rdflib import Namespace, URIRef, Literal, RDF, XSD, SKOS
+
 from .incrementer import Incrementer
 from .razuconfig import RazuConfig
-from .rdf_structures import Entity
+from .rdf_resource import RDFResource
 from .concept_resolver import ConceptResolver
+from .util import extract_id_from_filename
 
 # Namespaces for RDF properties
 SCHEMA = Namespace("http://schema.org/")
@@ -12,7 +14,7 @@ GEO = Namespace("http://www.opengis.net/ont/geosparql#")
 PREMIS = Namespace("http://www.loc.gov/premis/rdf/v3/")
 
 
-class MetaObject(Entity):
+class MetaObject(RDFResource):
     """
     A class representing an MDTO (Metadata Transport Object) within an RDF graph.
 
@@ -42,7 +44,7 @@ class MetaObject(Entity):
     _counter = Incrementer(0)
     _config = RazuConfig()
 
-    def __init__(self, rdf_type: URIRef = MDTO.Informatieobject, entity_id: int = None):
+    def __init__(self, entity_id: int = None, uri: str = None, rdf_type = MDTO.Informatieobject):
         """
         Initializes the MDTOObject with a given RDF type and optional ID.
 
@@ -56,19 +58,31 @@ class MetaObject(Entity):
         entity_id : int, optional
             An optional unique identifier for the MDTOObject. If not provided, an ID is generated.
         """
-        if entity_id is None:
-            self.id = MetaObject._counter.next()
+        if uri is None:
+            if entity_id is None:
+                self.id = MetaObject._counter.next()
+            else:
+                self.id = entity_id
+            uri = URIRef(f"{MetaObject._config.URI_prefix}-{self.id}")
         else:
-            self.id = entity_id
-        uri = URIRef(f"{MetaObject._config.URI_prefix}-{self.id}")
-        super().__init__(uri, rdf_type)
+            self.id = extract_id_from_filename(uri)
+        super().__init__(uri)
         
         self.algoritmes = ConceptResolver("algoritme")
         self.bestandsformaten = ConceptResolver("bestandsformaat")
+        self.md5checksum = None
+        self.checksum_datetime = None
+        self.puid = None
+        self.fileformat_uri = None
+        self.file_extension = None
+        self.filename = None
+        self.filesize = None
+        self.original_filename = None
 
         self.object_identifier = f"{self._config.filename_prefix}-{self.id}"
+        
         self.add_properties({
-            RDF.type: PREMIS.Object,
+            RDF.type: [PREMIS.Object, rdf_type],
             MDTO.identificatie: {
                 RDF.type: MDTO.IdentificatieGegevens,
                 MDTO.identificatieBron: "e-Depot RAZU",
@@ -76,6 +90,16 @@ class MetaObject(Entity):
             }
         })
     
+    def mdto_identificatiekenmerk(self) -> str:
+        """
+        Returns the unique identifier for the MDTOObject based on the configuration.
+        The identifier combines the filename prefix from the configuration with the object's ID.
+        """
+        return f"{self._config.filename_prefix}-{self.id}"
+
+    # def set_type(self, rdf_type: URIRef):
+    #     self.add_properties({RDF.type: rdf_type})
+
     def set_md5_properties(self, md5checksum, checksum_datetime):
         self.md5checksum = md5checksum
         self.checksum_datetime = checksum_datetime

@@ -1,8 +1,10 @@
 import os
+import sys
 import hashlib
 import json
-import sys
 from datetime import datetime
+
+import razu.util as util
 
 
 class Manifest:
@@ -40,6 +42,7 @@ class Manifest:
         self.files = {}
         self.is_valid = True
         self.modified = False
+        self.newest_id = 0 
 
         # Load existing manifest or mark as invalid
         if os.path.exists(self.manifest_file):
@@ -54,7 +57,9 @@ class Manifest:
         }
         self.modified = True
 
-    
+    def get_filenames(self) -> list:
+        return list(self.files.keys()) 
+
     def create_from_directory(self):
         """
         Create a manifest by scanning all files in the directory, 
@@ -106,6 +111,13 @@ class Manifest:
         """
         with open(input_file, "r") as json_file:
             self.files = json.load(json_file)
+
+        for filename in self.files.keys():
+            id = util.extract_id_from_filename(filename)
+            if id is not None:
+                if id > self.newest_id:
+                    self.newest_id = id
+
         self.modified = False
 
     def verify(self, ignore_missing=False, ignore_extra=False):

@@ -150,6 +150,16 @@ def extract_archive_from_filename(filename: str) -> str:
     return extract_part_from_filename(filename, 2)
 
 
+def extract_id_from_filename(filename: str):
+    part = extract_part_from_filename(filename, 3)
+    if part:
+        part = part.split('.')[0]
+    try:
+        return int(part)
+    except (ValueError, TypeError):
+        return None 
+
+
 def filename_without_extensions(filename: str) -> str:
     """
     Returns the filename without any extensions, removing everything after the first dot.

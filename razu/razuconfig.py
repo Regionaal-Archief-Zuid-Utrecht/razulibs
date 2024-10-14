@@ -37,3 +37,11 @@ class RazuConfig(Config):
             return f"{self.RAZU_base_URI}id/object/{self.filename_prefix}"
         except AttributeError:
             raise ValueError("Missing attributes")
+
+    @property
+    def manifest_filename(self):
+        """ Generates the filename of the manifest. """
+        try:
+            return f"{self.filename_prefix}.manifest.json"
+        except AttributeError:
+            raise ValueError("Missing attributes")
