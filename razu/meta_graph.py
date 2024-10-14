@@ -1,5 +1,5 @@
 from rdflib import Graph, RDF, RDFS
-from razu.mdto_object import MDTO, SCHEMA, GEO, PREMIS
+from razu.meta_object import MDTO, SCHEMA, GEO, PREMIS
 
 class MetaGraph(Graph):
     def __init__(self, *args, **kwargs):
