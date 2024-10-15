@@ -3,3 +3,4 @@
 __pycache__/
 razu/demo/csv_luchtfotos/out.ttl
 .idea
+venv
