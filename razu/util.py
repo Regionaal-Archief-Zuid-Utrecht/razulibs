@@ -1,5 +1,8 @@
 import re
 import os
+import shutil
+import hashlib
+
 from rdflib import Literal, XSD
 from datetime import datetime
 from .razuconfig import RazuConfig
@@ -145,6 +148,16 @@ def extract_archive_from_filename(filename: str) -> str:
         The extracted archive part of the filename.
     """
     return extract_part_from_filename(filename, 2)
+
+
+def extract_id_from_filename(filename: str):
+    part = extract_part_from_filename(filename, 3)
+    if part:
+        part = part.split('.')[0]
+    try:
+        return int(part)
+    except (ValueError, TypeError):
+        return None 
 
 
 def filename_without_extensions(filename: str) -> str:

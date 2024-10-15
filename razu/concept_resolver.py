@@ -110,18 +110,10 @@ class ConceptResolver:
     Resolves URIs for terms from a vocabulary and creates Concept objects,
     using caching to avoid repeated SPARQL queries for the same term.
     
-    Attributes:
-    -----------
-    vocabulary : str
-        The specific vocabulary or category (e.g., 'actor', 'algorithm') to be used in the SPARQL query.
-    cache : dict
-        A dictionary used to cache previously queried terms and their corresponding Concept objects.
-    
-    Methods:
-    --------
-    get_concept(term: str) -> Concept
-        Retrieves a Concept object for the given term, with caching.
+    Singleton implementation ensures only one instance of ConceptResolver exists per vocabulary.
     """
+
+    _instances = {}
 
     PREFIXES = """
         PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
@@ -129,17 +121,25 @@ class ConceptResolver:
         PREFIX schema: <http://schema.org/>
     """
 
+    def __new__(cls, vocabulary: str):
+        """
+        Ensures only one instance of ConceptResolver exists per vocabulary.
+        If an instance with the same vocabulary already exists, it returns the existing instance.
+        """
+        if vocabulary not in cls._instances:
+            instance = super(ConceptResolver, cls).__new__(cls)
+            cls._instances[vocabulary] = instance
+        return cls._instances[vocabulary]
+
     def __init__(self, vocabulary: str):
         """
-        Initializes the ConceptResolver for a specific vocabulary.
-
-        Parameters:
-        -----------
-        vocabulary : str
-            The vocabulary or concept list (e.g., 'actor', 'category') to query.
+        Initializes the ConceptResolver for a specific vocabulary, if it hasn't been initialized yet.
         """
-        self.vocabulary = vocabulary
-        self.cache = {}
+        if not hasattr(self, "initialized"):
+            self.vocabulary = vocabulary
+            self.cache = {}
+            self.initialized = True  # Mark as initialized to avoid re-initialization
+
 
     def _build_query(self, term: str) -> str:
         """

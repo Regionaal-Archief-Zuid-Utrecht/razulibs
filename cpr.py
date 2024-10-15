@@ -4,8 +4,8 @@ import sys
 import shutil
 import hashlib
 
-# Namespaces
-MDTO = rdflib.Namespace("http://www.nationaalarchief.nl/mdto#")
+from razu.meta_object import MDTO, PREMIS
+
 
 def md5_checksum(file_path):
     """Calculate MD5 checksum of a file."""
@@ -30,8 +30,7 @@ def extract_filenames(metadata_directory):
             # Query for mdto:Bestand entities
             for bestand in graph.subjects(rdflib.RDF.type, MDTO.Bestand):
                 # Extract original_filename
-                identificatie_node = graph.value(bestand, MDTO.identificatie)
-                original_filename = str(graph.value(identificatie_node, MDTO.identificatieKenmerk))
+                original_filename = str(graph.value(bestand, PREMIS.originalName))
 
                 # Extract hash
                 checksum_node = graph.value(bestand, MDTO.checksum)

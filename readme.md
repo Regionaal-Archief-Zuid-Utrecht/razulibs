@@ -10,14 +10,14 @@ Het RAZU werkt hierbij met een op [MDTO](https://www.nationaalarchief.nl/archive
 
 ## Voorbeeld
 
-Een voorbeeldimplementatie waarbij data uit twee csv-bestanden wordt omgezet naar RDF is te vinden in [demo/csv_luchtfotos/csv2rdf.py](./razu/demo/csv_luchtfotos/csv2rdf.py). Centraal voor deze conversie is de `MDTOObject`-class. Deze class kan gebruikt worden om RDF te maken door te werken met sjablonen, in de vorm van Python *dictionaries*, met de gewenste RDF-structuur. Onderstaand voorbeeld, waarbij een [pandas dataframe](https://pandas.pydata.org/) als bron gebruikt wordt, illustreert dit:
+Een voorbeeldimplementatie waarbij data uit twee csv-bestanden wordt omgezet naar RDF is te vinden in [demo/csv_luchtfotos/csv2rdf.py](./razu/demo/csv_luchtfotos/csv2rdf.py). Centraal voor deze conversie is de `MetaObject`-class. Deze class kan gebruikt worden om RDF te maken door te werken met sjablonen, in de vorm van Python *dictionaries*, met de gewenste RDF-structuur. Onderstaand voorbeeld, waarbij een [pandas dataframe](https://pandas.pydata.org/) als bron gebruikt wordt, illustreert dit:
 
 
     actoren = ConceptResolver('actor')
     aggregatieniveaus = ConceptResolver('aggregatieniveau')
     soorten = ConceptResolver('soort')
     
-    record = MDTOObject()
+    record = MetaObject()
 
     record.add_properties({
         RDFS.label: f"{row['Titel']}",
@@ -44,8 +44,9 @@ Deze code zal, met gegeven brondata, RDF opleveren die in Turtle als volgt geser
 
     @prefix mdto: <http://www.nationaalarchief.nl/mdto#> .
     @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+    @prefix premis: <http://www.loc.gov/premis/rdf/v3/> .
     
-    <https://data.razu.nl/NL-WbDRAZU-G321-661-3> a mdto:Informatieobject ;
+    <https://data.razu.nl/NL-WbDRAZU-G321-661-3> a mdto:Informatieobject, premis:Object;
         rdfs:label "Luchtfoto gemeente Houten" ;
         mdto:naam "Luchtfoto gemeente Houten" ;
         mdto:aggregatieniveau <https://data.razu.nl/id/aggregatieniveau/96f7399fb1c5d3b7d2acdc48dac3d71e> ;
@@ -64,7 +65,7 @@ Deze code zal, met gegeven brondata, RDF opleveren die in Turtle als volgt geser
             mdto:identificatieKenmerk "doos: 1984-1 volgnummer: 1" 
         ] .
 
-De datastructuur van `MDOObject` maakt het eenvoudig om in de RDF links te specificeren. Via het MDTO-vocabulaire kopppelen van een record-instantie aan de instantie van een serie, en andersom, kan eenvoudig met:
+De functionaliteit van het `MetaObject` maakt het eenvoudig om in de RDF links te specificeren. Via het MDTO-vocabulaire kopppelen van een record-instantie aan de instantie van een serie, en andersom, kan eenvoudig met:
 
     serie.add(MDTO.bevatOnderdeel, record.uri)
     record.add(MDTO.isOnderdeelVan, serie.uri)

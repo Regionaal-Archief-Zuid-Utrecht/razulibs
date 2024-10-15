@@ -11,7 +11,8 @@ class RazuConfig(Config):
             "RAZU_file_id": "NL-WbDRAZU",
             "sparql_endpoint_prefix": "https://api.data.razu.nl/datasets/id/",
             "sparql_endpoint_suffix": "/sparql",
-            "resource_identifier": "id"
+            "resource_identifier": "id",
+            "metadata_suffix": "meta"
         }
         instance = super(RazuConfig, cls).__new__(cls, **initial_settings)
 
@@ -23,9 +24,9 @@ class RazuConfig(Config):
 
     @property
     def filename_prefix(self):
-        """Generates a filename prefix like 'NL-WbDRAZU-G312-661-'."""
+        """Generates a filename prefix like 'NL-WbDRAZU-G312-661'."""
         try:
-            return f"{self.RAZU_file_id}-{self.archive_creator_id}-{self.archive_id}-"
+            return f"{self.RAZU_file_id}-{self.archive_creator_id}-{self.archive_id}"
         except AttributeError:
             raise ValueError("Missing attributes")
 
@@ -34,5 +35,13 @@ class RazuConfig(Config):
         """Generates a URI prefix like 'https://data.razu.nl/NL-WbDRAZU-G312-661-'."""
         try:
             return f"{self.RAZU_base_URI}id/object/{self.filename_prefix}"
+        except AttributeError:
+            raise ValueError("Missing attributes")
+
+    @property
+    def manifest_filename(self):
+        """ Generates the filename of the manifest. """
+        try:
+            return f"{self.filename_prefix}.manifest.json"
         except AttributeError:
             raise ValueError("Missing attributes")

@@ -32,7 +32,7 @@ class RDFResource:
         """
         if isinstance(obj, RDFResource):
             self.graph.add((self.uri, predicate, obj.uri))
-            self.graph += obj.graph  # Merges the graph of the nested RDFResource
+            self.graph += obj.graph
         elif isinstance(obj, URIRef):
             self.graph.add((self.uri, predicate, obj))
         else:
@@ -62,8 +62,8 @@ class RDFResource:
         """
         for predicate, obj in rdf_properties.items():
             if isinstance(obj, dict):
-                nested_entity = RDFResource()  # Create a new RDFResource for the nested structure
-                nested_entity.add_properties(obj)  # Recursively add the properties
+                nested_entity = RDFResource()
+                nested_entity.add_properties(obj)
                 self.add(predicate, nested_entity)
             elif isinstance(obj, list):
                 for item in obj:
@@ -86,3 +86,4 @@ class RDFResource:
         """ In-place addition of another RDF graph's triples to this RDFResource's graph. """
         self.graph += other_graph
         return self.graph
+    
