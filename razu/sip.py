@@ -14,7 +14,12 @@ import util as util
 
 
 class Sip:
+
     def __init__(self, sip_dir, archive_creator_id, dataset_id: str) -> None:
+        """
+        Loads a SIP from sip_dir or
+        creates one.
+        """
         self.sip_dir = sip_dir
         self.archive_creator_id = archive_creator_id
         self.dataset_id = dataset_id
@@ -29,42 +34,10 @@ class Sip:
             print(f"Created empty SIP at {self.sip_dir}.")
 
         self.manifest = Manifest(self.sip_dir, self.cfg.manifest_filename)
-        self._load_graph()
-
-        # if newest_id is None:
-        #     self.newest_id = self.manifest.newest_id
-        #     if self.manifest.newest_id > 0:
-        #         self._load_graph()
-        # else:
-        #     if self.manifest.newest_id > 0:
-        #         print ("Existing files will be overwritten.")
-        #     self.newest_id = newest_id
-
-    def _load_graph(self):
-        for filename in self.manifest.get_filenames():
-            if filename.endswith(f"{self.cfg.metadata_suffix}.json"):
-                file_path = os.path.join(self.sip_dir, filename)
-                id = util.extract_id_from_filename(file_path)
-                self.meta_resources[id] = StructuredMetaResource(id=id)
-                self.meta_resources[id].load(file_path)
+        self._load_meta_resources()
 
     def save_graph(self):
-        """
-        For each entity in the graph with a URI, create a MetaObject, fill it with the relevant
-        properties, and save it as a JSON-LD file.
-        """
-        def add_related_triples_to_meta_object(meta_object, node):
-            """ Recursively add triples related to the given node (including blank nodes) to the MetaObject. """
-            for predicate, obj in self.graph.predicate_objects(node):
-                meta_object.add(predicate, obj)
-                if isinstance(obj, BNode):
-                    add_related_triples_to_meta_object(meta_object, obj)
 
-        for subject in self.graph.subjects():
-            if isinstance(subject, URIRef): 
-                meta_object = StructuredMetaResource(uri=subject)
-                add_related_triples_to_meta_object(meta_object, subject)
-                self.store_object(meta_object)
 
     def create_object(self, **kwargs):
         # TODO: identifiers kunnen de mist in gaan als zowel een uri wordt meegegeven als soms ook vertrouwd wordt op
@@ -109,5 +82,10 @@ class Sip:
             })
         self.manifest.save()
 
-    def validate(self):
-        self.manifest.verify()
+    def _load_meta_resources(self):
+        for filename in self.manifest.get_filenames():
+            if filename.endswith(f"{self.cfg.metadata_suffix}.json"):
+                file_path = os.path.join(self.sip_dir, filename)
+                id = util.extract_id_from_filename(file_path)
+                self.meta_resources[id] = StructuredMetaResource(id=id)
+                self.meta_resources[id].load(file_path)
