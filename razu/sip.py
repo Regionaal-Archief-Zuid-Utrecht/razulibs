@@ -4,21 +4,22 @@ import shutil
 from datetime import datetime
 from rdflib import URIRef, BNode
 
-from .razuconfig import RazuConfig
-from .concept_resolver import ConceptResolver
-from .meta_object import MetaObject
-from .meta_graph import MetaGraph
-from .manifest import Manifest
+from razuconfig import RazuConfig
+from concept_resolver import ConceptResolver
+from meta_resource import StructuredMetaResource
+from meta_graph import MetaGraph
+from manifest import Manifest
+
+import util as util
 
 
 class Sip:
-    def __init__(self, sip_dir, archive_creator_id, dataset_id: str, newest_id=None) -> None:
+    def __init__(self, sip_dir, archive_creator_id, dataset_id: str) -> None:
         self.sip_dir = sip_dir
         self.archive_creator_id = archive_creator_id
         self.dataset_id = dataset_id
+        self.meta_resources = {}
 
-        self.newest_id = 0
-        
         actoren = ConceptResolver('actor')
         self.archive_creator_uri = actoren.get_concept_uri(self.archive_creator_id)
         self.cfg = RazuConfig(archive_creator_id=archive_creator_id, archive_id=dataset_id, save_dir=sip_dir, save=True)
@@ -27,25 +28,25 @@ class Sip:
             os.makedirs(self.sip_dir)
             print(f"Created empty SIP at {self.sip_dir}.")
 
-        self.graph = MetaGraph()
         self.manifest = Manifest(self.sip_dir, self.cfg.manifest_filename)
-        
-        if newest_id is None:
-            self.newest_id = self.manifest.newest_id
-            if self.manifest.newest_id > 0:
-                self._load_graph()
-        else:
-            if self.manifest.newest_id > 0:
-                print ("Existing files will be overwritten.")
-            self.newest_id = newest_id
+        self._load_graph()
+
+        # if newest_id is None:
+        #     self.newest_id = self.manifest.newest_id
+        #     if self.manifest.newest_id > 0:
+        #         self._load_graph()
+        # else:
+        #     if self.manifest.newest_id > 0:
+        #         print ("Existing files will be overwritten.")
+        #     self.newest_id = newest_id
 
     def _load_graph(self):
         for filename in self.manifest.get_filenames():
             if filename.endswith(f"{self.cfg.metadata_suffix}.json"):
-                rdf = MetaGraph()
                 file_path = os.path.join(self.sip_dir, filename)
-                rdf.parse(file_path, format="json-ld")
-                self.graph += rdf
+                id = util.extract_id_from_filename(file_path)
+                self.meta_resources[id] = StructuredMetaResource(id=id)
+                self.meta_resources[id].load(file_path)
 
     def save_graph(self):
         """
@@ -61,7 +62,7 @@ class Sip:
 
         for subject in self.graph.subjects():
             if isinstance(subject, URIRef): 
-                meta_object = MetaObject(uri=subject)
+                meta_object = StructuredMetaResource(uri=subject)
                 add_related_triples_to_meta_object(meta_object, subject)
                 self.store_object(meta_object)
 
@@ -77,9 +78,9 @@ class Sip:
 
         if 'rdf_type' in kwargs:
             valid_kwargs['rdf_type'] = kwargs['rdf_type']
-        return MetaObject(**valid_kwargs)
+        return StructuredMetaResource(**valid_kwargs)
 
-    def store_object(self, object: MetaObject, source_dir = None):
+    def store_object(self, object: StructuredMetaResource, source_dir = None):
         # process the metadata-file:
         self.graph += object
         object.save()
