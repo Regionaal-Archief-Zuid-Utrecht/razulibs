@@ -56,23 +56,15 @@ class Sip:
                 meta_resource.load()
                 self.meta_resources[id] = meta_resource
 
+    def create_object(self, id = None, rdf_type = None) -> StructuredMetaResource:
+        object = StructuredMetaResource(id, rdf_type)
+        self.meta_resources[id] = object
+        return object
+    
+    def get_object(self, id) -> StructuredMetaResource:
+        return self.meta_resources[id]
 
-
-
-    def create_object(self, entity_id = None, rdf_type = None):
-        kwargs = {}
-        if entity_id is None:
-            kwargs['id'] = self.id_manager.generate_id()
-        else:
-            kwargs['id'] = self.id_manager.register_id(entity_id)
-
-        if rdf_type is not None:
-            kwargs['rdf_type'] = rdf_type
-
-        return StructuredMetaResource(**kwargs)
-
-
-    def save_metadata(self, object: StructuredMetaResource, source_dir = None):
+    def store_object(self, object: StructuredMetaResource, source_dir = None): # TODO  persist_object ?
         object.save()
         md5checksum = self.manifest.calculate_md5(object.file_path)
         md5date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
@@ -82,32 +74,22 @@ class Sip:
             "Source": self.archive_creator_uri,
             "Dataset": self.dataset_id
         })
-        self.manifest.save()
-
-
-    def _save_ext_file(self, object: StructuredMetaResource, source_dir = None):
-        origin_filepath = os.path.join(source_dir, object.ext_file_original_filename)
-        dest_filepath  = os.path.join(self.sip_dir, object.ext_filename)
-        shutil.copy2(origin_filepath, dest_filepath)
-
-        self.manifest.add_entry(object.ext_filename, object.ext_file_md5checksum, object.ext_file_checksum_datetime) 
-        self.manifest.update_entry(object.filename, {
-            "ObjectUID": object.uid,
-            "Source": self.archive_creator_uri,
-            "Dataset": self.dataset_id,
-            "FileFormat": object.ext_file_fileformat_uri,
-            "OriginalFilename": object.ext_file_original_filename
-        })
-        self.manifest.save()
-
-
-    def store_object(self, object: StructuredMetaResource, source_dir = None):
-        self.save_metadata(object, source_dir)
         
         # process the (optional) referenced file:
         if source_dir is not None:
-            self._save_ext_file(object, source_dir)
-            
+            origin_filepath = os.path.join(source_dir, object.ext_file_original_filename)
+            dest_filepath  = os.path.join(self.sip_dir, object.ext_filename)
+            shutil.copy2(origin_filepath, dest_filepath)
 
+            self.manifest.add_entry(object.ext_filename, object.ext_file_md5checksum, object.ext_file_checksum_datetime) 
+            self.manifest.update_entry(object.filename, {
+                "ObjectUID": object.uid,
+                "Source": self.archive_creator_uri,
+                "Dataset": self.dataset_id,
+                "FileFormat": object.ext_file_fileformat_uri,
+                "OriginalFilename": object.ext_file_original_filename
+            })
+        self.manifest.save()
+     
     def validate(self):
         self.manifest.verify()

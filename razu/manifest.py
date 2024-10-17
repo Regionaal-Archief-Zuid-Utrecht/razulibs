@@ -4,8 +4,6 @@ import hashlib
 import json
 from datetime import datetime
 
-import razu.util as util
-
 
 class Manifest:
     """
@@ -39,12 +37,11 @@ class Manifest:
         """
         self.directory = manifest_directory
         self.manifest_file = os.path.join(manifest_directory, manifest_file)
+
         self.files = {}
         self.is_valid = True
         self.modified = False
-        self.newest_id = 0 
 
-        # Load existing manifest or mark as invalid
         if os.path.exists(self.manifest_file):
             self.load(self.manifest_file)
         else:
@@ -111,13 +108,6 @@ class Manifest:
         """
         with open(input_file, "r") as json_file:
             self.files = json.load(json_file)
-
-        for filename in self.files.keys():
-            id = util.extract_id_from_filename(filename)
-            if id is not None:
-                if id > self.newest_id:
-                    self.newest_id = id
-
         self.modified = False
 
     def verify(self, ignore_missing=False, ignore_extra=False):
@@ -220,7 +210,7 @@ class Manifest:
             KeyError: If the file entry does not exist in the manifest.
         """
         if file_path in self.files:
-            self.files[file_path].update(additional_data)  # Update the existing entry with new data
+            self.files[file_path].update(additional_data) 
             self.modified = True
         else:
             raise KeyError(f"File '{file_path}' does not exist in the manifest.")

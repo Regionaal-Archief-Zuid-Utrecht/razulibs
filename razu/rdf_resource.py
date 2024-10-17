@@ -20,6 +20,16 @@ class RDFResource:
             self.uri = BNode()
         self.graph = Graph()
 
+    def __iter__(self):
+        """ Returns an iterator over the RDF graph. This allows iteration over all triples in the graph. """
+        return iter(self.graph)
+
+    def __iadd__(self, other_graph: Graph) -> Graph:
+        """ In-place addition of another RDF graph's triples to this RDFResource's graph. """
+        self.graph += other_graph
+        return self.graph
+    
+
     def add(self, predicate: URIRef, obj, transformer: callable = Literal):
         """
         Adds a triple to the graph where the subject is the current RDFResource,
@@ -77,13 +87,3 @@ class RDFResource:
                         self.graph.add((self.uri, predicate, Literal(item)))
             else:
                 self.add(predicate, obj)
-
-    def __iter__(self):
-        """ Returns an iterator over the RDF graph. This allows iteration over all triples in the graph. """
-        return iter(self.graph)
-
-    def __iadd__(self, other_graph: Graph) -> Graph:
-        """ In-place addition of another RDF graph's triples to this RDFResource's graph. """
-        self.graph += other_graph
-        return self.graph
-    

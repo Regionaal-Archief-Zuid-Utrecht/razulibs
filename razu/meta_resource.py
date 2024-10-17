@@ -13,7 +13,7 @@ class MetaResource(RDFResource):
     """
     An RDF Resource tailored for use in the RAZU edepot SIPs.
 
-    Provides load(), save() and uri, uid & id logic.
+    Provides load(), save() and identifier (uri, uid & id)-logic.
     """
     _config = RazuConfig()
     _counter = Incrementer(0)
@@ -64,16 +64,17 @@ class MetaResource(RDFResource):
 class StructuredMetaResource(MetaResource):
     """
     Provides RDF structure templates for filling MetaResource,
-    and properties for easy access to (parts of) the data.
+    and properties for easy access to (parts of) the graph data.
     """
 
     _algoritmes = ConceptResolver("algoritme")
     _bestandsformaten = ConceptResolver("bestandsformaat")
 
-    def __init__(self, *args, **kwargs):
-        rdf_type = kwargs.pop('rdf_type', MDTO.Informatieobject)
-        super().__init__(*args, **kwargs)
+    def __init__(self, id=None, rdf_type=None):
+        super().__init__(id)
 
+        if rdf_type is None:
+            rdf_type = MDTO.Informatieobject
         self.add_properties({
             RDF.type: [PREMIS.Object, rdf_type],
             MDTO.identificatie: {
