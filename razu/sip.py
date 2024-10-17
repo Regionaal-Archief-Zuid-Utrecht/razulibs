@@ -6,7 +6,7 @@ from rdflib import URIRef, BNode
 
 from .razuconfig import RazuConfig
 from .concept_resolver import ConceptResolver
-from .meta_object import MetaObject
+from .meta_resource import StructuredMetaResource
 from .meta_graph import MetaGraph
 from .manifest import Manifest
 from .id_manager import IDManager
@@ -22,6 +22,7 @@ class Sip:
         self.sip_dir = sip_dir
         self.archive_creator_id = archive_creator_id
         self.dataset_id = dataset_id
+        self.meta_resources = {}
         
         actoren = ConceptResolver('actor')
         self.archive_creator_uri = actoren.get_concept_uri(self.archive_creator_id)
@@ -31,7 +32,6 @@ class Sip:
             os.makedirs(self.sip_dir)
             print(f"Created empty SIP at {self.sip_dir}.")
 
-        self.graph = MetaGraph()
         self.manifest = Manifest(self.sip_dir, self.cfg.manifest_filename)
 
         self.id_manager = IDManager()
@@ -42,96 +42,71 @@ class Sip:
         if self.id_manager.get_count() > 0:
             self._load_graph()
 
+    def export_rdf(self, format = 'turtle'):
+        graph = MetaGraph()
+        for key in self.meta_resources:
+            graph += self.meta_resources[key].graph
+        print(graph.serialize(format=format))
+
     def _load_graph(self):
         for filename in self.manifest.get_filenames():
             if filename.endswith(f"{self.cfg.metadata_suffix}.json"):
-                rdf = MetaGraph()
-                file_path = os.path.join(self.sip_dir, filename)
-                rdf.parse(file_path, format="json-ld")
-                self.graph += rdf
+                id = util.extract_id_from_filename(filename)
+                meta_resource = StructuredMetaResource(id=id)
+                meta_resource.load()
+                self.meta_resources[id] = meta_resource
 
-    def save_graph(self):
-        """
-        For each unique entity in the graph with a URI, create a MetaObject, fill it with the relevant
-        properties (and blank nodes), and store it.
-        """
-        def add_related_triples_to_meta_object(meta_object, node, processed_nodes=None):
-            """ Recursively add triples related to the given node (including blank nodes) to the MetaObject. """
-            if processed_nodes is None:
-                processed_nodes = set()  # Houd de verwerkte nodes bij
 
-            if node in processed_nodes:
-                return  # Voorkom dubbele verwerking van dezelfde node
-
-            processed_nodes.add(node)
-
-            for predicate, obj in self.graph.predicate_objects(node):
-                meta_object.add(predicate, obj)
-
-                if isinstance(obj, BNode):
-                    # Verwerk blank nodes recursief
-                    add_related_triples_to_meta_object(meta_object, obj, processed_nodes)
-
-        processed_subjects = set()  # Houd bij welke subjects zijn verwerkt
-
-        for subject in self.graph.subjects():
-            if isinstance(subject, URIRef) and subject not in processed_subjects:
-                meta_object = MetaObject(uri=subject)
-                add_related_triples_to_meta_object(meta_object, subject)
-                self.save_object_metadata(meta_object)
-                processed_subjects.add(subject)  # Voeg het subject toe aan de set van verwerkte subjects
 
 
     def create_object(self, entity_id = None, rdf_type = None):
         kwargs = {}
         if entity_id is None:
-            kwargs['entity_id'] = self.id_manager.generate_id()
+            kwargs['id'] = self.id_manager.generate_id()
         else:
-            kwargs['entity_id'] = self.id_manager.register_id(entity_id)
+            kwargs['id'] = self.id_manager.register_id(entity_id)
 
         if rdf_type is not None:
             kwargs['rdf_type'] = rdf_type
 
-        return MetaObject(**kwargs)
+        return StructuredMetaResource(**kwargs)
 
 
-    def save_object_metadata(self, object: MetaObject, source_dir = None):
+    def save_metadata(self, object: StructuredMetaResource, source_dir = None):
         object.save()
-        md5checksum = self.manifest.calculate_md5(object.meta_file_path)
+        md5checksum = self.manifest.calculate_md5(object.file_path)
         md5date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-        self.manifest.add_entry(object.meta_filename, md5checksum, md5date) 
-        self.manifest.update_entry(object.meta_filename, {
-            "ObjectUID": object.object_identifier,
+        self.manifest.add_entry(object.filename, md5checksum, md5date) 
+        self.manifest.update_entry(object.filename, {
+            "ObjectUID": object.uid,
             "Source": self.archive_creator_uri,
             "Dataset": self.dataset_id
         })
         self.manifest.save()
 
 
-    def save_object_file(self, object: MetaObject, source_dir = None):
-        origin_filepath = os.path.join(source_dir, object.original_filename)
-        dest_filepath  = os.path.join(self.sip_dir, object.filename)
+    def _save_ext_file(self, object: StructuredMetaResource, source_dir = None):
+        origin_filepath = os.path.join(source_dir, object.ext_file_original_filename)
+        dest_filepath  = os.path.join(self.sip_dir, object.ext_filename)
         shutil.copy2(origin_filepath, dest_filepath)
 
-        self.manifest.add_entry(object.filename, object.md5checksum, object.checksum_datetime) 
+        self.manifest.add_entry(object.ext_filename, object.ext_file_md5checksum, object.ext_file_checksum_datetime) 
         self.manifest.update_entry(object.filename, {
-            "ObjectUID": object.object_identifier,
+            "ObjectUID": object.uid,
             "Source": self.archive_creator_uri,
             "Dataset": self.dataset_id,
-            "FileFormat": object.fileformat_uri,
-            "OriginalFilename": object.original_filename
+            "FileFormat": object.ext_file_fileformat_uri,
+            "OriginalFilename": object.ext_file_original_filename
         })
         self.manifest.save()
 
 
-    def store_object(self, object: MetaObject, source_dir = None):
-        # process the metadata-file:
-        self.graph += object
-        self.save_object_metadata(object, source_dir)
+    def store_object(self, object: StructuredMetaResource, source_dir = None):
+        self.save_metadata(object, source_dir)
         
         # process the (optional) referenced file:
         if source_dir is not None:
-            self.save_object_file(object, source_dir)
+            self._save_ext_file(object, source_dir)
             
 
     def validate(self):
