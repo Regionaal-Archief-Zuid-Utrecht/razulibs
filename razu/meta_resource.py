@@ -59,7 +59,7 @@ class MetaResource(RDFResource):
             id = MetaResource._counter.next() if id is None else id
             uid = f"{MetaResource._config.filename_prefix}-{id}"
             uri = f"{MetaResource._config.URI_prefix}-{id}"
-        return(id, uid, uri)
+        return(id, uid, URIRef(uri))
 
 class StructuredMetaResource(MetaResource):
     """
