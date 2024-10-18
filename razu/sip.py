@@ -9,7 +9,6 @@ from .concept_resolver import ConceptResolver
 from .meta_resource import StructuredMetaResource
 from .meta_graph import MetaGraph
 from .manifest import Manifest
-from .id_manager import IDManager
 import razu.util as util
 
 
@@ -33,13 +32,7 @@ class Sip:
             print(f"Created empty SIP at {self.sip_dir}.")
 
         self.manifest = Manifest(self.sip_dir, self.cfg.manifest_filename)
-
-        self.id_manager = IDManager()   # TODO: is dit nog nodig?
-        for filename in self.manifest.get_filenames():
-            if filename.endswith(f'{self.cfg.metadata_suffix}.json'):
-                self.id_manager.register_id(util.extract_id_from_filename(filename))
-        
-        if self.id_manager.get_count() > 0:
+        if len(self.manifest.get_filenames()) > 0:
             self._load_graph()
 
     def export_rdf(self, format = 'turtle'):
