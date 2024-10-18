@@ -1,4 +1,4 @@
-# RAZU libs voor RDF
+# RAZU libs voor RDF-gebaeerde SIP en ingest
 
 *Python-bibliotheken ter ondersteuning van een op RDF gebaseerde SIP voor ingest in e-depot*
 
