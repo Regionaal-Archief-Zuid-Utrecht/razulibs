@@ -1,19 +1,18 @@
 import os
 import pandas as pd
-from rdflib import Graph, Literal, RDF, RDFS, URIRef
-from rdflib.namespace import XSD, SKOS
+from rdflib import Literal,  URIRef
 
-from razu.meta_object import MetaObject, MDTO, SCHEMA, GEO, PREMIS
+from razu.meta_resource import StructuredMetaResource
 from razu.razuconfig import RazuConfig
 from razu.concept_resolver import ConceptResolver
-from razu.meta_graph import MetaGraph
+from razu.meta_graph import MetaGraph, RDF, RDFS, MDTO, SCHEMA, GEO, PREMIS, XSD, SKOS
 
 import razu.util            # generieke functies
 import extra                # code specifiek voor deze import
 
 if __name__ == "__main__":
 
-    cfg = RazuConfig(archive_creator_id="G321", archive_id="661", save_dir="output", save=False)
+    cfg = RazuConfig(archive_creator_id="G321", archive_id="661", save_dir="output")
 
     # CSV-bestanden inlezen, we combineren hier een metadata-csv met de output van DROID
     # voor oa. checksum en omvang bestand; TODO beter als dit al aangeleverd is in de metadata
@@ -52,9 +51,9 @@ if __name__ == "__main__":
     for index, row in meta_df.iterrows():
 
         # ARCHIEF
-        #  We maken 1x , bij de eerste rij, een object voor de 'toegang' / het archief aan:
+        #  We maken 1x , bij de eerste rij, een resource voor de 'toegang' / het archief aan:
         if index == 0:
-            archive = MetaObject()
+            archive = StructuredMetaResource()
             archive.add_properties({
                 RDFS.label: "Luchtfoto's Gemeente Houten",
                 MDTO.naam: "Luchtfoto's Gemeente Houten",
@@ -80,7 +79,7 @@ if __name__ == "__main__":
                 serie.save()
                 graph += serie
 
-            serie = MetaObject()
+            serie = StructuredMetaResource()
             serie.add_properties({
                 RDFS.label: f"Luchtfoto's Houten serie {row['Serie']}",
                 MDTO.naam: f"Luchtfoto's Houten serie {row['Serie']}",
@@ -98,7 +97,7 @@ if __name__ == "__main__":
             serie.add(MDTO.isOnderdeelVan, archive.uri)
 
         # RECORD / archiefstuk
-        record = MetaObject()
+        record = StructuredMetaResource()
         record.add_properties({
             RDFS.label: f"{row['Titel']}",
             MDTO.naam: f"{row['Titel']}",
@@ -191,9 +190,8 @@ if __name__ == "__main__":
         original_filename = extra.maak_bestandsnaam(row['Doos-nummer'], row['Inventarisnummer'])
         droid_row = droid_df.loc[original_filename] 
 
-        bestand = MetaObject(rdf_type=MDTO.Bestand)
+        bestand = StructuredMetaResource(rdf_type=MDTO.Bestand)
         bestand.add_properties({
-            RDF.type: PREMIS.Object,
             MDTO.naam: f"{row['Titel']} {row['Doos-nummer']}:{row['Volgnummer']}",
             PREMIS.originalName: original_filename,
             MDTO.checksum: { 
@@ -205,7 +203,7 @@ if __name__ == "__main__":
             MDTO.bestandsformaat: URIRef(bestandsformaten.get_concept_uri(droid_row['PUID'])),
             MDTO.omvang: Literal(int(droid_row['SIZE']), datatype=XSD.integer),
             MDTO.URLBestand: Literal(
-                f"https://{cfg.archive_creator_id.lower()}.opslag.razu.nl/{bestand.mdto_identificatiekenmerk()}"
+                f"https://{cfg.archive_creator_id.lower()}.opslag.razu.nl/{bestand.uid}"
                 f".{bestandsformaten.get_concept_value(droid_row['PUID'], SKOS.notation)}",
                 datatype=XSD.anyURI
             )

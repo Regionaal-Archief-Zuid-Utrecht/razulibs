@@ -4,7 +4,7 @@
 ## Classes voor het maken van RDF
 
 ### MetaObject
-Centrale class voor generatie van RDF is [`MetaObject`](meta_object.py). Deze is gericht op het eenvoudig kunnen aanmaken en vullen van RDF-objecten, zoals het creëren van een object met een dictionary. Het is hierbij gebaseerd de generiekere class [rdf_resource.py](RDFResource) die geen directe relatie heeft met het edepot of daar gehanteerde modellen.  MDTO of een ander model.
+Centrale class voor generatie van RDF is [`StructuredMetaResource`](meta_resource.py). Deze is gericht op het eenvoudig kunnen aanmaken en vullen, opslaan en inladen van RDF-objecten. Het generiekere [`MetaResource`](meta_resource.py) is agnostisch ten aanzien van de inhoud van de RDF, en kent dan ook geen standaarden zoals MDTO. Iedere instantie van `MetaResource` is te herkennen aan een `id` (een integer waarde die uniek is binnen de toegang), een geregelateerde `uid` die wel unieke identifcieert en uiteraard ook de `uri`. De basis-class [rdf_resource.py](RDFResource) biedt enkel voorzieningen om makkelijk RDF aan te maken.
 
 ### Config en RAZUConfig
 De class [`Config`](config.py) is een generieke *singleton* class voor het vastleggen en opvragen van configuratie-parameters. De subclass hiervan genaamd [`RAZUConfig`](razuconfig.py) vult deze aan met parameter gebaseerde bedrijfslogica (zoals het combineren van parameters tot een nieuwe property) en parameters met *default*  waarden.

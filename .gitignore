@@ -1,6 +1,7 @@
 # Ignore Python bytecode files
 *.pyc
 __pycache__/
-razu/demo/csv_luchtfotos/out.ttl
+out.ttl
 .idea
 razu/.env
+output/

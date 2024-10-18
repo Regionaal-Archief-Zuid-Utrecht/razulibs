@@ -34,7 +34,7 @@ class Sip:
 
         self.manifest = Manifest(self.sip_dir, self.cfg.manifest_filename)
 
-        self.id_manager = IDManager()
+        self.id_manager = IDManager()   # TODO: is dit nog nodig?
         for filename in self.manifest.get_filenames():
             if filename.endswith(f'{self.cfg.metadata_suffix}.json'):
                 self.id_manager.register_id(util.extract_id_from_filename(filename))
@@ -44,9 +44,51 @@ class Sip:
 
     def export_rdf(self, format = 'turtle'):
         graph = MetaGraph()
-        for key in self.meta_resources:
-            graph += self.meta_resources[key].graph
+        for resource in self.meta_resources.values():
+            graph += resource.graph
         print(graph.serialize(format=format))
+
+    def create_resource(self, id = None, rdf_type = None) -> StructuredMetaResource:
+        resource = StructuredMetaResource(id, rdf_type)
+        self.meta_resources[id] = resource
+        return resource
+    
+    def get_resource_by_id(self, id) -> StructuredMetaResource:
+        return self.meta_resources[id]
+
+    def store_resource(self, resource: StructuredMetaResource, source_dir = None): # TODO  name something like "persist_resource"  ?
+        resource.save()
+        md5checksum = self.manifest.calculate_md5(resource.file_path)
+        md5date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+        self.manifest.add_entry(resource.filename, md5checksum, md5date) 
+        self.manifest.update_entry(resource.filename, {
+            "ObjectUID": resource.uid,
+            "Source": self.archive_creator_uri,
+            "Dataset": self.dataset_id
+        })
+        
+        # process the (optional) referenced file:
+        if source_dir is not None:
+            origin_filepath = os.path.join(source_dir, resource.ext_file_original_filename)
+            dest_filepath  = os.path.join(self.sip_dir, resource.ext_filename)
+            shutil.copy2(origin_filepath, dest_filepath)
+
+            self.manifest.add_entry(resource.ext_filename, resource.ext_file_md5checksum, resource.ext_file_checksum_datetime) 
+            self.manifest.update_entry(resource.filename, {
+                "ObjectUID": resource.uid,
+                "Source": self.archive_creator_uri,
+                "Dataset": self.dataset_id,
+                "FileFormat": resource.ext_file_fileformat_uri,
+                "OriginalFilename": resource.ext_file_original_filename
+            })
+        self.manifest.save()
+     
+    def validate(self):
+        self.manifest.verify()
+
+    def save(self):  # TODO: naam?
+        for meta_resource in self.meta_resources.values():
+            self.store_resource(meta_resource)
 
     def _load_graph(self):
         for filename in self.manifest.get_filenames():
@@ -55,41 +97,3 @@ class Sip:
                 meta_resource = StructuredMetaResource(id=id)
                 meta_resource.load()
                 self.meta_resources[id] = meta_resource
-
-    def create_object(self, id = None, rdf_type = None) -> StructuredMetaResource:
-        object = StructuredMetaResource(id, rdf_type)
-        self.meta_resources[id] = object
-        return object
-    
-    def get_object(self, id) -> StructuredMetaResource:
-        return self.meta_resources[id]
-
-    def store_object(self, object: StructuredMetaResource, source_dir = None): # TODO  persist_object ?
-        object.save()
-        md5checksum = self.manifest.calculate_md5(object.file_path)
-        md5date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-        self.manifest.add_entry(object.filename, md5checksum, md5date) 
-        self.manifest.update_entry(object.filename, {
-            "ObjectUID": object.uid,
-            "Source": self.archive_creator_uri,
-            "Dataset": self.dataset_id
-        })
-        
-        # process the (optional) referenced file:
-        if source_dir is not None:
-            origin_filepath = os.path.join(source_dir, object.ext_file_original_filename)
-            dest_filepath  = os.path.join(self.sip_dir, object.ext_filename)
-            shutil.copy2(origin_filepath, dest_filepath)
-
-            self.manifest.add_entry(object.ext_filename, object.ext_file_md5checksum, object.ext_file_checksum_datetime) 
-            self.manifest.update_entry(object.filename, {
-                "ObjectUID": object.uid,
-                "Source": self.archive_creator_uri,
-                "Dataset": self.dataset_id,
-                "FileFormat": object.ext_file_fileformat_uri,
-                "OriginalFilename": object.ext_file_original_filename
-            })
-        self.manifest.save()
-     
-    def validate(self):
-        self.manifest.verify()
