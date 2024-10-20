@@ -1,6 +1,6 @@
-# RAZU libs voor RDF
+# RAZU libs voor RDF-gebaseerde SIP en ingest
 
-*Python-bibliotheken ter ondersteuning van het maken van RDF en ingest in e-depot*
+*Python-bibliotheken ter ondersteuning van een op RDF gebaseerde SIP voor ingest in e-depot*
 
 ## Doel
 
@@ -8,16 +8,18 @@ Deze code wordt ontwikkeld voor gebruik in de pre-ingest voor het [common ground
 
 Het RAZU werkt hierbij met een op [MDTO](https://www.nationaalarchief.nl/archiveren/mdto) gebaseerd informatiemodel in RDF, maar de brondata kan in principe tot in iedere gewenste RDF-vorm getransformeerd worden.
 
-## Voorbeeld
+## Creatie van RDF, een voorbeeld
 
-Een voorbeeldimplementatie waarbij data uit twee csv-bestanden wordt omgezet naar RDF is te vinden in [demo/csv_luchtfotos/csv2rdf.py](./razu/demo/csv_luchtfotos/csv2rdf.py). Centraal voor deze conversie is de `MetaObject`-class. Deze class kan gebruikt worden om RDF te maken door te werken met sjablonen, in de vorm van Python *dictionaries*, met de gewenste RDF-structuur. Onderstaand voorbeeld, waarbij een [pandas dataframe](https://pandas.pydata.org/) als bron gebruikt wordt, illustreert dit:
+Een voorbeeldimplementatie waarbij data uit twee csv-bestanden wordt omgezet naar RDF is te vinden in [demo/csv_luchtfotos/csv2rdf.py](./razu/demo/csv_luchtfotos/csv2rdf.py). Centraal voor deze conversie staat de `RDFResource`-class die het makkelijkt maakt om te werken met RDF *resources* en daar eigenschappen aan te toe te kennen. Met de afgeleid class `MetaResource` kan de RDF resource opgeslagen en weer ingelezen worden. Om het maken van RDF en het kunnen benaderen van specifieke eigenschappen van de resource verder te ondersteunen is er tot slot de class `StructuredMetaResource`.
+
+Een voorbeeld van het gebruik van `RDFResource` met een  [pandas dataframe](https://pandas.pydata.org/) als bron:
 
 
     actoren = ConceptResolver('actor')
     aggregatieniveaus = ConceptResolver('aggregatieniveau')
     soorten = ConceptResolver('soort')
     
-    record = MetaObject()
+    record = RDFResource()
 
     record.add_properties({
         RDFS.label: f"{row['Titel']}",
@@ -69,6 +71,11 @@ De functionaliteit van het `MetaObject` maakt het eenvoudig om in de RDF links t
 
     serie.add(MDTO.bevatOnderdeel, record.uri)
     record.add(MDTO.isOnderdeelVan, serie.uri)
+
+
+## Werken met een SIP
+
+Een SIP (*submission informatie package*, volgens *OAIS*) kan aangemaakt, opgebouwd en bewaard worden met de class `Sip`. Een Sip kan bestaan uit de reguliere bestanden van het archief (bijvoorbeeld een .pdf-bestand), metadata-beschrijvingen (in RDF, als json-ld), en één manifest-bestand (TODO: en een PREMIS-eventlog). Via het manifest wordt de integriteit van het SIP bewaakt. Hiervoor is er de class `Manifest`. 
 
 
 ## Pas op

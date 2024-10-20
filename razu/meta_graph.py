@@ -14,3 +14,4 @@ class MetaGraph(Graph):
         self.bind("schema", SCHEMA)
         self.bind("geo", GEO)
         self.bind("premis", PREMIS)
+        
