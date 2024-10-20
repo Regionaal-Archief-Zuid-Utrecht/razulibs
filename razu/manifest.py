@@ -4,7 +4,7 @@ import hashlib
 import json
 from datetime import datetime
 
-import razu.util as util
+import util
 
 
 class Manifest:
@@ -47,6 +47,11 @@ class Manifest:
         # Load existing manifest or mark as invalid
         if os.path.exists(self.manifest_file):
             self.load(self.manifest_file)
+            try:
+                self.verify()
+            except:
+                print("Manifest invalid. ")
+                exit
         else:
             self.is_valid = False  # No manifest yet, cannot be valid
 

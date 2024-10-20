@@ -3,7 +3,7 @@ import pandas as pd
 from rdflib import Graph, Literal, RDF, RDFS, URIRef
 from rdflib.namespace import XSD, SKOS
 
-from razu.meta_object import MetaObject, MDTO, SCHEMA, GEO, PREMIS
+from razu.meta_resource import MetaObject, MDTO, SCHEMA, GEO, PREMIS
 from razu.razuconfig import RazuConfig
 from razu.concept_resolver import ConceptResolver
 from razu.meta_graph import MetaGraph

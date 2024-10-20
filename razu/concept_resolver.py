@@ -1,7 +1,7 @@
 from typing import Optional
 from SPARQLWrapper import SPARQLWrapper, JSON
 from rdflib import URIRef
-from razu.sparql_endpoint_manager import SparqlEndpointManager 
+from sparql_endpoint_manager import SparqlEndpointManager
 
 
 class Concept:
