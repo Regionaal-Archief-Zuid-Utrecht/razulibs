@@ -31,7 +31,7 @@ class RazuConfig(Config):
             raise ValueError("Missing attributes")
 
     @property
-    def URI_prefix(self):
+    def uri_prefix(self):
         """Generates a URI prefix like 'https://data.razu.nl/NL-WbDRAZU-G312-661-'."""
         try:
             return f"{self.RAZU_base_URI}id/object/{self.filename_prefix}"

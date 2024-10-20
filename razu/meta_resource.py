@@ -47,19 +47,21 @@ class MetaResource(RDFResource):
         self.id, self.uid, self.uri = self._setup_identifiers(self.id, self.uid, str(subject))
         self.is_changed = False
 
-    def _setup_identifiers(self, id=None, uid=None, uri=None):
+    @staticmethod
+    def _setup_identifiers(id=None, uid=None, uri=None):
         # uri takes precedence!
         if uri is not None:
             id = util.extract_id_from_filename(uri)
             uid = f"{MetaResource._config.filename_prefix}-{id}"
         elif uid is not None:
             id = util.extract_id_from_filename(uid)
-            uri = f"{MetaResource._config.URI_prefix}-{id}"
+            uri = f"{MetaResource._config.uri_prefix}-{id}"
         else:
             id = MetaResource._counter.next() if id is None else id
             uid = f"{MetaResource._config.filename_prefix}-{id}"
-            uri = f"{MetaResource._config.URI_prefix}-{id}"
-        return(id, uid, URIRef(uri))
+            uri = f"{MetaResource._config.uri_prefix}-{id}"
+        return id, uid, URIRef(uri)
+
 
 class StructuredMetaResource(MetaResource):
     """
@@ -87,7 +89,7 @@ class StructuredMetaResource(MetaResource):
 
     @property
     def ext_filename(self):
-        return os.path.basename(self._get_object_value(MDTO.URLBestand, self.uri))
+        return os.path.basename(str(self._get_object_value(MDTO.URLBestand, self.uri)))
 
     @property
     def ext_file_original_filename(self):
@@ -96,7 +98,7 @@ class StructuredMetaResource(MetaResource):
     @property
     def ext_file_md5checksum(self):
         return str(self._get_object_value(MDTO.checksumWaarde))
-    
+
     @property
     def ext_file_checksum_datetime(self):
         return str(self._get_object_value(MDTO.checksumDatum))

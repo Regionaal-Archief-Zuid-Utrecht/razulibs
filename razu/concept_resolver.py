@@ -140,7 +140,6 @@ class ConceptResolver:
             self.cache = {}
             self.initialized = True  # Mark as initialized to avoid re-initialization
 
-
     def _build_query(self, term: str) -> str:
         """
         Builds the SPARQL query to fetch the URI for a given term.
