@@ -1,5 +1,5 @@
 from rdflib import URIRef
-from razu.razuconfig import RazuConfig
+from razuconfig import RazuConfig
 
 
 class SparqlEndpointManager:

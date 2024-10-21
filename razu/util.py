@@ -1,11 +1,10 @@
 import re
 import os
-import shutil
-import hashlib
+
 
 from rdflib import Literal, XSD
 from datetime import datetime
-from .razuconfig import RazuConfig
+from razuconfig import RazuConfig
 
 
 def date_type(datestring: str) -> Literal:

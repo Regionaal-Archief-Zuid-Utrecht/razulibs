@@ -2,7 +2,6 @@ import os
 import shutil
 
 from datetime import datetime
-from rdflib import URIRef, BNode
 
 from .razuconfig import RazuConfig
 from .concept_resolver import ConceptResolver
@@ -22,7 +21,7 @@ class Sip:
         self.archive_creator_id = archive_creator_id
         self.dataset_id = dataset_id
         self.meta_resources = {}
-        
+
         actoren = ConceptResolver('actor')
         self.archive_creator_uri = actoren.get_concept_uri(self.archive_creator_id)
         self.cfg = RazuConfig(archive_creator_id=archive_creator_id, archive_id=dataset_id, save_dir=sip_dir, save=True)
@@ -35,38 +34,40 @@ class Sip:
         if len(self.manifest.get_filenames()) > 0:
             self._load_graph()
 
-    def export_rdf(self, format = 'turtle'):
+    def export_rdf(self, format='turtle'):
         graph = MetaGraph()
         for resource in self.meta_resources.values():
             graph += resource.graph
         print(graph.serialize(format=format))
 
-    def create_resource(self, id = None, rdf_type = None) -> StructuredMetaResource:
+    def create_resource(self, id=None, rdf_type=None) -> StructuredMetaResource:
         resource = StructuredMetaResource(id, rdf_type)
         self.meta_resources[id] = resource
         return resource
-    
+
     def get_resource_by_id(self, id) -> StructuredMetaResource:
         return self.meta_resources[id]
 
-    def store_resource(self, resource: StructuredMetaResource, source_dir = None): # TODO  name something like "persist_resource"  ?
+    def store_resource(self, resource: StructuredMetaResource,
+                       source_dir=None):  # TODO  name something like "persist_resource"  ?
         resource.save()
         md5checksum = self.manifest.calculate_md5(resource.file_path)
         md5date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-        self.manifest.add_entry(resource.filename, md5checksum, md5date) 
+        self.manifest.add_entry(resource.filename, md5checksum, md5date)
         self.manifest.update_entry(resource.filename, {
             "ObjectUID": resource.uid,
             "Source": self.archive_creator_uri,
             "Dataset": self.dataset_id
         })
-        
+
         # process the (optional) referenced file:
         if source_dir is not None:
             origin_filepath = os.path.join(source_dir, resource.ext_file_original_filename)
-            dest_filepath  = os.path.join(self.sip_dir, resource.ext_filename)
+            dest_filepath = os.path.join(self.sip_dir, resource.ext_filename)
             shutil.copy2(origin_filepath, dest_filepath)
 
-            self.manifest.add_entry(resource.ext_filename, resource.ext_file_md5checksum, resource.ext_file_checksum_datetime) 
+            self.manifest.add_entry(resource.ext_filename, resource.ext_file_md5checksum,
+                                    resource.ext_file_checksum_datetime)
             self.manifest.update_entry(resource.filename, {
                 "ObjectUID": resource.uid,
                 "Source": self.archive_creator_uri,
@@ -75,7 +76,7 @@ class Sip:
                 "OriginalFilename": resource.ext_file_original_filename
             })
         self.manifest.save()
-     
+
     def validate(self):
         self.manifest.verify()
 

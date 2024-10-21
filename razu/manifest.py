@@ -25,7 +25,7 @@ class Manifest:
         is_valid (bool): Indicates if the manifest is valid after verification.
         modified (bool): Indicates if the manifest has been modified since it was loaded or created.
     """
-    
+
     def __init__(self, manifest_directory, manifest_file):
         """
         Initialize the Manifest object. 
@@ -48,14 +48,14 @@ class Manifest:
             self.is_valid = False  # No manifest yet, cannot be valid
 
     def add_entry(self, file_path, md5hash, md5date):
-        self.files[file_path] =  {
+        self.files[file_path] = {
             "MD5Hash": md5hash,
             "MD5HashDate": md5date
         }
         self.modified = True
 
     def get_filenames(self) -> list:
-        return list(self.files.keys()) 
+        return list(self.files.keys())
 
     def create_from_directory(self):
         """
@@ -67,7 +67,7 @@ class Manifest:
         """
         if os.path.exists(self.manifest_file):
             raise FileExistsError(f"Manifest '{self.manifest_file}' already exists.")
-        
+
         for root, dirs, files in os.walk(self.directory):
             for file in files:
                 if file == os.path.basename(self.manifest_file):
@@ -167,8 +167,7 @@ class Manifest:
 
         self.is_valid = True
         return
-    
-    
+
     def append(self):
         """
         Append missing files to the manifest by scanning the directory for files that
@@ -210,7 +209,7 @@ class Manifest:
             KeyError: If the file entry does not exist in the manifest.
         """
         if file_path in self.files:
-            self.files[file_path].update(additional_data) 
+            self.files[file_path].update(additional_data)
             self.modified = True
         else:
             raise KeyError(f"File '{file_path}' does not exist in the manifest.")

@@ -28,7 +28,6 @@ class RDFResource:
         """ In-place addition of another RDF graph's triples to this RDFResource's graph. """
         self.graph += other_graph
         return self.graph
-    
 
     def add(self, predicate: URIRef, obj, transformer: callable = Literal):
         """

@@ -15,7 +15,8 @@ class EDepot(S3Storage):
         S3Storage: A class that provides S3 storage interaction methods.
     """
 
-    def _get_bucket_name(self, properties):
+    @staticmethod
+    def _get_bucket_name(properties):
         """
         Retrieves the bucket name from the properties of a file in the manifest.
 

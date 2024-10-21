@@ -1,7 +1,7 @@
 from typing import Optional
 from SPARQLWrapper import SPARQLWrapper, JSON
 from rdflib import URIRef
-from razu.sparql_endpoint_manager import SparqlEndpointManager 
+from sparql_endpoint_manager import SparqlEndpointManager
 
 
 class Concept:
@@ -139,7 +139,6 @@ class ConceptResolver:
             self.vocabulary = vocabulary
             self.cache = {}
             self.initialized = True  # Mark as initialized to avoid re-initialization
-
 
     def _build_query(self, term: str) -> str:
         """
