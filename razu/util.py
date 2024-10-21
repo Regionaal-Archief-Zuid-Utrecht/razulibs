@@ -4,7 +4,7 @@ import os
 
 from rdflib import Literal, XSD
 from datetime import datetime
-from razuconfig import RazuConfig
+from .razuconfig import RazuConfig
 
 
 def date_type(datestring: str) -> Literal:
@@ -149,15 +149,18 @@ def extract_archive_from_filename(filename: str) -> str:
     return extract_part_from_filename(filename, 2)
 
 
-def extract_id_from_filename(filename: str):
-    part = extract_part_from_filename(filename, 3)
+def extract_id_str_from_filepath(path: str) -> int:
+    basename = path.split('/')[-1]
+    part = extract_part_from_filename(basename, 3)
     if part:
         part = part.split('.')[0]
     try:
-        return int(part)
+        return part
     except (ValueError, TypeError):
         return None 
 
+def extract_id_from_filepath(path: str) -> str:
+    return int(extract_id_str_from_filepath(path))
 
 def filename_without_extensions(filename: str) -> str:
     """

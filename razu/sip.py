@@ -30,7 +30,7 @@ class Sip:
             os.makedirs(self.sip_dir)
             print(f"Created empty SIP at {self.sip_dir}.")
 
-        self.manifest = Manifest(self.sip_dir, self.cfg.manifest_filename)
+        self.manifest = Manifest(self.sip_dir)
         if len(self.manifest.get_filenames()) > 0:
             self._load_graph()
 
@@ -87,7 +87,7 @@ class Sip:
     def _load_graph(self):
         for filename in self.manifest.get_filenames():
             if filename.endswith(f"{self.cfg.metadata_suffix}.json"):
-                id = util.extract_id_from_filename(filename)
+                id = util.extract_id_from_filepath(filename)
                 meta_resource = StructuredMetaResource(id=id)
                 meta_resource.load()
                 self.meta_resources[id] = meta_resource

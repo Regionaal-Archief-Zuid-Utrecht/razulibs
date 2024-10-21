@@ -4,6 +4,7 @@ import hashlib
 import json
 from datetime import datetime
 
+from .razuconfig import RazuConfig
 
 class Manifest:
     """
@@ -24,9 +25,12 @@ class Manifest:
         files (dict): A dictionary that stores relative file paths and their MD5 checksums.
         is_valid (bool): Indicates if the manifest is valid after verification.
         modified (bool): Indicates if the manifest has been modified since it was loaded or created.
+
     """
 
-    def __init__(self, manifest_directory, manifest_file):
+    _cfg = RazuConfig()
+
+    def __init__(self, manifest_directory, manifest_file = None):
         """
         Initialize the Manifest object. 
         Load an existing manifest file or mark the manifest as invalid if the file does not exist.
@@ -36,14 +40,13 @@ class Manifest:
             manifest_file (str): The name of the manifest file.
         """
         self.directory = manifest_directory
-        self.manifest_file = os.path.join(manifest_directory, manifest_file)
-
+        self.manifest_filepath = os.path.join(manifest_directory, manifest_file or Manifest._cfg.manifest_filename)
         self.files = {}
         self.is_valid = True
-        self.modified = False
+        self.is_modified = False
 
-        if os.path.exists(self.manifest_file):
-            self.load(self.manifest_file)
+        if os.path.exists(self.manifest_filepath):
+            self.load(self.manifest_filepath)
         else:
             self.is_valid = False  # No manifest yet, cannot be valid
 
@@ -52,7 +55,7 @@ class Manifest:
             "MD5Hash": md5hash,
             "MD5HashDate": md5date
         }
-        self.modified = True
+        self.is_modified = True
 
     def get_filenames(self) -> list:
         return list(self.files.keys())
@@ -65,19 +68,19 @@ class Manifest:
         Raises:
             FileExistsError: If the manifest file already exists.
         """
-        if os.path.exists(self.manifest_file):
-            raise FileExistsError(f"Manifest '{self.manifest_file}' already exists.")
+        if os.path.exists(self.manifest_filepath):
+            raise FileExistsError(f"Manifest '{self.manifest_filepath}' already exists.")
 
         for root, dirs, files in os.walk(self.directory):
             for file in files:
-                if file == os.path.basename(self.manifest_file):
+                if file == os.path.basename(self.manifest_filepath):
                     continue
                 file_path = os.path.join(root, file)
                 relative_path = os.path.relpath(file_path, self.directory)
                 self.add_entry(relative_path, self.calculate_md5(file_path), datetime.now().isoformat())
-        self.modified = True
+        self.is_modified = True
         self.save()
-        print(f"Manifest created: {self.manifest_file}")
+        print(f"Manifest created: {self.manifest_filepath}")
 
     @staticmethod
     def calculate_md5(file_path):
@@ -94,10 +97,10 @@ class Manifest:
         """
         Save the manifest to a JSON file, but only if the manifest has been modified.
         """
-        if self.modified:
-            with open(self.manifest_file, "w") as json_file:
+        if self.is_modified:
+            with open(self.manifest_filepath, "w") as json_file:
                 json.dump(self.files, json_file, indent=4)
-            self.modified = False
+            self.is_modified = False
 
     def load(self, input_file):
         """
@@ -108,7 +111,7 @@ class Manifest:
         """
         with open(input_file, "r") as json_file:
             self.files = json.load(json_file)
-        self.modified = False
+        self.is_modified = False
 
     def verify(self, ignore_missing=False, ignore_extra=False):
         """
@@ -123,9 +126,6 @@ class Manifest:
         Returns:
             dict: A dictionary of errors with keys 'missing_files', 'checksum_mismatch', and 'extra_files'.
         """
-        if not os.path.exists(self.manifest_file):
-            raise FileNotFoundError(f"Manifest '{self.manifest_file}' does not exist. Please create a manifest first.")
-
         errors = {
             "missing_files": [],
             "checksum_mismatch": [],
@@ -151,7 +151,7 @@ class Manifest:
         for root, dirs, files in os.walk(self.directory):
             for file in files:
                 relative_path = os.path.relpath(os.path.join(root, file), self.directory)
-                if relative_path == os.path.basename(self.manifest_file):
+                if relative_path in {os.path.basename(self.manifest_filepath), Manifest._cfg.eventlog_filename}:
                     continue
                 if relative_path not in self.files:
                     errors["extra_files"].append(relative_path)
@@ -176,24 +176,24 @@ class Manifest:
         Raises:
             FileNotFoundError: If the manifest file does not exist.
         """
-        if not os.path.exists(self.manifest_file):
-            raise FileNotFoundError(f"Manifest '{self.manifest_file}' does not exist.")
+        if not os.path.exists(self.manifest_filepath):
+            raise FileNotFoundError(f"Manifest '{self.manifest_filepath}' does not exist.")
 
-        self.load(self.manifest_file)
+        self.load(self.manifest_filepath)
 
         for root, dirs, files in os.walk(self.directory):
             for file in files:
                 relative_path = os.path.relpath(os.path.join(root, file), self.directory)
-                if relative_path == os.path.basename(self.manifest_file):
+                if relative_path == os.path.basename(self.manifest_filepath):
                     continue
                 if relative_path not in self.files:
                     file_path = os.path.join(self.directory, relative_path)
                     self.add_entry(relative_path, self.calculate_md5(file_path), datetime.now().isoformat())
-                    self.modified = True
+                    self.is_modified = True
 
-        if self.modified:
+        if self.is_modified:
             self.save()
-            print(f"Manifest '{self.manifest_file}' updated with missing files.")
+            print(f"Manifest '{self.manifest_filepath}' updated with missing files.")
         else:
             print("No missing files to append.")
 
@@ -210,7 +210,7 @@ class Manifest:
         """
         if file_path in self.files:
             self.files[file_path].update(additional_data)
-            self.modified = True
+            self.is_modified = True
         else:
             raise KeyError(f"File '{file_path}' does not exist in the manifest.")
 

@@ -52,4 +52,4 @@ def test_URI_prefix_success():
     config = RazuConfig()
     
     expected_uri_prefix = "https://data.razu.nl/id/object/NL-WbDRAZU-G312-661-"
-    assert config.uri_prefix == expected_uri_prefix
+    assert config.object_uri_prefix == expected_uri_prefix

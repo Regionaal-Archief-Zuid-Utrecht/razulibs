@@ -47,19 +47,18 @@ class MetaResource(RDFResource):
         self.id, self.uid, self.uri = self._setup_identifiers(self.id, self.uid, str(subject))
         self.is_changed = False
 
-    @staticmethod
-    def _setup_identifiers(id=None, uid=None, uri=None):
+    def _setup_identifiers(self, id=None, uid=None, uri=None):
         # uri takes precedence!
         if uri is not None:
-            id = util.extract_id_from_filename(uri)
+            id = util.extract_id_from_filepath(uri)
             uid = f"{MetaResource._config.filename_prefix}-{id}"
         elif uid is not None:
-            id = util.extract_id_from_filename(uid)
-            uri = f"{MetaResource._config.uri_prefix}-{id}"
+            id = util.extract_id_from_filepath(uid)
+            uri = f"{MetaResource._config.object_uri_prefix}-{id}"
         else:
             id = MetaResource._counter.next() if id is None else id
             uid = f"{MetaResource._config.filename_prefix}-{id}"
-            uri = f"{MetaResource._config.uri_prefix}-{id}"
+            uri = f"{MetaResource._config.object_uri_prefix}-{id}"
         return id, uid, URIRef(uri)
 
 

@@ -1,4 +1,4 @@
-from config import Config
+from .config import Config
 
 
 class RazuConfig(Config):
@@ -31,17 +31,34 @@ class RazuConfig(Config):
             raise ValueError("Missing attributes")
 
     @property
-    def uri_prefix(self):
-        """Generates a URI prefix like 'https://data.razu.nl/NL-WbDRAZU-G312-661-'."""
-        try:
-            return f"{self.RAZU_base_URI}id/object/{self.filename_prefix}"
-        except AttributeError:
-            raise ValueError("Missing attributes")
+    def object_uri_prefix(self):
+        """Generates a URI prefix like 'https://data.razu.nl/id/object/NL-WbDRAZU-G312-661'."""
+        return self._uri_prefix('object')
+
+    @property
+    def event_uri_prefix(self):
+        """Generates a URI prefix like 'https://data.razu.nl/id/event/NL-WbDRAZU-G312-661'."""
+        return self._uri_prefix('event')
 
     @property
     def manifest_filename(self):
         """ Generates the filename of the manifest. """
         try:
             return f"{self.filename_prefix}.manifest.json"
+        except AttributeError:
+            raise ValueError("Missing attributes")
+    
+    @property
+    def eventlog_filename(self):
+        """ Generates the filename of the premis eventlog. """
+        try:
+            return f"{self.filename_prefix}.premis.json"
+        except AttributeError:
+            raise ValueError("Missing attributes")
+    
+    def _uri_prefix(self, kind):
+        """Generates a URI prefix like 'https://data.razu.nl/id/{kind}/NL-WbDRAZU-G312-661'."""
+        try:
+            return f"{self.RAZU_base_URI}id/{kind}/{self.filename_prefix}"
         except AttributeError:
             raise ValueError("Missing attributes")
