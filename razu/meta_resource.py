@@ -21,7 +21,7 @@ class MetaResource(RDFResource):
     def __init__(self, id=None, uid=None, uri=None):
         self.id, self.uid, uri = self._setup_identifiers(id, uid, uri)
         super().__init__(uri)
-        self.filename = f"{self._config.filename_prefix}-{self.id}.{self._config.metadata_suffix}.json"
+        self.filename = self._get_filename()
         self.file_path = os.path.join(self._config.save_dir, self.filename)
         self.is_changed = False
 
@@ -33,34 +33,34 @@ class MetaResource(RDFResource):
         except IOError as e:
             print(f"Error saving file {self.file_path}: {e}")
 
-    def load(self, file_path=None) -> None:
-        if file_path is None:
-            filename = f"{self._config.filename_prefix}-{self.id}.{self._config.metadata_suffix}.json"
-            file_path = os.path.join(self._config.save_dir, filename)
+    def load(self) -> None:
         self.graph = MetaGraph()
-        self.graph.parse(file_path, format="json-ld")
-
-        subject = next(
-            (s for s in self.graph.subjects(RDF.type, None) if isinstance(s, URIRef)),
-            None
-        )
-        self.id, self.uid, self.uri = self._setup_identifiers(self.id, self.uid, str(subject))
+        self.graph.parse(self.file_path, format="json-ld")
         self.is_changed = False
 
     def _setup_identifiers(self, id=None, uid=None, uri=None):
+
+        def get_uri(id) -> str:
+            return f"{MetaResource._config.object_uri_prefix}-{id}"
+
+        def get_uid(id) -> str:
+            return f"{MetaResource._config.filename_prefix}-{id}"
+
         # uri takes precedence!
         if uri is not None:
             id = util.extract_id_from_filepath(uri)
-            uid = f"{MetaResource._config.filename_prefix}-{id}"
+            uid = get_uid(id)
         elif uid is not None:
             id = util.extract_id_from_filepath(uid)
-            uri = f"{MetaResource._config.object_uri_prefix}-{id}"
+            uri = get_uri(id)
         else:
             id = MetaResource._counter.next() if id is None else id
-            uid = f"{MetaResource._config.filename_prefix}-{id}"
-            uri = f"{MetaResource._config.object_uri_prefix}-{id}"
+            uid = get_uid(id)
+            uri = get_uri(id)
         return id, uid, URIRef(uri)
 
+    def _get_filename(self):
+        return f"{self._config.filename_prefix}-{self.id}.{self._config.metadata_suffix}.json"
 
 class StructuredMetaResource(MetaResource):
     """
