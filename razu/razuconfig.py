@@ -50,6 +50,14 @@ class RazuConfig(Config):
     
     @property
     def eventlog_filename(self):
+        """ Generates the filename of the manifest. """
+        try:
+            return f"{self.filename_prefix}.premis.json"
+        except AttributeError:
+            raise ValueError("Missing attributes")
+
+    @property
+    def eventlog_filename(self):
         """ Generates the filename of the premis eventlog. """
         try:
             return f"{self.filename_prefix}.premis.json"

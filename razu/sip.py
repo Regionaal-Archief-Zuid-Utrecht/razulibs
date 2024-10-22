@@ -8,6 +8,8 @@ from .concept_resolver import ConceptResolver
 from .meta_resource import StructuredMetaResource
 from .meta_graph import MetaGraph
 from .manifest import Manifest
+from .events import RazuEvents
+
 import razu.util as util
 
 
@@ -30,6 +32,7 @@ class Sip:
             os.makedirs(self.sip_dir)
             print(f"Created empty SIP at {self.sip_dir}.")
 
+        self.eventlog = RazuEvents(self.sip_dir)
         self.manifest = Manifest(self.sip_dir)
         if len(self.manifest.get_filenames()) > 0:
             self._load_graph()
@@ -83,6 +86,7 @@ class Sip:
     def save(self):  # TODO: naam?
         for meta_resource in self.meta_resources.values():
             self.store_resource(meta_resource)
+        self.eventlog.save()
 
     def _load_graph(self):
         for filename in self.manifest.get_filenames():

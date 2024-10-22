@@ -19,9 +19,9 @@ class MetaResource(RDFResource):
     _counter = Incrementer(0)
 
     def __init__(self, id=None, uid=None, uri=None):
-        self.id, self.uid, uri = self._setup_identifiers(id, uid, uri)
+        self.id, self.uid, uri = self._construct_identifiers(id, uid, uri)
         super().__init__(uri)
-        self.filename = self._get_filename()
+        self.filename = self._construct_filename()
         self.file_path = os.path.join(self._config.save_dir, self.filename)
         self.is_changed = False
 
@@ -38,28 +38,28 @@ class MetaResource(RDFResource):
         self.graph.parse(self.file_path, format="json-ld")
         self.is_changed = False
 
-    def _setup_identifiers(self, id=None, uid=None, uri=None):
+    def _construct_identifiers(self, id=None, uid=None, uri=None):
 
-        def get_uri(id) -> str:
+        def construct_uri(id) -> str:
             return f"{MetaResource._config.object_uri_prefix}-{id}"
 
-        def get_uid(id) -> str:
+        def construct_uid(id) -> str:
             return f"{MetaResource._config.filename_prefix}-{id}"
 
         # uri takes precedence!
         if uri is not None:
             id = util.extract_id_from_filepath(uri)
-            uid = get_uid(id)
+            uid = construct_uid(id)
         elif uid is not None:
             id = util.extract_id_from_filepath(uid)
-            uri = get_uri(id)
+            uri = construct_uri(id)
         else:
             id = MetaResource._counter.next() if id is None else id
-            uid = get_uid(id)
-            uri = get_uri(id)
+            uid = construct_uid(id)
+            uri = construct_uri(id)
         return id, uid, URIRef(uri)
 
-    def _get_filename(self):
+    def _construct_filename(self):
         return f"{self._config.filename_prefix}-{self.id}.{self._config.metadata_suffix}.json"
 
 class StructuredMetaResource(MetaResource):
@@ -81,7 +81,7 @@ class StructuredMetaResource(MetaResource):
             MDTO.identificatie: {
                 RDF.type: MDTO.IdentificatieGegevens,
                 MDTO.identificatieBron: "e-Depot RAZU",
-                MDTO.identificatieKenmerk: f"{self._config.filename_prefix}-{self.id}"
+                MDTO.identificatieKenmerk: self.uid
             }
         })
         self.is_changed = True
