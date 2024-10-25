@@ -219,7 +219,9 @@ class ConceptResolver:
 
     # shortcut methods
     def get_concept_value(self, term: str, predicate: URIRef) -> str:
-        return self.get_concept(term).get_value(predicate)
+        concept = self.get_concept(term)
+        return concept.get_value(predicate) if concept else None
 
     def get_concept_uri(self, term: str) -> URIRef:
-        return self.get_concept(term).get_uri()
+        concept = self.get_concept(term)
+        return concept.get_uri() if concept else None
