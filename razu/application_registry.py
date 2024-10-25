@@ -29,15 +29,15 @@ class ApplicationRegistry:
             return ""
         
 
-# Specifieke signature-functie voor DROID
 def droid_signature_func(appregistry: ApplicationRegistry) -> str:
+    # geeft signature als "droid 6.8.0/118/20240501"
     version = appregistry.get_command_output(['-v'])
     detailed_output = appregistry.get_command_output(['-x'])
     versions = '/'.join(re.findall(r"Version:\s+(\S+)", detailed_output))
     return f"{appregistry.app_name} {version}/{versions}"
 
-# Specifieke signature-functie voor ClamAV
 def clamav_signature_func(appregistry: ApplicationRegistry) -> str:
+    # geeft signature als "clamav 0.103.12/27434"
     version = appregistry.get_command_output(['--version']).lower()
     parts = version.split("/")
     version = "/".join(parts[:2]) if len(parts) > 1 else parts[0]
