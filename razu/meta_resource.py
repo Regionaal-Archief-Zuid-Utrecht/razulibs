@@ -88,7 +88,11 @@ class StructuredMetaResource(MetaResource):
         })
         self.graph.add((URIRef(self.this_file_uri), RDF.type, PREMIS.File))
         self.is_changed = True
-    
+
+    @property
+    def has_ext_file(self):
+        return self._get_object_value(MDTO.URLBestand, self.uri) is not None
+
     @property
     def this_file_uri(self):
         return f"{MetaResource._config.cdn_base_uri}{self.uid}.{MetaResource._config.metadata_suffix}.{MetaResource._config.metadata_extension}"
@@ -117,6 +121,9 @@ class StructuredMetaResource(MetaResource):
     @property
     def ext_file_fileformat_uri(self):
         return str(self._get_object_value(MDTO.bestandsformaat, self.uri))
+
+    def validate_md5(self):
+        return util.calculate_md5(os.path.join(self._config.save_dir, self.ext_filename)) == self.ext_file_md5checksum
 
     def set_type(self, rdf_type: URIRef):
         self.add_properties({RDF.type: rdf_type})

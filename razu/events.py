@@ -139,7 +139,6 @@ class RazuEvents(Events):
 
     def metadata_modification(self, subject, result, tool, timestamp=None):
         subject_value = [URIRef(s) for s in subject] if isinstance(subject, list) else URIRef(subject)
-
         self._add({ 
             PREMIS.eventType: URIRef('http://id.loc.gov/vocabulary/preservation/eventType/mem'),
             EROR.sou: subject_value,

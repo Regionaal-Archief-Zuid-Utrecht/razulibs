@@ -1,11 +1,10 @@
 import re
 import os
-
+import hashlib
 
 from rdflib import Literal, XSD
 from datetime import datetime
 from .razuconfig import RazuConfig
-
 
 def date_type(datestring: str) -> Literal:
     """
@@ -34,7 +33,6 @@ def date_type(datestring: str) -> Literal:
     else:
         return Literal(datestring)
 
-
 def get_full_extension(filename: str) -> str:
     """
     Returns the full extension of the given filename, including any intermediate extensions.
@@ -58,7 +56,6 @@ def get_full_extension(filename: str) -> str:
 
     return full_ext
 
-
 def get_last_modified(file_path: str) -> str:
     """
     Retrieves the last modified timestamp of a file as an ISO 8601 formatted string.
@@ -76,7 +73,6 @@ def get_last_modified(file_path: str) -> str:
     timestamp = os.path.getmtime(file_path)
     last_modified_date = datetime.fromtimestamp(timestamp)
     return last_modified_date.strftime("%Y-%m-%dT%H:%M:%S")
-
 
 def extract_part_from_filename(filename: str, part_number: int) -> str:
     """
@@ -114,7 +110,6 @@ def extract_part_from_filename(filename: str, part_number: int) -> str:
         return filename[start_index:]
     return filename[start_index:end_index]
 
-
 def extract_source_from_filename(filename: str) -> str:
     """
     Extracts the "source" part of the filename that comes after cfg.RAZU_file_id.
@@ -131,7 +126,6 @@ def extract_source_from_filename(filename: str) -> str:
     """
     return extract_part_from_filename(filename, 1)
 
-
 def extract_archive_from_filename(filename: str) -> str:
     """
     Extracts the "archive" part of the filename that comes after cfg.RAZU_file_id and the source part.
@@ -147,7 +141,6 @@ def extract_archive_from_filename(filename: str) -> str:
         The extracted archive part of the filename.
     """
     return extract_part_from_filename(filename, 2)
-
 
 def extract_id_str_from_filepath(path: str) -> int:
     basename = path.split('/')[-1]
@@ -180,3 +173,13 @@ def filename_without_extensions(filename: str) -> str:
     if dot_index == -1:
         return filename
     return filename[:dot_index]
+
+def calculate_md5(file_path):
+    """
+    Calculate the MD5 checksum of a file.
+    """
+    md5 = hashlib.md5()
+    with open(file_path, "rb") as f:
+        while chunk := f.read(8192):
+            md5.update(chunk)
+    return md5.hexdigest()

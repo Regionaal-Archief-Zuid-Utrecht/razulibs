@@ -1,10 +1,10 @@
 import os
 import sys
-import hashlib
 import json
 from datetime import datetime
 
 from .razuconfig import RazuConfig
+import razu.util as util
 
 class Manifest:
     """
@@ -77,21 +77,10 @@ class Manifest:
                     continue
                 file_path = os.path.join(root, file)
                 relative_path = os.path.relpath(file_path, self.directory)
-                self.add_entry(relative_path, self.calculate_md5(file_path), datetime.now().isoformat())
+                self.add_entry(relative_path, util.calculate_md5(file_path), datetime.now().isoformat())
         self.is_modified = True
         self.save()
         print(f"Manifest created: {self.manifest_filepath}")
-
-    @staticmethod
-    def calculate_md5(file_path):
-        """
-        Calculate the MD5 checksum of a file.
-        """
-        md5 = hashlib.md5()
-        with open(file_path, "rb") as f:
-            while chunk := f.read(8192):
-                md5.update(chunk)
-        return md5.hexdigest()
 
     def save(self):
         """
@@ -139,7 +128,7 @@ class Manifest:
             if not os.path.exists(absolute_path):
                 errors["missing_files"].append(file_path)
             else:
-                actual_checksum = self.calculate_md5(absolute_path)
+                actual_checksum = util.calculate_md5(absolute_path)
                 if actual_checksum != expected_checksum:
                     errors["checksum_mismatch"].append({
                         "file_path": file_path,
@@ -188,7 +177,7 @@ class Manifest:
                     continue
                 if relative_path not in self.files:
                     file_path = os.path.join(self.directory, relative_path)
-                    self.add_entry(relative_path, self.calculate_md5(file_path), datetime.now().isoformat())
+                    self.add_entry(relative_path, util.calculate_md5(file_path), datetime.now().isoformat())
                     self.is_modified = True
 
         if self.is_modified:

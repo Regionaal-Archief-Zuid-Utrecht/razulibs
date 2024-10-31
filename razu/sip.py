@@ -13,6 +13,11 @@ from .events import RazuEvents
 import razu.util as util
 
 
+class MetaResourcesDict(dict):
+    def with_external_files(self):
+        return [resource for resource in self.values() if resource.has_ext_file]
+
+
 class Sip:
     """
     A class representing a SIP (Submission Information Package)
@@ -22,7 +27,7 @@ class Sip:
         self.sip_dir = sip_dir
         self.archive_creator_id = archive_creator_id
         self.dataset_id = dataset_id
-        self.meta_resources = {}
+        self.meta_resources = MetaResourcesDict()
 
         actoren = ConceptResolver('actor')
         self.archive_creator_uri = actoren.get_concept_uri(self.archive_creator_id)
@@ -47,7 +52,7 @@ class Sip:
             if meta_resource.ext_file_uri is not None:
                 uris.append(meta_resource.ext_file_uri)
         return uris
-
+    
     def export_rdf(self, format='turtle'):
         graph = MetaGraph()
         for resource in self.meta_resources.values():
@@ -62,10 +67,9 @@ class Sip:
     def get_resource_by_id(self, id) -> StructuredMetaResource:
         return self.meta_resources[id]
 
-    def store_resource(self, resource: StructuredMetaResource,
-                       source_dir=None):  # TODO  name something like "persist_resource"  ?
+    def store_resource(self, resource: StructuredMetaResource, source_dir=None):  # TODO  name something like "persist_resource"  ?
         resource.save()
-        md5checksum = self.manifest.calculate_md5(resource.file_path)
+        md5checksum = util.calculate_md5(resource.file_path)
         md5date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
         self.manifest.add_entry(resource.filename, md5checksum, md5date)
         self.manifest.update_entry(resource.filename, {
