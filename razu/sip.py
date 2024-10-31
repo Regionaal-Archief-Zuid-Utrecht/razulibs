@@ -23,24 +23,33 @@ class Sip:
     A class representing a SIP (Submission Information Package)
     """
 
-    def __init__(self, sip_dir, archive_creator_id, dataset_id: str) -> None:
+    def __init__(self, sip_dir, archive_creator_id=None, dataset_id=None) -> None:
         self.sip_dir = sip_dir
-        self.archive_creator_id = archive_creator_id
-        self.dataset_id = dataset_id
         self.meta_resources = MetaResourcesDict()
+
+        if not os.path.exists(self.sip_dir):
+            if archive_creator_id is None or dataset_id is None:
+                raise ValueError("Both archive_creator_id and dataset_id must be provided when creating a new SIP.")
+            self.archive_creator_id = archive_creator_id
+            self.dataset_id = dataset_id
+            os.makedirs(self.sip_dir)
+            print(f"Created empty SIP at {self.sip_dir}.")
+        else:
+            if os.listdir(self.sip_dir):
+                raise ValueError(f"The SIP directory '{self.sip_dir}' is not empty.")
+            if archive_creator_id is None or dataset_id is None:
+                self.archive_creator_id, self.dataset_id = self._determine_ids_from_files_in_sip_dir()
+            else:
+                self.archive_creator_id = archive_creator_id
+                self.dataset_id = dataset_id
 
         actoren = ConceptResolver('actor')
         self.archive_creator_uri = actoren.get_concept_uri(self.archive_creator_id)
-        self.cfg = RazuConfig(archive_creator_id=archive_creator_id, archive_id=dataset_id, save_dir=sip_dir, save=True)
+        self.cfg = RazuConfig(archive_creator_id=self.archive_creator_id, archive_id=self.dataset_id, save_dir=self.sip_dir)
 
-        if not os.path.exists(self.sip_dir):
-            os.makedirs(self.sip_dir)
-            print(f"Created empty SIP at {self.sip_dir}.")
-
-        self.log_event = RazuEvents(self.sip_dir)
         self.manifest = Manifest(self.sip_dir)
-        if len(self.manifest.get_filenames()) > 0:
-            self._load_graph()
+        self.log_event = RazuEvents(self.sip_dir)
+        self._load_graph()
 
     @property
     def all_uris(self):
@@ -104,9 +113,23 @@ class Sip:
         self.log_event.save()
 
     def _load_graph(self):
-        for filename in self.manifest.get_filenames():
-            if filename.endswith(f"{self.cfg.metadata_suffix}.{self.cfg.metadata_extension}"):
+        for filename in os.listdir(self.sip_dir):
+            if os.path.isfile(os.path.join(self.sip_dir, filename)) and filename.endswith(f"{self.cfg.metadata_suffix}.{self.cfg.metadata_extension}"):
+                if self.archive_creator_id is None:
+                    self.archive_creator_id = util.extract_source_from_filename(filename)
+                    self.dataset_id = util.extract_archive_from_filename(filename)
                 id = util.extract_id_from_filepath(filename)
                 meta_resource = StructuredMetaResource(id=id)
                 meta_resource.load()
                 self.meta_resources[id] = meta_resource
+        # for filename in self.manifest.get_filenames():
+        #     if filename.endswith(f"{self.cfg.metadata_suffix}.{self.cfg.metadata_extension}"):
+        #         id = util.extract_id_from_filepath(filename)
+        #         meta_resource = StructuredMetaResource(id=id)
+        #         meta_resource.load()
+        #         self.meta_resources[id] = meta_resource
+
+    def _determine_ids_from_files_in_sip_dir(self):
+        filenames = [f for f in os.listdir(self.sip_dir) if os.path.isfile(os.path.join(self.sip_dir, f))]
+        filename = filenames[0] if filenames else None
+        return  util.extract_source_from_filename(filename), util.extract_archive_from_filename(filename)
