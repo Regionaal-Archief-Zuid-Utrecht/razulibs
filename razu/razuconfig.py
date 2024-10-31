@@ -12,7 +12,8 @@ class RazuConfig(Config):
             "sparql_endpoint_prefix": "https://api.data.razu.nl/datasets/id/",
             "sparql_endpoint_suffix": "/sparql",
             "resource_identifier": "id",
-            "metadata_suffix": "meta"
+            "metadata_suffix": "meta",
+            "metadata_extension": "json"
         }
         instance = super(RazuConfig, cls).__new__(cls, **initial_settings)
 
@@ -63,6 +64,16 @@ class RazuConfig(Config):
             return f"{self.filename_prefix}.premis.json"
         except AttributeError:
             raise ValueError("Missing attributes")
+        
+
+    @property
+    def cdn_base_uri(self):
+        try:
+            return f"https://{self.archive_creator_id.lower()}.opslag.razu.nl/"
+        except AttributeError:
+            raise ValueError("Missing attributes")
+
+
     
     def _uri_prefix(self, kind):
         """Generates a URI prefix like 'https://data.razu.nl/id/{kind}/NL-WbDRAZU-G312-661'."""

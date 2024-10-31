@@ -32,10 +32,21 @@ class Sip:
             os.makedirs(self.sip_dir)
             print(f"Created empty SIP at {self.sip_dir}.")
 
-        self.eventlog = RazuEvents(self.sip_dir)
+        self.log_event = RazuEvents(self.sip_dir)
         self.manifest = Manifest(self.sip_dir)
         if len(self.manifest.get_filenames()) > 0:
             self._load_graph()
+
+    @property
+    def all_uris(self):
+        uris = []
+        # all meta_resouce uris:
+        for meta_resource in self.meta_resources.values():
+            uris.append(meta_resource.this_file_uri)
+            # a meta_resource might be accompanied by a file object with an uri:
+            if meta_resource.ext_file_uri is not None:
+                uris.append(meta_resource.ext_file_uri)
+        return uris
 
     def export_rdf(self, format='turtle'):
         graph = MetaGraph()
@@ -86,11 +97,11 @@ class Sip:
     def save(self):  # TODO: naam?
         for meta_resource in self.meta_resources.values():
             self.store_resource(meta_resource)
-        self.eventlog.save()
+        self.log_event.save()
 
     def _load_graph(self):
         for filename in self.manifest.get_filenames():
-            if filename.endswith(f"{self.cfg.metadata_suffix}.json"):
+            if filename.endswith(f"{self.cfg.metadata_suffix}.{self.cfg.metadata_extension}"):
                 id = util.extract_id_from_filepath(filename)
                 meta_resource = StructuredMetaResource(id=id)
                 meta_resource.load()
