@@ -66,7 +66,7 @@ class MetaResource(RDFResource):
 class StructuredMetaResource(MetaResource):
     """
     Provides RDF structure templates for filling MetaResource,
-    and properties for easy access to (parts of) the graph data.
+    and properties for easy access to key parts of the graph data.
     """
 
     _algoritmes = ConceptResolver("algoritme")

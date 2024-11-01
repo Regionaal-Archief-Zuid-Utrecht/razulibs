@@ -14,34 +14,22 @@ import razu.util as util
 
 
 class MetaResourcesDict(dict):
+    """ Provides dict a filter fir meta_resources that link to an external file."""
+    
     def with_external_files(self):
         return [resource for resource in self.values() if resource.has_ext_file]
 
 
 class Sip:
-    """
-    A class representing a SIP (Submission Information Package)
-    """
+    """ Represents a SIP (Submission Information Package) """
 
     def __init__(self, sip_dir, archive_creator_id=None, dataset_id=None) -> None:
         self.sip_dir = sip_dir
-        self.meta_resources = MetaResourcesDict()
 
-        if not os.path.exists(self.sip_dir):
-            if archive_creator_id is None or dataset_id is None:
-                raise ValueError("Both archive_creator_id and dataset_id must be provided when creating a new SIP.")
-            self.archive_creator_id = archive_creator_id
-            self.dataset_id = dataset_id
-            os.makedirs(self.sip_dir)
-            print(f"Created empty SIP at {self.sip_dir}.")
+        if archive_creator_id is not None and dataset_id is not None:
+            self._create_new_sip(archive_creator_id, dataset_id)
         else:
-            if os.listdir(self.sip_dir):
-                raise ValueError(f"The SIP directory '{self.sip_dir}' is not empty.")
-            if archive_creator_id is None or dataset_id is None:
-                self.archive_creator_id, self.dataset_id = self._determine_ids_from_files_in_sip_dir()
-            else:
-                self.archive_creator_id = archive_creator_id
-                self.dataset_id = dataset_id
+            self._open_existing_sip()
 
         actoren = ConceptResolver('actor')
         self.archive_creator_uri = actoren.get_concept_uri(self.archive_creator_id)
@@ -49,6 +37,7 @@ class Sip:
 
         self.manifest = Manifest(self.sip_dir)
         self.log_event = RazuEvents(self.sip_dir)
+        self.meta_resources = MetaResourcesDict()
         self._load_graph()
 
     @property
@@ -112,6 +101,21 @@ class Sip:
             self.store_resource(meta_resource)
         self.log_event.save()
 
+    def _create_new_sip(self, archive_creator_id, dataset_id):
+        if not os.path.exists(self.sip_dir):
+            os.makedirs(self.sip_dir)
+        elif os.listdir(self.sip_dir):
+            raise ValueError(f"The SIP directory '{self.sip_dir}' is not empty.")
+        self.archive_creator_id = archive_creator_id
+        self.dataset_id = dataset_id
+        print(f"Created empty SIP at {self.sip_dir}.")
+
+    def _open_existing_sip(self):
+        if not os.listdir(self.sip_dir):
+            raise ValueError(f"The SIP directory '{self.sip_dir}' is empty.")
+        self.archive_creator_id, self.dataset_id = self._determine_ids_from_files_in_sip_dir()
+        print(f"Opened existing SIP at {self.sip_dir}.")
+
     def _load_graph(self):
         for filename in os.listdir(self.sip_dir):
             if os.path.isfile(os.path.join(self.sip_dir, filename)) and filename.endswith(f"{self.cfg.metadata_suffix}.{self.cfg.metadata_extension}"):
@@ -133,3 +137,4 @@ class Sip:
         filenames = [f for f in os.listdir(self.sip_dir) if os.path.isfile(os.path.join(self.sip_dir, f))]
         filename = filenames[0] if filenames else None
         return  util.extract_source_from_filename(filename), util.extract_archive_from_filename(filename)
+    
