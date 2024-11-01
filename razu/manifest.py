@@ -186,9 +186,9 @@ class Manifest:
         else:
             print("No missing files to append.")
 
-    def update_entry(self, file_path, additional_data):
+    def extend_entry(self, file_path, additional_data):
         """
-        Update an existing file entry in the manifest by adding extra values to the dictionary.
+        Extend an existing file entry in the manifest by adding extra values to the dictionary.
 
         Args:
             file_path (str): The relative path to the file whose entry you want to update.

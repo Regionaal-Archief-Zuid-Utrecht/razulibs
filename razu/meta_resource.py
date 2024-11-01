@@ -23,44 +23,43 @@ class MetaResource(RDFResource):
         super().__init__(uri)
         self.filename = self._construct_filename()
         self.file_path = os.path.join(self._config.save_dir, self.filename)
-        self.is_changed = False
+        self.is_modified = False
 
     def save(self) -> None:
         try:
             with open(self.file_path, 'w') as file:
                 file.write(self.graph.serialize(format='json-ld'))
-            self.is_changed = False
+            self.is_modified = False
         except IOError as e:
             print(f"Error saving file {self.file_path}: {e}")
 
     def load(self) -> None:
         self.graph = MetaGraph()
         self.graph.parse(self.file_path, format="json-ld")
-        self.is_changed = False
+        self.is_modified = False
 
     def _construct_identifiers(self, id=None, uid=None, uri=None):
-
-        def construct_uri(id) -> str:
-            return f"{MetaResource._config.object_uri_prefix}-{id}"
-
-        def construct_uid(id) -> str:
-            return f"{MetaResource._config.filename_prefix}-{id}"
-
         # uri takes precedence!
         if uri is not None:
             id = util.extract_id_from_filepath(uri)
-            uid = construct_uid(id)
+            uid = self._construct_uid(id)
         elif uid is not None:
             id = util.extract_id_from_filepath(uid)
-            uri = construct_uri(id)
+            uri = self._construct_uri(id)
         else:
             id = MetaResource._counter.next() if id is None else id
-            uid = construct_uid(id)
-            uri = construct_uri(id)
+            uid = self._construct_uid(id)
+            uri = self._construct_uri(id)
         return id, uid, URIRef(uri)
 
     def _construct_filename(self):
         return f"{self._config.filename_prefix}-{self.id}.{self._config.metadata_suffix}.json"
+
+    def _construct_uri(self, id) -> str:
+        return f"{MetaResource._config.object_uri_prefix}-{id}"
+
+    def _construct_uid(self, id) -> str:
+        return f"{MetaResource._config.filename_prefix}-{id}"
 
 
 class StructuredMetaResource(MetaResource):
@@ -87,7 +86,7 @@ class StructuredMetaResource(MetaResource):
             DCT.hasFormat: URIRef(self.this_file_uri)
         })
         self.graph.add((URIRef(self.this_file_uri), RDF.type, PREMIS.File))
-        self.is_changed = True
+        self.is_modified = True
 
     @property
     def has_ext_file(self):
@@ -127,7 +126,7 @@ class StructuredMetaResource(MetaResource):
 
     def set_type(self, rdf_type: URIRef):
         self.add_properties({RDF.type: rdf_type})
-        self.is_changed = True
+        self.is_modified = True
 
     def set_md5_properties(self, md5checksum, checksum_datetime):
         self.add_properties({
@@ -138,7 +137,7 @@ class StructuredMetaResource(MetaResource):
                 MDTO.checksumWaarde: md5checksum
             }
         })
-        self.is_changed = True
+        self.is_modified = True
 
     def set_fileproperties_by_puid(self, puid):
         ext_file_fileformat_uri = StructuredMetaResource._bestandsformaten.get_concept(puid).get_uri()
@@ -152,17 +151,17 @@ class StructuredMetaResource(MetaResource):
         })
         self.graph.add((URIRef(url), RDF.type, PREMIS.File))
         # self.graph.add((URIRef(self.this_file_uri), OWL.sameAs, self.uri))
-        self.is_changed = True
+        self.is_modified = True
 
     def set_filesize(self, filesize: int):
         self.add_properties({
             MDTO.omvang: Literal(filesize, datatype=XSD.integer)
         })
-        self.is_changed = True
+        self.is_modified = True
 
     def set_original_filename(self, ext_file_original_filename: str):
         self.graph.add((URIRef(self.ext_file_uri), PREMIS.originalName, Literal(ext_file_original_filename)))
-        self.is_changed = True
+        self.is_modified = True
 
     def _get_object_value(self, predicate, subject=None):
         if subject is not None:

@@ -14,9 +14,9 @@ import razu.util as util
 
 
 class MetaResourcesDict(dict):
-    """ Provides dict a filter fir meta_resources that link to an external file."""
+    """ Provides dict a filter fir meta_resources that link to a referenced file."""
     
-    def with_external_files(self):
+    def with_referenced_files(self):
         return [resource for resource in self.values() if resource.has_ext_file]
 
 
@@ -41,7 +41,7 @@ class Sip:
         self._load_graph()
 
     @property
-    def all_uris(self):
+    def all_uris(self) -> list:
         uris = []
         # all meta_resouce uris:
         for meta_resource in self.meta_resources.values():
@@ -50,7 +50,14 @@ class Sip:
             if meta_resource.ext_file_uri is not None:
                 uris.append(meta_resource.ext_file_uri)
         return uris
-    
+
+    @property    
+    def referenced_file_uris(self) -> list:
+        uris = []
+        for meta_resource in self.meta_resources.with_referenced_files():
+            uris.append(meta_resource.ext_file_uri)
+        return uris
+
     def export_rdf(self, format='turtle'):
         graph = MetaGraph()
         for resource in self.meta_resources.values():
@@ -65,33 +72,31 @@ class Sip:
     def get_resource_by_id(self, id) -> StructuredMetaResource:
         return self.meta_resources[id]
 
-    def store_resource(self, resource: StructuredMetaResource, source_dir=None):  # TODO  name something like "persist_resource"  ?
+    def store_resource(self, resource: StructuredMetaResource):
         resource.save()
         md5checksum = util.calculate_md5(resource.file_path)
         md5date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
         self.manifest.add_entry(resource.filename, md5checksum, md5date)
-        self.manifest.update_entry(resource.filename, {
+        self.manifest.extend_entry(resource.filename, {
             "ObjectUID": resource.uid,
             "Source": self.archive_creator_uri,
             "Dataset": self.dataset_id
         })
 
-        # process the (optional) referenced file:
-        if source_dir is not None:
-            origin_filepath = os.path.join(source_dir, resource.ext_file_original_filename)
-            dest_filepath = os.path.join(self.sip_dir, resource.ext_filename)
-            shutil.copy2(origin_filepath, dest_filepath)
+    def store_referenced_file(self, resource: StructuredMetaResource, source_dir):
+        origin_filepath = os.path.join(source_dir, resource.ext_file_original_filename)
+        dest_filepath = os.path.join(self.sip_dir, resource.ext_filename)
+        shutil.copy2(origin_filepath, dest_filepath)
 
-            self.manifest.add_entry(resource.ext_filename, resource.ext_file_md5checksum,
-                                    resource.ext_file_checksum_datetime)
-            self.manifest.update_entry(resource.filename, {
-                "ObjectUID": resource.uid,
-                "Source": self.archive_creator_uri,
-                "Dataset": self.dataset_id,
-                "FileFormat": resource.ext_file_fileformat_uri,
-                "OriginalFilename": resource.ext_file_original_filename
-            })
-        self.manifest.save()
+        self.manifest.add_entry(resource.ext_filename, resource.ext_file_md5checksum,
+                                resource.ext_file_checksum_datetime)
+        self.manifest.extend_entry(resource.ext_filename, {
+            "ObjectUID": resource.uid,
+            "Source": self.archive_creator_uri,
+            "Dataset": self.dataset_id,
+            "FileFormat": resource.ext_file_fileformat_uri,
+            "OriginalFilename": resource.ext_file_original_filename
+        })
 
     def validate(self):
         self.manifest.verify()
@@ -99,6 +104,7 @@ class Sip:
     def save(self):  # TODO: naam?
         for meta_resource in self.meta_resources.values():
             self.store_resource(meta_resource)
+        self.manifest.save()
         self.log_event.save()
 
     def _create_new_sip(self, archive_creator_id, dataset_id):
