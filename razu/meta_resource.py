@@ -25,13 +25,16 @@ class MetaResource(RDFResource):
         self.file_path = os.path.join(self._config.save_dir, self.filename)
         self.is_modified = False
 
-    def save(self) -> None:
-        try:
-            with open(self.file_path, 'w') as file:
-                file.write(self.graph.serialize(format='json-ld'))
-            self.is_modified = False
-        except IOError as e:
-            print(f"Error saving file {self.file_path}: {e}")
+    def save(self) -> bool:
+        if self.is_modified:
+            try:
+                with open(self.file_path, 'w') as file:
+                    file.write(self.graph.serialize(format='json-ld'))
+                self.is_modified = False
+                return True
+            except IOError as e:
+                print(f"Error saving file {self.file_path}: {e}")
+        return False 
 
     def load(self) -> None:
         self.graph = MetaGraph()

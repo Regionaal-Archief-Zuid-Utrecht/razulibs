@@ -39,6 +39,7 @@ class Sip:
         self.log_event = RazuEvents(self.sip_dir)
         self.meta_resources = MetaResourcesDict()
         self._load_graph()
+        self.is_locked = self.log_event.is_locked
 
     @property
     def all_uris(self) -> list:
@@ -65,6 +66,8 @@ class Sip:
         print(graph.serialize(format=format))
 
     def create_resource(self, id=None, rdf_type=None) -> StructuredMetaResource:
+        if self.is_locked:
+            raise AssertionError("Sip is locked. Cannot create resource.")
         resource = StructuredMetaResource(id, rdf_type)
         self.meta_resources[id] = resource
         return resource
@@ -73,17 +76,23 @@ class Sip:
         return self.meta_resources[id]
 
     def store_resource(self, resource: StructuredMetaResource):
-        resource.save()
-        md5checksum = util.calculate_md5(resource.file_path)
-        md5date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-        self.manifest.add_entry(resource.filename, md5checksum, md5date)
-        self.manifest.extend_entry(resource.filename, {
-            "ObjectUID": resource.uid,
-            "Source": self.archive_creator_uri,
-            "Dataset": self.dataset_id
-        })
+        if self.is_locked:
+            raise AssertionError("Sip is locked. Cannot store resource.")
+        if resource.save():
+            md5checksum = util.calculate_md5(resource.file_path)
+            md5date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+            self.manifest.add_entry(resource.filename, md5checksum, md5date)
+            self.manifest.extend_entry(resource.filename, {
+                "ObjectUID": resource.uid,
+                "Source": self.archive_creator_uri,
+                "Dataset": self.dataset_id
+            })
+            print(f"Stored {resource.this_file_uri}.")
 
     def store_referenced_file(self, resource: StructuredMetaResource, source_dir):
+        if self.is_locked:
+            raise AssertionError("Sip is locked. Cannot store referenced file.")
+        # TODO zou vergelijkbaar met save moeten controleren of dit nog ndoig is (check file en hash?)
         origin_filepath = os.path.join(source_dir, resource.ext_file_original_filename)
         dest_filepath = os.path.join(self.sip_dir, resource.ext_filename)
         shutil.copy2(origin_filepath, dest_filepath)
@@ -97,13 +106,15 @@ class Sip:
             "FileFormat": resource.ext_file_fileformat_uri,
             "OriginalFilename": resource.ext_file_original_filename
         })
+        print(f"Added referenced file {resource.ext_file_original_filename} as {resource.ext_file_uri}.")
 
     def validate(self):
         self.manifest.verify()
 
-    def save(self):  # TODO: naam?
+    def save(self):
         for meta_resource in self.meta_resources.values():
             self.store_resource(meta_resource)
+        # TODO: ook store_referenced_file zou aangeroepen moeten worden (met controle niet al uitgevoerd)
         self.manifest.save()
         self.log_event.save()
 
@@ -132,12 +143,6 @@ class Sip:
                 meta_resource = StructuredMetaResource(id=id)
                 meta_resource.load()
                 self.meta_resources[id] = meta_resource
-        # for filename in self.manifest.get_filenames():
-        #     if filename.endswith(f"{self.cfg.metadata_suffix}.{self.cfg.metadata_extension}"):
-        #         id = util.extract_id_from_filepath(filename)
-        #         meta_resource = StructuredMetaResource(id=id)
-        #         meta_resource.load()
-        #         self.meta_resources[id] = meta_resource
 
     def _determine_ids_from_files_in_sip_dir(self):
         filenames = [f for f in os.listdir(self.sip_dir) if os.path.isfile(os.path.join(self.sip_dir, f))]

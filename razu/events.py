@@ -40,7 +40,11 @@ class Events:
                     event_id = int(extracted_id[1:])
                     self.current_id = max(self.current_id, event_id)
 
+        self.is_locked = any(self.graph.triples((None, URIRef("http://www.loc.gov/premis/rdf/v3/eventType"), URIRef("http://id.loc.gov/vocabulary/preservation/eventType/ine"))))
+
     def save(self):
+        if self.is_locked:
+            raise AssertionError("Sip is locked. Cannot save eventlog.")
         if self.is_modified:
             try:
                 with open(self.filepath, 'w') as file:
@@ -50,6 +54,8 @@ class Events:
                 print(f"Error saving file {self.filepath}: {e}")
  
     def _add(self, properties, timestamp=None):
+        if self.is_locked:
+            raise AssertionError("Sip is locked. Cannot store resource.")
         timestamp = self._timestamp() if timestamp is None else timestamp
         event = RDFResource(self._next_uri())
         event.add_properties({
