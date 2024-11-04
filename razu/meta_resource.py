@@ -74,7 +74,7 @@ class StructuredMetaResource(MetaResource):
     _algoritmes = ConceptResolver("algoritme")
     _bestandsformaten = ConceptResolver("bestandsformaat")
 
-    def __init__(self, id=None, rdf_type=None):
+    def __init__(self, id=None, rdf_type=None, sources=None):
         super().__init__(id)
 
         if rdf_type is None:
@@ -89,6 +89,7 @@ class StructuredMetaResource(MetaResource):
             DCT.hasFormat: URIRef(self.this_file_uri)
         })
         self.graph.add((URIRef(self.this_file_uri), RDF.type, PREMIS.File))
+        self.sources = sources
         self.is_modified = True
 
     @property
@@ -165,6 +166,9 @@ class StructuredMetaResource(MetaResource):
     def set_original_filename(self, ext_file_original_filename: str):
         self.graph.add((URIRef(self.ext_file_uri), PREMIS.originalName, Literal(ext_file_original_filename)))
         self.is_modified = True
+
+    def set_sources(self, sources: list):
+        self.sources = sources
 
     def _get_object_value(self, predicate, subject=None):
         if subject is not None:

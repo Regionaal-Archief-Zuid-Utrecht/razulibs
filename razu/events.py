@@ -53,7 +53,7 @@ class Events:
             except IOError as e:
                 print(f"Error saving file {self.filepath}: {e}")
  
-    def _add(self, properties, timestamp=None):
+    def _add(self, properties, tool=None, timestamp=None):
         if self.is_locked:
             raise AssertionError("Sip is locked. Cannot store resource.")
         timestamp = self._timestamp() if timestamp is None else timestamp
@@ -62,6 +62,10 @@ class Events:
             RDF.type: PREMIS.Event,
             PROV.endedAtTime: Literal(timestamp,  datatype=XSD.dateTime)
         })
+        if tool is not None:
+            event.add_properties({
+                ERAR.exe: URIRef(tool)
+            })
         event.add_properties(properties)
         self.graph += event
         self.is_modified = True
@@ -84,87 +88,78 @@ class RazuEvents(Events):
     # https://www.loc.gov/standards/premis/ontology/pdf/premis3-owl-guidelines-20180924.pdf
     # & see https://developer.meemoo.be/docs/metadata/knowledge-graph/0.0.1/events/en/
 
-    def filename_change(self, subject, original_filename, new_filename, tool, timestamp=None):
+    def filename_change(self, subject, original_filename, new_filename, tool=None, timestamp=None):
         self._add({
             PREMIS.eventType: URIRef('http://id.loc.gov/vocabulary/preservation/eventType/fil'),
             EROR.sou: URIRef(subject),
-            ERAR.exe: URIRef('https://data.razu.nl/id/applicatie/TODO'),
             ERAR.imp: URIRef('https://data.razu.nl/id/actor/2bdb658a032a405d71c19159bd2bbb3a'),
             PREMIS.outcome: self._outcome_uri(True),
             PREMIS.outcomeNote: f"renamed {original_filename} to {new_filename}"
-        })
+        }, tool=tool)
 
-    def fixity_check(self, subject, is_succesful, tool, timestamp=None):
+    def fixity_check(self, subject, is_succesful, tool=None, timestamp=None):
         self._add({
             PREMIS.eventType: URIRef('http://id.loc.gov/vocabulary/preservation/eventType/fix'),
             EROR.sou: URIRef(subject),
-            ERAR.exe: URIRef('https://data.razu.nl/id/applicatie/TODO'),
             ERAR.imp: URIRef('https://data.razu.nl/id/actor/2bdb658a032a405d71c19159bd2bbb3a'),
             PREMIS.outcome: self._outcome_uri(is_succesful)
-        }, timestamp)
+        }, tool, timestamp)
 
-    def format_identification(self, subject, format, tool, timestamp=None):
+    def format_identification(self, subject, format, tool=None, timestamp=None):
         self._add({
             PREMIS.eventType: URIRef('http://id.loc.gov/vocabulary/preservation/eventType/for'),
             EROR.sou: URIRef(subject),
-            ERAR.exe: URIRef(tool),
             ERAR.imp: URIRef('https://data.razu.nl/id/actor/2bdb658a032a405d71c19159bd2bbb3a'),
             PREMIS.outcome: self._outcome_uri(True),
             PREMIS.outcomeNote: format
-        }, timestamp)
+        }, tool, timestamp)
 
-    def ingestion_end(self, subject, tool, timestamp=None):
+    def ingestion_end(self, subject, tool=None, timestamp=None):
         subject_value = [URIRef(s) for s in subject] if isinstance(subject, list) else URIRef(subject)
         self._add({
             PREMIS.eventType: URIRef('http://id.loc.gov/vocabulary/preservation/eventType/ine'),
             EROR.sou: subject_value,
-            ERAR.exe: URIRef('https://data.razu.nl/id/applicatie/TODO'),
             ERAR.imp: URIRef('https://data.razu.nl/id/actor/2bdb658a032a405d71c19159bd2bbb3a'),
             PREMIS.outcome: self._outcome_uri(True)
-        }, timestamp)
+        }, tool, timestamp)
 
-    def ingestion_start(self, subject, tool, timestamp=None):
+    def ingestion_start(self, subject, tool=None, timestamp=None):
         subject_value = [URIRef(s) for s in subject] if isinstance(subject, list) else URIRef(subject)
         self._add({
             PREMIS.eventType: URIRef('http://id.loc.gov/vocabulary/preservation/eventType/ins'),
             EROR.sou: subject_value,
-            ERAR.exe: URIRef('https://data.razu.nl/id/applicatie/TODO'),
             ERAR.imp: URIRef('https://data.razu.nl/id/actor/2bdb658a032a405d71c19159bd2bbb3a'),
             PREMIS.outcome: self._outcome_uri(True)
-        }, timestamp)
+        }, tool, timestamp)
 
-    def message_digest_calculation(self, subject, hash, tool, timestamp=None):
+    def message_digest_calculation(self, subject, hash, tool=None, timestamp=None):
         self._add({
             PREMIS.eventType: URIRef('http://id.loc.gov/vocabulary/preservation/eventType/mes'),
             EROR.sou: URIRef(subject),
-            ERAR.exe: URIRef(tool),
             ERAR.imp: URIRef('https://data.razu.nl/id/actor/2bdb658a032a405d71c19159bd2bbb3a'),
             PREMIS.outcome: self._outcome_uri(True),
             PREMIS.outcomeNote: hash            # TODO: als DROID de tool is, hoe maken we dan expliciet dat het een md5hash is?
-        }, timestamp)
+        }, tool, timestamp)
 
-    def metadata_modification(self, subject, result, tool, timestamp=None):
+    def metadata_modification(self, subject, result, tool=None, timestamp=None):
         subject_value = [URIRef(s) for s in subject] if isinstance(subject, list) else URIRef(subject)
         self._add({ 
             PREMIS.eventType: URIRef('http://id.loc.gov/vocabulary/preservation/eventType/mem'),
             EROR.sou: subject_value,
-            ERAR.exe: URIRef('https://data.razu.nl/id/applicatie/TODO'),
             ERAR.imp: URIRef('https://data.razu.nl/id/actor/2bdb658a032a405d71c19159bd2bbb3a'),
             PREMIS.outcome: self._outcome_uri(True),
             PROV.generated: URIRef(result)
-        }, timestamp)
+        }, tool, timestamp)
 
-    def virus_check(self, subject, is_succesful, note, tool, timestamp=None):
+    def virus_check(self, subject, is_successful, note, tool=None, timestamp=None):
         subject_value = [URIRef(s) for s in subject] if isinstance(subject, list) else URIRef(subject)
         self._add({
             PREMIS.eventType: URIRef('http://id.loc.gov/vocabulary/preservation/eventType/vir'),
             EROR.sou: subject_value,
-            ERAR.exe: URIRef(tool),
             ERAR.imp: URIRef('https://data.razu.nl/id/actor/2bdb658a032a405d71c19159bd2bbb3a'),
             PREMIS.outcome: self._outcome_uri(True),
             PREMIS.outcomeNote: note,
-        }, timestamp)
+        }, tool, timestamp)
 
-
-    def _outcome_uri(self, is_succesful) -> URIRef:
-        return URIRef("http://id.loc.gov/vocabulary/preservation/eventOutcome/suc") if is_succesful else URIRef("http://id.loc.gov/vocabulary/preservation/eventOutcome/fail")
+    def _outcome_uri(self, is_successful) -> URIRef:
+        return URIRef("http://id.loc.gov/vocabulary/preservation/eventOutcome/suc") if is_successful else URIRef("http://id.loc.gov/vocabulary/preservation/eventOutcome/fail")

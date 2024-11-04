@@ -23,8 +23,9 @@ class MetaResourcesDict(dict):
 class Sip:
     """ Represents a SIP (Submission Information Package) """
 
-    def __init__(self, sip_dir, archive_creator_id=None, dataset_id=None) -> None:
+    def __init__(self, sip_dir, archive_creator_id=None, dataset_id=None, file_source_dir=None) -> None:
         self.sip_dir = sip_dir
+        self.file_source_dir = file_source_dir
 
         if archive_creator_id is not None and dataset_id is not None:
             self._create_new_sip(archive_creator_id, dataset_id)
@@ -87,34 +88,53 @@ class Sip:
                 "Source": self.archive_creator_uri,
                 "Dataset": self.dataset_id
             })
+
+            if resource.sources is None:
+                self.log_event.metadata_modification(resource.this_file_uri, resource.this_file_uri)
+            else:
+                self.log_event.metadata_modification(resource.sources, resource.this_file_uri)
+
             print(f"Stored {resource.this_file_uri}.")
 
-    def store_referenced_file(self, resource: StructuredMetaResource, source_dir):
+    def store_referenced_file(self, resource: StructuredMetaResource):
         if self.is_locked:
             raise AssertionError("Sip is locked. Cannot store referenced file.")
-        # TODO zou vergelijkbaar met save moeten controleren of dit nog ndoig is (check file en hash?)
-        origin_filepath = os.path.join(source_dir, resource.ext_file_original_filename)
-        dest_filepath = os.path.join(self.sip_dir, resource.ext_filename)
-        shutil.copy2(origin_filepath, dest_filepath)
+        
+        if self.file_source_dir is not None:
+            origin_filepath = os.path.join(self.file_source_dir, resource.ext_file_original_filename)
+            dest_filepath = os.path.join(self.sip_dir, resource.ext_filename)
 
-        self.manifest.add_entry(resource.ext_filename, resource.ext_file_md5checksum,
-                                resource.ext_file_checksum_datetime)
-        self.manifest.extend_entry(resource.ext_filename, {
-            "ObjectUID": resource.uid,
-            "Source": self.archive_creator_uri,
-            "Dataset": self.dataset_id,
-            "FileFormat": resource.ext_file_fileformat_uri,
-            "OriginalFilename": resource.ext_file_original_filename
-        })
-        print(f"Added referenced file {resource.ext_file_original_filename} as {resource.ext_file_uri}.")
+            if not os.path.exists(dest_filepath):
+                shutil.copy2(origin_filepath, dest_filepath)
+
+                self.manifest.add_entry(resource.ext_filename, resource.ext_file_md5checksum,
+                                        resource.ext_file_checksum_datetime)
+                self.manifest.extend_entry(resource.ext_filename, {
+                    "ObjectUID": resource.uid,
+                    "Source": self.archive_creator_uri,
+                    "Dataset": self.dataset_id,
+                    "FileFormat": resource.ext_file_fileformat_uri,
+                    "OriginalFilename": resource.ext_file_original_filename
+                })
+                self.log_event.filename_change(resource.ext_file_uri, resource.ext_file_original_filename, resource.ext_filename)
+
+                print(f"Stored referenced file {resource.ext_file_original_filename} as {resource.ext_file_uri}.")
+
+    def lock(self):
+        self.log_event.ingestion_end(self.all_uris, 'toolTODO')
+
+    def validate_referenced_files(self):
+        for meta_resource in self.meta_resources.with_referenced_files():
+            self.log_event.fixity_check(meta_resource.ext_file_uri, meta_resource.validate_md5(), 'toolTODO')
 
     def validate(self):
-        self.manifest.verify()
+        self.manifest.verify() # TODO: deze validate logt niet, de andere wel , deze sip.validate method verwijderen?
 
     def save(self):
         for meta_resource in self.meta_resources.values():
             self.store_resource(meta_resource)
-        # TODO: ook store_referenced_file zou aangeroepen moeten worden (met controle niet al uitgevoerd)
+        for meta_resource in self.meta_resources.with_referenced_files():
+            self.store_referenced_file(meta_resource)
         self.manifest.save()
         self.log_event.save()
 
