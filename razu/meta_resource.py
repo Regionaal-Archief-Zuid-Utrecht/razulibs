@@ -167,8 +167,8 @@ class StructuredMetaResource(MetaResource):
         self.graph.add((URIRef(self.ext_file_uri), PREMIS.originalName, Literal(ext_file_original_filename)))
         self.is_modified = True
 
-    def set_sources(self, sources: list):
-        self.sources = sources
+    def set_metadata_sources(self, sources: list):
+        self.metadata_sources = sources
 
     def _get_object_value(self, predicate, subject=None):
         if subject is not None:

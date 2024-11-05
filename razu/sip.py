@@ -89,10 +89,10 @@ class Sip:
                 "Dataset": self.dataset_id
             })
 
-            if resource.sources is None:
+            if resource.metadata_sources is None:
                 self.log_event.metadata_modification(resource.this_file_uri, resource.this_file_uri)
             else:
-                self.log_event.metadata_modification(resource.sources, resource.this_file_uri)
+                self.log_event.metadata_modification(resource.metadata_sources, resource.this_file_uri)
 
             print(f"Stored {resource.this_file_uri}.")
 
@@ -121,11 +121,11 @@ class Sip:
                 print(f"Stored referenced file {resource.ext_file_original_filename} as {resource.ext_file_uri}.")
 
     def lock(self):
-        self.log_event.ingestion_end(self.all_uris, 'toolTODO')
+        self.log_event.ingestion_end(self.all_uris)
 
     def validate_referenced_files(self):
         for meta_resource in self.meta_resources.with_referenced_files():
-            self.log_event.fixity_check(meta_resource.ext_file_uri, meta_resource.validate_md5(), 'toolTODO')
+            self.log_event.fixity_check(meta_resource.ext_file_uri, meta_resource.validate_md5())
 
     def validate(self):
         self.manifest.verify() # TODO: deze validate logt niet, de andere wel , deze sip.validate method verwijderen?
