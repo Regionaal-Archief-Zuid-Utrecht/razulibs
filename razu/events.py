@@ -29,6 +29,7 @@ class Events:
         self.current_id = 0
 
         self.graph = MetaGraph()
+        self.queue = []
         self.is_modified = False
 
         if os.path.exists(self.filepath):
@@ -41,6 +42,23 @@ class Events:
                     self.current_id = max(self.current_id, event_id)
 
         self.is_locked = any(self.graph.triples((None, URIRef("http://www.loc.gov/premis/rdf/v3/eventType"), URIRef("http://id.loc.gov/vocabulary/preservation/eventType/ine"))))
+
+    def to_queue(self, event, *args, **kwargs):
+        """Voegt een event toe aan de queue voor uitgesteld uitvoeren."""
+        # Sla args en kwargs op met lambda voor uitgestelde evaluatie waar nodig
+        deferred_args = [arg if callable(arg) else lambda: arg for arg in args]
+        deferred_kwargs = {k: (v if callable(v) else lambda: v) for k, v in kwargs.items()}
+        self.queue.append((event, deferred_args, deferred_kwargs))
+
+    def process_queue(self):
+        """Verwerkt de queue en voert elke functie uit met actuele waarden."""
+        for event, args, kwargs in self.queue:
+            func = getattr(self, event)
+            # Voer elke lambda uit om de actuele waarden op te halen
+            resolved_args = [arg() if callable(arg) else arg for arg in args]
+            resolved_kwargs = {k: (v() if callable(v) else v) for k, v in kwargs.items()}
+            func(*resolved_args, **resolved_kwargs)
+        self.queue.clear()
 
     def save(self):
         if self.is_locked:

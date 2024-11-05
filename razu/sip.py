@@ -23,7 +23,7 @@ class MetaResourcesDict(dict):
 class Sip:
     """ Represents a SIP (Submission Information Package) """
 
-    def __init__(self, sip_dir, archive_creator_id=None, dataset_id=None, file_source_dir=None) -> None:
+    def __init__(self, sip_dir, archive_creator_id=None, dataset_id=None, file_source_dir=None, ingestion_start_date=None) -> None:
         self.sip_dir = sip_dir
         self.file_source_dir = file_source_dir
 
@@ -39,6 +39,10 @@ class Sip:
         self.manifest = Manifest(self.sip_dir)
         self.log_event = RazuEvents(self.sip_dir)
         self.meta_resources = MetaResourcesDict()
+
+        if ingestion_start_date is not None:
+            self.log_event.to_queue('ingestion_start', lambda: self.referenced_file_uris, timestamp=ingestion_start_date)
+
         self._load_graph()
         self.is_locked = self.log_event.is_locked
 
@@ -135,8 +139,9 @@ class Sip:
             self.store_resource(meta_resource)
         for meta_resource in self.meta_resources.with_referenced_files():
             self.store_referenced_file(meta_resource)
-        self.manifest.save()
+        self.log_event.process_queue()
         self.log_event.save()
+        self.manifest.save()
 
     def _create_new_sip(self, archive_creator_id, dataset_id):
         if not os.path.exists(self.sip_dir):

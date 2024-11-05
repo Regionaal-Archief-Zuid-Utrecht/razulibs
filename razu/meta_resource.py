@@ -89,7 +89,7 @@ class StructuredMetaResource(MetaResource):
             DCT.hasFormat: URIRef(self.this_file_uri)
         })
         self.graph.add((URIRef(self.this_file_uri), RDF.type, PREMIS.File))
-        self.sources = sources
+        self.metadata_sources = sources
         self.is_modified = True
 
     @property
