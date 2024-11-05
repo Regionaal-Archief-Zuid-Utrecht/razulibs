@@ -74,7 +74,7 @@ class StructuredMetaResource(MetaResource):
     _algoritmes = ConceptResolver("algoritme")
     _bestandsformaten = ConceptResolver("bestandsformaat")
 
-    def __init__(self, id=None, rdf_type=None, sources=None):
+    def __init__(self, id=None, rdf_type=None):
         super().__init__(id)
 
         if rdf_type is None:
@@ -89,7 +89,7 @@ class StructuredMetaResource(MetaResource):
             DCT.hasFormat: URIRef(self.this_file_uri)
         })
         self.graph.add((URIRef(self.this_file_uri), RDF.type, PREMIS.File))
-        self.metadata_sources = sources
+        self.metadata_sources = set()
         self.is_modified = True
 
     @property
@@ -151,10 +151,8 @@ class StructuredMetaResource(MetaResource):
         self.add_properties({
             MDTO.bestandsformaat: ext_file_fileformat_uri,
             MDTO.URLBestand: Literal(url, datatype=XSD.anyURI),
-            # OWL.sameAs: URIRef(url)
         })
         self.graph.add((URIRef(url), RDF.type, PREMIS.File))
-        # self.graph.add((URIRef(self.this_file_uri), OWL.sameAs, self.uri))
         self.is_modified = True
 
     def set_filesize(self, filesize: int):
@@ -167,8 +165,8 @@ class StructuredMetaResource(MetaResource):
         self.graph.add((URIRef(self.ext_file_uri), PREMIS.originalName, Literal(ext_file_original_filename)))
         self.is_modified = True
 
-    def set_metadata_sources(self, sources: list):
-        self.metadata_sources = sources
+    def add_metadata_source(self, source):
+        self.metadata_sources.add(source)
 
     def _get_object_value(self, predicate, subject=None):
         if subject is not None:
