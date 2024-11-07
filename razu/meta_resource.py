@@ -124,6 +124,18 @@ class StructuredMetaResource(MetaResource):
     @property
     def ext_file_fileformat_uri(self):
         return str(self._get_object_value(MDTO.bestandsformaat, self.uri))
+    
+    def add(self, predicate: URIRef, obj, transformer: callable = Literal):
+        super().add(predicate, obj, transformer)
+        self.is_modified = True
+    
+    def add_properties(self, rdf_properties: dict):
+        super().add_properties(rdf_properties)
+        self.is_modified = True
+
+    def add_list_from_string(self, predicate: URIRef, item_list: str, separator: str, transformer: callable = Literal):
+        super().add_list_from_string(predicate, item_list, separator, transformer)
+        self.is_modified = True
 
     def validate_md5(self):
         return util.calculate_md5(os.path.join(self._config.save_dir, self.ext_filename)) == self.ext_file_md5checksum
