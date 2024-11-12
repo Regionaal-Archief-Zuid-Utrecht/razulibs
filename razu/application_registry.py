@@ -8,7 +8,7 @@ class ApplicationRegistry:
 
     _applicaties = ConceptResolver('applicatie')
 
-    def __init__(self, app_name, executable, signature_func):
+    def __init__(self, app_name, executable, signature_func, force):
         self.app_name = app_name
         self.executable = shutil.which(executable)
         self.signature_func = signature_func 
@@ -16,9 +16,14 @@ class ApplicationRegistry:
         if self.executable is None:
             raise FileNotFoundError(f"Executable for {self.app_name} not found in PATH or specified location")
         
-        self.signature = self.signature_func(self)
+        self.signature = self.signature_func()
         self.uri = ApplicationRegistry._applicaties.get_concept_uri(self.signature)
         self.is_registered = True if self.uri else False
+
+        if self.is_registered is False and force is not True:
+            print(f"Application {self.app_name} with signature {self.signature} is not registered.")
+            print("Exiting...")
+            exit()
 
     def get_command_output(self, command_args):
         try:
@@ -27,35 +32,39 @@ class ApplicationRegistry:
         except subprocess.CalledProcessError as e:
             print(f"Error executing command for {self.app_name}: {e}")
             return ""
-        
-
-def droid_signature_func(appregistry: ApplicationRegistry) -> str:
-    # geeft signature als "droid 6.8.0/118/20240501"
-    version = appregistry.get_command_output(['-v'])
-    detailed_output = appregistry.get_command_output(['-x'])
-    versions = '/'.join(re.findall(r"Version:\s+(\S+)", detailed_output))
-    return f"{appregistry.app_name} {version}/{versions}"
-
-def clamav_signature_func(appregistry: ApplicationRegistry) -> str:
-    # geeft signature als "clamav 0.103.12/27434"
-    version = appregistry.get_command_output(['--version']).lower()
-    parts = version.split("/")
-    version = "/".join(parts[:2]) if len(parts) > 1 else parts[0]
-    return version.strip() if version else "unknown-version"
 
 
-# Voorbeeldgebruik:
-if __name__ == "__main__":
-    droid = ApplicationRegistry("droid", "/home/rene/bin/droid/droid.sh", droid_signature_func)
-    clamav = ApplicationRegistry("clamav", "clamscan", clamav_signature_func)
+class Applications(ApplicationRegistry):
 
-    if droid.is_registered:
-        print(f"Current version of {droid.app_name} is registered at {droid.uri}.")
-    else:
-        print(f"{droid.signature} is not yet registered.")
+    def __init__(self, executable, force=False):
+        super().__init__(self.app_name(), executable, self._signature_func, force)
 
-    if clamav.is_registered:
-        print(f"Current version of {clamav.app_name} is registered at {clamav.uri}.")
-    else:
-        print(f"{clamav.signature} is not yet registered.")
+
+class Droid(Applications):
+
+    def app_name(self):
+        return("Droid")
+
+    def _signature_func(self) -> str:
+        # geeft signature als "droid 6.8.0-118-20240501"
+        # executable bijvoorbeeld "/home/user/bin/droid/droid.sh"
+        version = self.get_command_output(['-v'])
+        detailed_output = self.get_command_output(['-x'])
+        versions = '-'.join(re.findall(r"Version:\s+(\S+)", detailed_output))
+        return f"{self.app_name.lower()} {version}-{versions}"
+
+
+class ClamAV(Applications):
+
+    def app_name(self):
+        return("ClamAV")
+
+    def _signature_func(self) -> str:
+        # geeft signature als "clamav 0.103.12/27434"
+        # executable bijvoorbeeld "clamscan"
+        version = self.get_command_output(['--version']).lower()
+        parts = version.split("/")
+        version = "/".join(parts[:2]) if len(parts) > 1 else parts[0]
+        return version.strip() if version else "unknown-version"
+
 
