@@ -71,7 +71,7 @@ class Events:
             except IOError as e:
                 print(f"Error saving file {self.filepath}: {e}")
  
-    def _add(self, properties, tool=None, timestamp=None):
+    def _add(self, properties, tool=None, timestamp=None, started_at=None):
         if self.is_locked:
             raise AssertionError("Sip is locked. Cannot store resource.")
         timestamp = self._timestamp() if timestamp is None else timestamp
@@ -83,6 +83,10 @@ class Events:
         if tool is not None:
             event.add_properties({
                 ERAR.exe: URIRef(tool)
+            })
+        if started_at is not None:
+            event.add_properties({
+                PROV.startedAtTime: Literal(started_at,  datatype=XSD.dateTime)
             })
         event.add_properties(properties)
         self.graph += event
@@ -98,9 +102,6 @@ class Events:
 
 class RazuEvents(Events):
 
-    def __init__(self, sip_directory, eventlog_filename=None):
-        super().__init__(sip_directory, eventlog_filename)
-
     # eventtypes : https://id.loc.gov/vocabulary/preservation/eventType.html
     # https://id.loc.gov/vocabulary/preservation.html
     # https://www.loc.gov/standards/premis/ontology/pdf/premis3-owl-guidelines-20180924.pdf
@@ -115,22 +116,22 @@ class RazuEvents(Events):
             PREMIS.outcomeNote: f"renamed {original_filename} to {new_filename}"
         }, tool=tool)
 
-    def fixity_check(self, subject, is_succesful, tool=None, timestamp=None):
+    def fixity_check(self, subject, is_succesful, tool=None, timestamp=None, started_at=None):
         self._add({
             PREMIS.eventType: URIRef('http://id.loc.gov/vocabulary/preservation/eventType/fix'),
             EROR.sou: URIRef(subject),
             ERAR.imp: URIRef('https://data.razu.nl/id/actor/2bdb658a032a405d71c19159bd2bbb3a'),
             PREMIS.outcome: self._outcome_uri(is_succesful)
-        }, tool, timestamp)
+        }, tool, timestamp, started_at)
 
-    def format_identification(self, subject, format, tool=None, timestamp=None):
+    def format_identification(self, subject, format, tool=None, timestamp=None, started_at=None):
         self._add({
             PREMIS.eventType: URIRef('http://id.loc.gov/vocabulary/preservation/eventType/for'),
             EROR.sou: URIRef(subject),
             ERAR.imp: URIRef('https://data.razu.nl/id/actor/2bdb658a032a405d71c19159bd2bbb3a'),
             PREMIS.outcome: self._outcome_uri(True),
             PREMIS.outcomeNote: format
-        }, tool, timestamp)
+        }, tool, timestamp, started_at)
 
     def ingestion_end(self, subject, tool=None, timestamp=None):
         subject_value = [URIRef(s) for s in subject] if isinstance(subject, list) else URIRef(subject)
@@ -150,14 +151,14 @@ class RazuEvents(Events):
             PREMIS.outcome: self._outcome_uri(True)
         }, tool, timestamp)
 
-    def message_digest_calculation(self, subject, hash, tool=None, timestamp=None):
+    def message_digest_calculation(self, subject, hash, tool=None, timestamp=None, started_at=None):
         self._add({
             PREMIS.eventType: URIRef('http://id.loc.gov/vocabulary/preservation/eventType/mes'),
             EROR.sou: URIRef(subject),
             ERAR.imp: URIRef('https://data.razu.nl/id/actor/2bdb658a032a405d71c19159bd2bbb3a'),
             PREMIS.outcome: self._outcome_uri(True),
             PREMIS.outcomeNote: hash            # TODO: als DROID de tool is, hoe maken we dan expliciet dat het een md5hash is?
-        }, tool, timestamp)
+        }, tool, timestamp, started_at)
 
     def metadata_modification(self, subject, result, tool=None, timestamp=None):
         subject_value = [URIRef(s) for s in subject] if isinstance(subject, set) else URIRef(subject)

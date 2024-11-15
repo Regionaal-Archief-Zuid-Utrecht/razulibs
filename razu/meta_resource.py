@@ -71,8 +71,13 @@ class StructuredMetaResource(MetaResource):
     and properties for easy access to key parts of the graph data.
     """
 
+    _actoren = ConceptResolver("actor")
+    _aggregatieniveaus = ConceptResolver("aggregatieniveau")
     _algoritmes = ConceptResolver("algoritme")
+    _beperkingen_openbaarheid = ConceptResolver("openbaarheid")
     _bestandsformaten = ConceptResolver("bestandsformaat")
+    _licenties = ConceptResolver("licentie")
+    _waarderingen = ConceptResolver("waardering")
 
     def __init__(self, id=None, rdf_type=None):
         super().__init__(id)
@@ -86,6 +91,8 @@ class StructuredMetaResource(MetaResource):
                 MDTO.identificatieBron: "e-Depot RAZU",
                 MDTO.identificatieKenmerk: self.uid
             },
+            MDTO.waardering: StructuredMetaResource._waarderingen.get_concept('B').get_uri(),
+            MDTO.archiefvormer: StructuredMetaResource._actoren.get_concept(MetaResource._config.archive_creator_id).get_uri(),
             DCT.hasFormat: URIRef(self.this_file_uri)
         })
         self.graph.add((URIRef(self.this_file_uri), RDF.type, PREMIS.File))
@@ -177,7 +184,32 @@ class StructuredMetaResource(MetaResource):
         self.graph.add((URIRef(self.ext_file_uri), PREMIS.originalName, Literal(ext_file_original_filename)))
         self.is_modified = True
 
-    def add_metadata_source(self, source):
+    def set_aggregation_level(self, aggregation_term):
+        self.add_properties({
+            MDTO.aggregatieniveau: StructuredMetaResource._aggregatieniveaus.get_concept(aggregation_term).get_uri()
+        })
+        self.is_modified = True 
+
+    def set_restrictions_public_availability(self, beperking_term):
+        self.add_properties({
+            MDTO.beperkingGebruik: {
+                RDF.type: MDTO.BeperkingGebruikGegevens,  
+                MDTO.beperkingGebruikType: StructuredMetaResource._beperkingen_openbaarheid.get_concept(beperking_term).get_uri()
+            }
+        })
+        self.is_modified = True
+
+    def set_license(self, license_term):
+        self.add_properties({
+            MDTO.beperkingGebruik: {
+                RDF.type: MDTO.BeperkingGebruikGegevens,  
+                MDTO.beperkingGebruikType: StructuredMetaResource._licenties.get_concept(license_term).get_uri()
+            }
+        })
+        self.is_modified = True
+
+
+    def set_metadata_source(self, source):
         self.metadata_sources.add(source)
 
     def _get_object_value(self, predicate, subject=None):
