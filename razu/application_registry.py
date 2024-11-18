@@ -19,21 +19,21 @@ class ApplicationRegistry:
         self.executable = shutil.which(executable)
         
         if self.executable is None:
-            raise ApplicationNotFoundError(f"Executable for {self.app_name()} not found in PATH or specified location ({executable}).")
+            raise ApplicationNotFoundError(f"Executable for {self.name()} not found in PATH or specified location ({executable}).")
         
         self.signature = self._signature_func()
         self.uri = self._applicaties.get_concept_uri(self.signature)
         self.is_registered = bool(self.uri)
 
         if not self.is_registered and not force:
-            raise ApplicationNotRegisteredError(f"Application {self.app_name()} with signature {self.signature} is not registered.")
+            raise ApplicationNotRegisteredError(f"Application {self.name()} with signature {self.signature} is not registered.")
 
     def get_command_output(self, command_args):
         try:
             result = subprocess.run([self.executable] + command_args, capture_output=True, text=True, check=True)
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Error executing command for {self.app_name()}: {e}")
+            raise RuntimeError(f"Error executing command for {self.name()}: {e}")
 
     def id(self) -> str:
         return re.sub(r'[^a-zA-Z0-9_]', '', self.name().lower().replace(" ", "_"))

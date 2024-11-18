@@ -17,7 +17,7 @@ class RunInfo():
         
         if isinstance(application, str):
             self.id = application
-            self._load(self.id)
+            self._load()
         elif isinstance(application, ApplicationRegistry):
             self.id = application.id()
             self.name = application.name()
@@ -31,13 +31,14 @@ class RunInfo():
     def register_end(self) -> None:
         self.end_time = self._now()
 
-    def save(self) -> None:
+    def save(self, result:str = "") -> None:
         with self._run_info_path().open("w", encoding="utf-8") as file:
             json.dump({
                 "name": self.name,
                 "uri": self.uri, 
                 "start_time": self.start_time,
-                "end_time": self.end_time
+                "end_time": self.end_time,
+                "result": result
             }, file, indent=4)
 
     def _now(self) -> str:
