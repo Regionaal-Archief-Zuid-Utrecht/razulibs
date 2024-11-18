@@ -35,30 +35,32 @@ class ApplicationRegistry:
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Error executing command for {self.app_name()}: {e}")
 
+    def id(self) -> str:
+        return re.sub(r'[^a-zA-Z0-9_]', '', self.name().lower().replace(" ", "_"))
+
+    def name(self) -> str:
+        """Subclasses moeten de naam van de applicatie teruggeven."""
+        raise NotImplementedError
+
     def _signature_func(self) -> str:
         """Subclasses moeten deze methode implementeren."""
         raise NotImplementedError
 
-    def app_name(self) -> str:
-        """Subclasses moeten de naam van de applicatie teruggeven."""
-        raise NotImplementedError
-
-
 class Droid(ApplicationRegistry):
 
-    def app_name(self) -> str:
+    def name(self) -> str:
         return "Droid"
 
     def _signature_func(self) -> str:
         version = self.get_command_output(['-v'])
         detailed_output = self.get_command_output(['-x'])
         versions = '-'.join(re.findall(r"Version:\s+(\S+)", detailed_output))
-        return f"{self.app_name().lower()} {version}-{versions}"
+        return f"{self.name().lower()} {version}-{versions}"
 
 
 class ClamAV(ApplicationRegistry):
 
-    def app_name(self) -> str:
+    def name(self) -> str:
         return "ClamAV"
 
     def _signature_func(self) -> str:
