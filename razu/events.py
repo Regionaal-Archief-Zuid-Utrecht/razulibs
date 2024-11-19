@@ -170,7 +170,7 @@ class RazuEvents(Events):
             PROV.generated: URIRef(result)
         }, tool, timestamp)
 
-    def virus_check(self, subject, is_successful, note, tool=None, timestamp=None):
+    def virus_check(self, subject, is_successful, note, tool=None, timestamp=None, started_at=None):
         subject_value = [URIRef(s) for s in subject] if isinstance(subject, list) else URIRef(subject)
         self._add({
             PREMIS.eventType: URIRef('http://id.loc.gov/vocabulary/preservation/eventType/vir'),
@@ -178,7 +178,7 @@ class RazuEvents(Events):
             ERAR.imp: URIRef('https://data.razu.nl/id/actor/2bdb658a032a405d71c19159bd2bbb3a'),
             PREMIS.outcome: self._outcome_uri(True),
             PREMIS.outcomeNote: note,
-        }, tool, timestamp)
+        }, tool, timestamp, started_at)
 
     def _outcome_uri(self, is_successful) -> URIRef:
         return URIRef("http://id.loc.gov/vocabulary/preservation/eventOutcome/suc") if is_successful else URIRef("http://id.loc.gov/vocabulary/preservation/eventOutcome/fail")

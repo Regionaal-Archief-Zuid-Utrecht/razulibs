@@ -174,6 +174,33 @@ def filename_without_extensions(filename: str) -> str:
         return filename
     return filename[:dot_index]
 
+def normalize_path(filepath, base_dir=None):
+    """Normalize a path to be relative with forward slashes.
+    
+    Args:
+        filepath: The path to normalize (can be absolute or relative, with any path separator)
+        base_dir: Optional base directory to make the path relative to. If None,
+                 looks for 'bestanden' in the path and takes everything after it.
+    Returns:
+        A normalized path using forward slashes
+    """
+    # Convert all separators to forward slashes
+    filepath = filepath.replace('\\', '/')
+    
+    if base_dir:
+        # If base_dir is provided, make path relative to it
+        base_dir = base_dir.replace('\\', '/')
+        if filepath.startswith(base_dir):
+            return filepath[len(base_dir):].lstrip('/')
+    
+    # Find 'bestanden' in the path and take everything after it
+    parts = filepath.split('/')
+    try:
+        idx = parts.index('bestanden')
+        return '/'.join(parts[idx + 1:])
+    except ValueError:
+        return filepath.replace('\\', '/')
+
 def calculate_md5(file_path):
     """
     Calculate the MD5 checksum of a file.

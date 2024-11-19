@@ -5,3 +5,5 @@ out.ttl
 .idea
 razu/.env
 output/
+build/
+*.egg-info
