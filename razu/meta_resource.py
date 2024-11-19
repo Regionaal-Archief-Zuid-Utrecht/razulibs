@@ -28,7 +28,7 @@ class MetaResource(RDFResource):
     def save(self) -> bool:
         if self.is_modified:
             try:
-                with open(self.file_path, 'w') as file:
+                with open(self.file_path, 'w', encoding='utf-8') as file:
                     file.write(self.graph.serialize(format='json-ld'))
                 self.is_modified = False
                 return True
@@ -38,7 +38,8 @@ class MetaResource(RDFResource):
 
     def load(self) -> None:
         self.graph = MetaGraph()
-        self.graph.parse(self.file_path, format="json-ld")
+        with open(self.file_path, 'r', encoding='utf-8') as file:
+            self.graph.parse(data=file.read(), format="json-ld")
         self.is_modified = False
 
     def _construct_identifiers(self, id=None, uid=None, uri=None):

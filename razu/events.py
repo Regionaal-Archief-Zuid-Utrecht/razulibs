@@ -33,7 +33,9 @@ class Events:
         self.is_modified = False
 
         if os.path.exists(self.filepath):
-            self.graph.parse(self.filepath, format="json-ld")
+            # Use explicit UTF-8 encoding when parsing the JSON-LD file
+            with open(self.filepath, 'r', encoding='utf-8') as f:
+                self.graph.parse(data=f.read(), format="json-ld")
 
             for s in self.graph.subjects():
                 if isinstance(s, URIRef):
@@ -65,7 +67,7 @@ class Events:
             raise AssertionError("Sip is locked. Cannot save eventlog.")
         if self.is_modified:
             try:
-                with open(self.filepath, 'w') as file:
+                with open(self.filepath, 'w', encoding='utf-8') as file:
                     file.write(self.graph.serialize(format='json-ld'))
                 self.is_modified = False
             except IOError as e:
