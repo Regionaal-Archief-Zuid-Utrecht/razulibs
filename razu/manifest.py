@@ -21,7 +21,7 @@ class Manifest:
 
     Attributes:
         directory (str): The directory being managed by the manifest.
-        manifest_file (str): The path to the JSON manifest file.
+        manifest_file_path (str): The path to the JSON manifest file.
         files (dict): A dictionary that stores relative file paths and their MD5 checksums.
         is_valid (bool): Indicates if the manifest is valid after verification.
         is_modified (bool): Indicates if the manifest has been modified since it was loaded or created.
@@ -40,13 +40,13 @@ class Manifest:
         """
         self.directory = manifest_directory
         self._cfg = config or RazuConfig()
-        self.manifest_filepath = os.path.join(manifest_directory, manifest_file or self._cfg.manifest_filename)
+        self.manifest_file_path = os.path.join(manifest_directory, manifest_file or self._cfg.manifest_filename)
         self.files = {}
         self.is_valid = True
         self.is_modified = False
 
-        if os.path.exists(self.manifest_filepath):
-            self.load(self.manifest_filepath)
+        if os.path.exists(self.manifest_file_path):
+            self.load(self.manifest_file_path)
         else:
             self.is_valid = False  # No manifest yet, cannot be valid
 
@@ -68,12 +68,12 @@ class Manifest:
         Raises:
             FileExistsError: If the manifest file already exists.
         """
-        if os.path.exists(self.manifest_filepath):
-            raise FileExistsError(f"Manifest '{self.manifest_filepath}' already exists.")
+        if os.path.exists(self.manifest_file_path):
+            raise FileExistsError(f"Manifest '{self.manifest_file_path}' already exists.")
 
         for root, dirs, files in os.walk(self.directory):
             for file in files:
-                if file == os.path.basename(self.manifest_filepath):
+                if file == os.path.basename(self.manifest_file_path):
                     continue
                 file_path = os.path.join(root, file)
                 relative_path = os.path.relpath(file_path, self.directory)
@@ -81,14 +81,14 @@ class Manifest:
         self.is_modified = True
         self.save()
         self.is_valid = True
-        print(f"Manifest created: {self.manifest_filepath}")
+        print(f"Manifest created: {self.manifest_file_path}")
 
     def save(self):
         """
         Save the manifest to a JSON file, but only if the manifest has been modified.
         """
         if self.is_modified:
-            with open(self.manifest_filepath, "w") as json_file:
+            with open(self.manifest_file_path, "w") as json_file:
                 json.dump(self.files, json_file, indent=4)
             self.is_modified = False
 
@@ -141,7 +141,7 @@ class Manifest:
         for root, dirs, files in os.walk(self.directory):
             for file in files:
                 relative_path = os.path.relpath(os.path.join(root, file), self.directory)
-                if relative_path in {os.path.basename(self.manifest_filepath), self._cfg.eventlog_filename}:
+                if relative_path in {os.path.basename(self.manifest_file_path), self._cfg.eventlog_filename}:
                     continue
                 if relative_path not in self.files:
                     errors["extra_files"].append(relative_path)
@@ -166,15 +166,15 @@ class Manifest:
         Raises:
             FileNotFoundError: If the manifest file does not exist.
         """
-        if not os.path.exists(self.manifest_filepath):
-            raise FileNotFoundError(f"Manifest '{self.manifest_filepath}' does not exist.")
+        if not os.path.exists(self.manifest_file_path):
+            raise FileNotFoundError(f"Manifest '{self.manifest_file_path}' does not exist.")
 
-        self.load(self.manifest_filepath)
+        self.load(self.manifest_file_path)
 
         for root, dirs, files in os.walk(self.directory):
             for file in files:
                 relative_path = os.path.relpath(os.path.join(root, file), self.directory)
-                if relative_path == os.path.basename(self.manifest_filepath):
+                if relative_path == os.path.basename(self.manifest_file_path):
                     continue
                 if relative_path not in self.files:
                     file_path = os.path.join(self.directory, relative_path)
@@ -183,7 +183,7 @@ class Manifest:
 
         if self.is_modified:
             self.save()
-            print(f"Manifest '{self.manifest_filepath}' updated with missing files.")
+            print(f"Manifest '{self.manifest_file_path}' updated with missing files.")
         else:
             print("No missing files to append.")
 

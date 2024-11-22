@@ -7,13 +7,19 @@ class RazuConfig(Config):
     def __new__(cls, **initial_settings) -> "RazuConfig":
 
         default_settings = {
-            "RAZU_base_URI": "https://data.razu.nl/",
-            "RAZU_file_id": "NL-WbDRAZU",
+            "razu_base_uri": "https://data.razu.nl/",
+            "razu_file_id": "NL-WbDRAZU",
             "sparql_endpoint_prefix": "https://api.data.razu.nl/datasets/id/",
             "sparql_endpoint_suffix": "/sparql",
-            "resource_identifier": "id",
+            "resource_identifier_segment": "id",
             "metadata_suffix": "meta",
-            "metadata_extension": "json"
+            "metadata_extension": "json",
+            "save_directory": ".",
+            "archive_creator_id": None,
+            "archive_id": None,
+            "manifest_filename": "manifest.json",
+            "eventlog_filename": "eventlog.json",
+            "filename_prefix": "razu"
         }
         instance = super(RazuConfig, cls).__new__(cls, **initial_settings)
 
@@ -27,7 +33,7 @@ class RazuConfig(Config):
     def filename_prefix(self):
         """Generates a filename prefix like 'NL-WbDRAZU-G312-661'."""
         try:
-            return f"{self.RAZU_file_id}-{self.archive_creator_id}-{self.archive_id}"
+            return f"{self.razu_file_id}-{self.archive_creator_id}-{self.archive_id}"
         except AttributeError:
             raise ValueError("Missing attributes")
 
@@ -78,6 +84,6 @@ class RazuConfig(Config):
     def _uri_prefix(self, kind):
         """Generates a URI prefix like 'https://data.razu.nl/id/{kind}/NL-WbDRAZU-G312-661'."""
         try:
-            return f"{self.RAZU_base_URI}id/{kind}/{self.filename_prefix}"
+            return f"{self.razu_base_uri}{self.resource_identifier_segment}/{kind}/{self.filename_prefix}"
         except AttributeError:
             raise ValueError("Missing attributes")

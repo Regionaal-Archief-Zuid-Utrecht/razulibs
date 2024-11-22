@@ -22,7 +22,7 @@ class MetaResource(RDFResource):
         self.id, self.uid, uri = self._construct_identifiers(id, uid, uri)
         super().__init__(uri)
         self.filename = self._construct_filename()
-        self.file_path = os.path.join(self._config.save_dir, self.filename)
+        self.file_path = os.path.join(self._config.save_directory, self.filename)
         self.is_modified = False
 
     def save(self) -> bool:
@@ -146,7 +146,7 @@ class StructuredMetaResource(MetaResource):
         self.is_modified = True
 
     def validate_md5(self):
-        return util.calculate_md5(os.path.join(self._config.save_dir, self.ext_filename)) == self.ext_file_md5checksum
+        return util.calculate_md5(os.path.join(self._config.save_directory, self.ext_filename)) == self.ext_file_md5checksum
 
     def set_type(self, rdf_type: URIRef):
         self.add_properties({RDF.type: rdf_type})

@@ -12,14 +12,14 @@ import extra                # code specifiek voor deze import
 
 if __name__ == "__main__":
 
-    cfg = RazuConfig(archive_creator_id="G321", archive_id="661", save_dir="output")
+    cfg = RazuConfig(archive_creator_id="G321", archive_id="661", save_directory="output")
 
     # CSV-bestanden inlezen, we combineren hier een metadata-csv met de output van DROID
     # voor oa. checksum en omvang bestand; TODO beter als dit al aangeleverd is in de metadata
     # en we het in deze stap controleren.
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    meta_path = os.path.join(script_dir, './metadata/metadata.csv')
-    droid_path = os.path.join(script_dir, './metadata/droid.csv')
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    meta_path = os.path.join(script_directory, './metadata/metadata.csv')
+    droid_path = os.path.join(script_directory, './metadata/droid.csv')
 
     meta_df = pd.read_csv(meta_path, delimiter=';')
     droid_df = pd.read_csv(droid_path, index_col='NAME')

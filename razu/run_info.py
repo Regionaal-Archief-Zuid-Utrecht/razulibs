@@ -8,8 +8,8 @@ from razu.application_registry import ApplicationRegistry
 class RunInfo():
     RUN_INFO_SUFFIX = "_run_info.json" 
 
-    def __init__(self, dir: str, application: str | ApplicationRegistry):
-        self.dir = dir
+    def __init__(self, directory: str, application: str | ApplicationRegistry):
+        self.directory = directory
         self.name = None
         self.uri = None
         self.start_time = None
@@ -59,5 +59,4 @@ class RunInfo():
                 raise ValueError(f"Corrupted JSON in {run_info_path}: {e}")
             
     def _run_info_path(self) -> Path:
-        return Path(self.dir,  f"{self.id}{RunInfo.RUN_INFO_SUFFIX}")
-            
+        return Path(self.directory,  f"{self.id}{RunInfo.RUN_INFO_SUFFIX}")

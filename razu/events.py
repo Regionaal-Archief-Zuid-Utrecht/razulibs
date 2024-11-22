@@ -25,16 +25,16 @@ class Events:
         Load the eventlog file, if it exists.
         """
         self.directory = sip_directory
-        self.filepath = os.path.join(sip_directory, eventlog_filename or Events._cfg.eventlog_filename)
+        self.file_path = os.path.join(sip_directory, eventlog_filename or Events._cfg.eventlog_filename)
         self.current_id = 0
 
         self.graph = MetaGraph()
         self.queue = []
         self.is_modified = False
 
-        if os.path.exists(self.filepath):
+        if os.path.exists(self.file_path):
             # Use explicit UTF-8 encoding when parsing the JSON-LD file
-            with open(self.filepath, 'r', encoding='utf-8') as f:
+            with open(self.file_path, 'r', encoding='utf-8') as f:
                 self.graph.parse(data=f.read(), format="json-ld")
 
             for s in self.graph.subjects():
@@ -67,11 +67,11 @@ class Events:
             raise AssertionError("Sip is locked. Cannot save eventlog.")
         if self.is_modified:
             try:
-                with open(self.filepath, 'w', encoding='utf-8') as file:
+                with open(self.file_path, 'w', encoding='utf-8') as file:
                     file.write(self.graph.serialize(format='json-ld'))
                 self.is_modified = False
             except IOError as e:
-                print(f"Error saving file {self.filepath}: {e}")
+                print(f"Error saving file {self.file_path}: {e}")
  
     def _add(self, properties, tool=None, timestamp=None, started_at=None):
         if self.is_locked:

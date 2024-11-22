@@ -23,9 +23,9 @@ class MetaResourcesDict(dict):
 class Sip:
     """ Represents a SIP (Submission Information Package) """
 
-    def __init__(self, sip_dir, archive_creator_id=None, dataset_id=None, file_source_dir=None, ingestion_start_date=None) -> None:
-        self.sip_dir = sip_dir
-        self.file_source_dir = file_source_dir
+    def __init__(self, sip_directory, archive_creator_id=None, dataset_id=None, file_source_directory=None, ingestion_start_date=None) -> None:
+        self.sip_directory = sip_directory
+        self.file_source_directory = file_source_directory
 
         if archive_creator_id is not None and dataset_id is not None:
             self._create_new_sip(archive_creator_id, dataset_id)
@@ -34,10 +34,10 @@ class Sip:
 
         actoren = ConceptResolver('actor')
         self.archive_creator_uri = actoren.get_concept_uri(self.archive_creator_id)
-        self.cfg = RazuConfig(archive_creator_id=self.archive_creator_id, archive_id=self.dataset_id, save_dir=self.sip_dir)
+        self.cfg = RazuConfig(archive_creator_id=self.archive_creator_id, archive_id=self.dataset_id, save_directory=self.sip_directory)
 
-        self.manifest = Manifest(self.sip_dir)
-        self.log_event = RazuEvents(self.sip_dir)
+        self.manifest = Manifest(self.sip_directory)
+        self.log_event = RazuEvents(self.sip_directory)
         self.meta_resources = MetaResourcesDict()
 
         if ingestion_start_date is not None:
@@ -105,9 +105,9 @@ class Sip:
         if self.is_locked:
             raise AssertionError("Sip is locked. Cannot store referenced file.")
         
-        if self.file_source_dir is not None:
-            origin_filepath = os.path.join(self.file_source_dir, resource.ext_file_original_filename)
-            dest_filepath = os.path.join(self.sip_dir, resource.ext_filename)
+        if self.file_source_directory is not None:
+            origin_filepath = os.path.join(self.file_source_directory, resource.ext_file_original_filename)
+            dest_filepath = os.path.join(self.sip_directory, resource.ext_filename)
 
             if not os.path.exists(dest_filepath):
                 shutil.copy2(origin_filepath, dest_filepath)
@@ -146,23 +146,23 @@ class Sip:
         self.manifest.save()
 
     def _create_new_sip(self, archive_creator_id, dataset_id):
-        if not os.path.exists(self.sip_dir):
-            os.makedirs(self.sip_dir)
-        elif os.listdir(self.sip_dir):
-            raise ValueError(f"The SIP directory '{self.sip_dir}' is not empty.")
+        if not os.path.exists(self.sip_directory):
+            os.makedirs(self.sip_directory)
+        elif os.listdir(self.sip_directory):
+            raise ValueError(f"The SIP directory '{self.sip_directory}' is not empty.")
         self.archive_creator_id = archive_creator_id
         self.dataset_id = dataset_id
-        print(f"Created empty SIP at {self.sip_dir}.")
+        print(f"Created empty SIP at {self.sip_directory}.")
 
     def _open_existing_sip(self):
-        if not os.listdir(self.sip_dir):
-            raise ValueError(f"The SIP directory '{self.sip_dir}' is empty.")
-        self.archive_creator_id, self.dataset_id = self._determine_ids_from_files_in_sip_dir()
-        print(f"Opened existing SIP at {self.sip_dir}.")
+        if not os.listdir(self.sip_directory):
+            raise ValueError(f"The SIP directory '{self.sip_directory}' is empty.")
+        self.archive_creator_id, self.dataset_id = self._determine_ids_from_files_in_sip_directory()
+        print(f"Opened existing SIP at {self.sip_directory}.")
 
     def _load_graph(self):
-        for filename in os.listdir(self.sip_dir):
-            if os.path.isfile(os.path.join(self.sip_dir, filename)) and filename.endswith(f"{self.cfg.metadata_suffix}.{self.cfg.metadata_extension}"):
+        for filename in os.listdir(self.sip_directory):
+            if os.path.isfile(os.path.join(self.sip_directory, filename)) and filename.endswith(f"{self.cfg.metadata_suffix}.{self.cfg.metadata_extension}"):
                 if self.archive_creator_id is None:
                     self.archive_creator_id = util.extract_source_from_filename(filename)
                     self.dataset_id = util.extract_archive_from_filename(filename)
@@ -171,8 +171,7 @@ class Sip:
                 meta_resource.load()
                 self.meta_resources[id] = meta_resource
 
-    def _determine_ids_from_files_in_sip_dir(self):
-        filenames = [f for f in os.listdir(self.sip_dir) if os.path.isfile(os.path.join(self.sip_dir, f))]
+    def _determine_ids_from_files_in_sip_directory(self):
+        filenames = [f for f in os.listdir(self.sip_directory) if os.path.isfile(os.path.join(self.sip_directory, f))]
         filename = filenames[0] if filenames else None
         return  util.extract_source_from_filename(filename), util.extract_archive_from_filename(filename)
-    

@@ -45,9 +45,9 @@ class SparqlEndpointManager:
         config = RazuConfig()
         
         uri_str = str(uri)
-        if f"/{config.resource_identifier}/" in uri_str:
-            vocabulary = uri_str.split(f"/{config.resource_identifier}/")[1].split("/")[0]
+        if f"/{config.resource_identifier_segment}/" in uri_str:
+            vocabulary = uri_str.split(f"/{config.resource_identifier_segment}/")[1].split("/")[0]
         else:
-            raise ValueError(f"Invalid URI structure: No '/{config.resource_identifier}/' segment found")
+            raise ValueError(f"Invalid URI structure: No '/{config.resource_identifier_segment}/' segment found")
 
         return f"{config.sparql_endpoint_prefix}{vocabulary}{config.sparql_endpoint_suffix}"

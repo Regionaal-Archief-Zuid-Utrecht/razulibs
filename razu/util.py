@@ -142,7 +142,7 @@ def extract_archive_from_filename(filename: str) -> str:
     """
     return extract_part_from_filename(filename, 2)
 
-def extract_id_str_from_filepath(path: str) -> int:
+def extract_id_str_from_file_path(path: str) -> int:
     basename = path.split('/')[-1]
     part = extract_part_from_filename(basename, 3)
     if part:
@@ -152,8 +152,8 @@ def extract_id_str_from_filepath(path: str) -> int:
     except (ValueError, TypeError):
         return None 
 
-def extract_id_from_filepath(path: str) -> str:
-    return int(extract_id_str_from_filepath(path))
+def extract_id_from_file_path(path: str) -> str:
+    return int(extract_id_str_from_file_path(path))
 
 def filename_without_extensions(filename: str) -> str:
     """
@@ -174,32 +174,32 @@ def filename_without_extensions(filename: str) -> str:
         return filename
     return filename[:dot_index]
 
-def normalize_path(filepath, base_dir=None):
+def normalize_path(file_path, base_dir=None):
     """Normalize a path to be relative with forward slashes.
     
     Args:
-        filepath: The path to normalize (can be absolute or relative, with any path separator)
+        file_path: The path to normalize (can be absolute or relative, with any path separator)
         base_dir: Optional base directory to make the path relative to. If None,
                  looks for 'bestanden' in the path and takes everything after it.
     Returns:
         A normalized path using forward slashes
     """
     # Convert all separators to forward slashes
-    filepath = filepath.replace('\\', '/')
+    file_path = file_path.replace('\\', '/')
     
     if base_dir:
         # If base_dir is provided, make path relative to it
         base_dir = base_dir.replace('\\', '/')
-        if filepath.startswith(base_dir):
-            return filepath[len(base_dir):].lstrip('/')
+        if file_path.startswith(base_dir):
+            return file_path[len(base_dir):].lstrip('/')
     
     # Find 'bestanden' in the path and take everything after it
-    parts = filepath.split('/')
+    parts = file_path.split('/')
     try:
         idx = parts.index('bestanden')
         return '/'.join(parts[idx + 1:])
     except ValueError:
-        return filepath.replace('\\', '/')
+        return file_path.replace('\\', '/')
 
 def calculate_md5(file_path):
     """
