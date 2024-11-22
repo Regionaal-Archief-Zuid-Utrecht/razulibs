@@ -23,8 +23,8 @@ class Manifest:
         directory (str): The directory being managed by the manifest.
         manifest_file (str): The path to the JSON manifest file.
         files (dict): A dictionary that stores relative file paths and their MD5 checksums.
-        valid (bool): Indicates if the manifest is valid after verification.
-        modified (bool): Indicates if the manifest has been modified since it was loaded or created.
+        is_valid (bool): Indicates if the manifest is valid after verification.
+        is_modified (bool): Indicates if the manifest has been modified since it was loaded or created.
 
     """
 
@@ -42,20 +42,20 @@ class Manifest:
         self._cfg = config or RazuConfig()
         self.manifest_filepath = os.path.join(manifest_directory, manifest_file or self._cfg.manifest_filename)
         self.files = {}
-        self.valid = True
-        self.modified = False
+        self.is_valid = True
+        self.is_modified = False
 
         if os.path.exists(self.manifest_filepath):
             self.load(self.manifest_filepath)
         else:
-            self.valid = False  # No manifest yet, cannot be valid
+            self.is_valid = False  # No manifest yet, cannot be valid
 
     def add_entry(self, file_path, md5hash, md5date):
         self.files[file_path] = {
             "MD5Hash": md5hash,
             "MD5HashDate": md5date
         }
-        self.modified = True
+        self.is_modified = True
 
     def get_filenames(self) -> list:
         return list(self.files.keys())
@@ -78,18 +78,19 @@ class Manifest:
                 file_path = os.path.join(root, file)
                 relative_path = os.path.relpath(file_path, self.directory)
                 self.add_entry(relative_path, util.calculate_md5(file_path), datetime.now().isoformat())
-        self.modified = True
+        self.is_modified = True
         self.save()
+        self.is_valid = True
         print(f"Manifest created: {self.manifest_filepath}")
 
     def save(self):
         """
         Save the manifest to a JSON file, but only if the manifest has been modified.
         """
-        if self.modified:
+        if self.is_modified:
             with open(self.manifest_filepath, "w") as json_file:
                 json.dump(self.files, json_file, indent=4)
-            self.modified = False
+            self.is_modified = False
 
     def load(self, input_file):
         """
@@ -100,7 +101,7 @@ class Manifest:
         """
         with open(input_file, "r") as json_file:
             self.files = json.load(json_file)
-        self.modified = False
+        self.is_modified = False
 
     def verify(self, ignore_missing=False, ignore_extra=False):
         """
@@ -108,9 +109,9 @@ class Manifest:
         Also, check if there are extra files in the directory that are not listed in the manifest.
         Raise an error if the manifest does not exist or if extra files are found.
 
-        Raises:
-            FileNotFoundError: If the manifest file does not exist.
-            Warning: If extra files are found in the directory that are not in the manifest.
+        Args:
+            ignore_missing (bool): If True, don't raise error for missing files.
+            ignore_extra (bool): If True, don't raise error for extra files.
 
         Returns:
             dict: A dictionary of errors with keys 'missing_files', 'checksum_mismatch', and 'extra_files'.
@@ -154,8 +155,8 @@ class Manifest:
         if errors["extra_files"] and not ignore_extra:
             raise ValueError(f"Extra files found in the directory: {errors['extra_files']}")
 
-        self.valid = True
-        return
+        self.is_valid = True
+        return errors
 
     def append(self):
         """
@@ -178,9 +179,9 @@ class Manifest:
                 if relative_path not in self.files:
                     file_path = os.path.join(self.directory, relative_path)
                     self.add_entry(relative_path, util.calculate_md5(file_path), datetime.now().isoformat())
-                    self.modified = True
+                    self.is_modified = True
 
-        if self.modified:
+        if self.is_modified:
             self.save()
             print(f"Manifest '{self.manifest_filepath}' updated with missing files.")
         else:
@@ -199,7 +200,7 @@ class Manifest:
         """
         if file_path in self.files:
             self.files[file_path].update(additional_data)
-            self.modified = True
+            self.is_modified = True
         else:
             raise KeyError(f"File '{file_path}' does not exist in the manifest.")
 

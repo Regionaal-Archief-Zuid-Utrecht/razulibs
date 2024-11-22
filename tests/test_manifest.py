@@ -25,10 +25,19 @@ def config():
     )
 
 def test_manifest_initialization(tmp_path, config):
-    """Test de initialisatie van een Manifest object."""
+    """Test of een manifest correct wordt geïnitialiseerd."""
+    # Test initialisatie zonder bestaand manifest bestand
     manifest = Manifest(str(tmp_path), config=config)
-    assert manifest.valid == False
-    assert manifest.modified == False
+    assert manifest.is_valid == False
+    assert manifest.files == {}
+
+    # Test initialisatie met bestaand manifest bestand
+    manifest_file = os.path.join(tmp_path, config.manifest_filename)
+    with open(manifest_file, "w") as f:
+        json.dump({}, f)
+
+    manifest = Manifest(str(tmp_path), config=config)
+    assert manifest.is_valid == True
     assert manifest.files == {}
 
 def test_manifest_add_entry(tmp_path, config):
@@ -84,8 +93,9 @@ def test_manifest_verify_extra_file(tmp_path, config):
     assert "extra.txt" in str(excinfo.value)
 
 def test_manifest_verify_ignore_options(tmp_path, config):
-    """Test verificatie met ignore opties."""
+    """Test dat verify() de juiste opties respecteert."""
     manifest = Manifest(str(tmp_path), config=config)
+    manifest.create_from_directory()
     
     # Maak een bestand dat niet in het manifest staat
     with open(os.path.join(tmp_path, "ignore.txt"), "w") as f:
@@ -93,7 +103,7 @@ def test_manifest_verify_ignore_options(tmp_path, config):
     
     # Should not raise an error when ignore_extra is True
     manifest.verify(ignore_extra=True)
-    assert manifest.valid == True
+    assert manifest.is_valid == True
 
 def test_manifest_append(tmp_path, config):
     """Test het toevoegen van ontbrekende bestanden aan het manifest."""

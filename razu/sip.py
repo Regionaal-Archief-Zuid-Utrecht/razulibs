@@ -90,7 +90,8 @@ class Sip:
             self.manifest.extend_entry(resource.filename, {
                 "ObjectUID": resource.uid,
                 "Source": self.archive_creator_uri,
-                "Dataset": self.dataset_id
+                "Dataset": self.dataset_id,
+                "URI": resource.this_file_uri
             })
 
             if resource.metadata_sources is None:
@@ -118,7 +119,8 @@ class Sip:
                     "Source": self.archive_creator_uri,
                     "Dataset": self.dataset_id,
                     "FileFormat": resource.ext_file_fileformat_uri,
-                    "OriginalFilename": resource.ext_file_original_filename
+                    "OriginalFilename": resource.ext_file_original_filename,
+                    "URI": resource.ext_file_uri
                 })
                 self.log_event.filename_change(resource.ext_file_uri, resource.ext_file_original_filename, resource.ext_filename)
 

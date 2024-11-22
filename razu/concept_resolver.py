@@ -135,10 +135,10 @@ class ConceptResolver:
         """
         Initializes the ConceptResolver for a specific vocabulary, if it hasn't been initialized yet.
         """
-        if not hasattr(self, "initialized"):
+        if not hasattr(self, "is_initialized"):
             self.vocabulary = vocabulary
             self.cache = {}
-            self.initialized = True  # Mark as initialized to avoid re-initialization
+            self.is_initialized = True  # Mark as initialized to avoid re-initialization
 
     def _build_query(self, term: str) -> str:
         """
