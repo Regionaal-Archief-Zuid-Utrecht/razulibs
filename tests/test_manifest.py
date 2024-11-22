@@ -1,68 +1,135 @@
 import pytest
 import os
 import json
-from unittest.mock import patch, mock_open, MagicMock
+from datetime import datetime
 from razu.manifest import Manifest
+from razu.razuconfig import RazuConfig
+from razu.config import Config
 
-
+@pytest.fixture(autouse=True)
+def reset_config():
+    """Reset the Config singleton between tests."""
+    Config.reset()
+    RazuConfig.reset()
+    yield
+    Config.reset()
+    RazuConfig.reset()
 
 @pytest.fixture
-def mock_manifest():
-    """Fixture om een mock manifest aan te maken."""
-    with patch("razu.manifest.Manifest.calculate_md5", return_value="dummy_checksum"):
-        manifest = Manifest("/mock_directory", "mock_manifest.json")
-        yield manifest
+def config():
+    """Setup de benodigde configuratie voor alle tests."""
+    Config.reset()  # Ensure clean state before creating new config
+    return RazuConfig(
+        archive_creator_id="G312",
+        archive_id="661"
+    )
 
+def test_manifest_initialization(tmp_path, config):
+    """Test de initialisatie van een Manifest object."""
+    manifest = Manifest(str(tmp_path), config=config)
+    assert manifest.valid == False
+    assert manifest.modified == False
+    assert manifest.files == {}
 
-@patch("os.path.exists", return_value=False)  # Simuleer dat het manifest nog niet bestaat
-@patch("os.walk")
-def test_create_from_directory(mock_os_walk, mock_path_exists, mock_manifest):
-    """Test dat een manifest correct wordt aangemaakt vanuit een directory."""
-    mock_os_walk.return_value = [("/mock_directory", [], ["file1.txt", "file2.txt"])]
+def test_manifest_add_entry(tmp_path, config):
+    """Test het toevoegen van een bestand aan het manifest."""
+    manifest = Manifest(str(tmp_path), config=config)
     
-    with patch("builtins.open", mock_open()) as mock_file:
-        mock_manifest.create_from_directory()
-        
-        # Controleer of de bestanden correct in het manifest zijn opgenomen
-        assert "file1.txt" in mock_manifest.files
-        assert "file2.txt" in mock_manifest.files
-        mock_file.assert_called_once_with("/mock_directory/mock_manifest.json", "w")
+    # Voeg een test bestand toe
+    test_date = datetime.now().isoformat()
+    manifest.add_entry("test.txt", "md5hash123", test_date)
+    
+    assert "test.txt" in manifest.files
+    assert manifest.files["test.txt"]["MD5Hash"] == "md5hash123"
+    assert manifest.files["test.txt"]["MD5HashDate"] == test_date
 
+def test_manifest_save_and_load(tmp_path, config):
+    """Test het opslaan en laden van een manifest bestand."""
+    manifest = Manifest(str(tmp_path), config=config)
+    
+    # Voeg een test bestand toe en sla op
+    test_date = datetime.now().isoformat()
+    manifest.add_entry("test.txt", "md5hash123", test_date)
+    manifest.save()
+    
+    # Laad een nieuw manifest object
+    manifest2 = Manifest(str(tmp_path), config=config)
+    assert "test.txt" in manifest2.files
+    assert manifest2.files["test.txt"]["MD5Hash"] == "md5hash123"
+    assert manifest2.files["test.txt"]["MD5HashDate"] == test_date
 
-@patch("os.path.exists", return_value=True)  # Simuleer dat het manifest al bestaat
-@patch("builtins.open", mock_open(read_data=json.dumps({"file1.txt": {"MD5Hash": "dummy_checksum"}})))
-def test_verify_success(mock_path_exists, mock_manifest):
-    """Test dat de manifest validatie correct is."""
-    mock_manifest.files = {
-        "file1.txt": {"MD5Hash": "dummy_checksum"},
-        "file2.txt": {"MD5Hash": "dummy_checksum"}
-    }
+def test_manifest_verify_missing_file(tmp_path, config):
+    """Test verificatie wanneer een bestand ontbreekt."""
+    manifest = Manifest(str(tmp_path), config=config)
+    
+    # Voeg een test bestand toe dat niet bestaat
+    manifest.add_entry("missing.txt", "md5hash123", datetime.now().isoformat())
+    
+    with pytest.raises(ValueError) as excinfo:
+        manifest.verify()
+    assert "Missing files" in str(excinfo.value)
+    assert "missing.txt" in str(excinfo.value)
 
-    with patch("os.walk", return_value=[("/mock_directory", [], ["file1.txt", "file2.txt"])]):
-        errors = mock_manifest.verify()
-        
-        assert errors["missing_files"] == []
-        assert errors["checksum_mismatch"] == []
-        assert errors["extra_files"] == []
+def test_manifest_verify_extra_file(tmp_path, config):
+    """Test verificatie wanneer er een extra bestand aanwezig is."""
+    manifest = Manifest(str(tmp_path), config=config)
+    
+    # Maak een bestand dat niet in het manifest staat
+    with open(os.path.join(tmp_path, "extra.txt"), "w") as f:
+        f.write("test")
+    
+    with pytest.raises(ValueError) as excinfo:
+        manifest.verify()
+    assert "Extra files" in str(excinfo.value)
+    assert "extra.txt" in str(excinfo.value)
 
+def test_manifest_verify_ignore_options(tmp_path, config):
+    """Test verificatie met ignore opties."""
+    manifest = Manifest(str(tmp_path), config=config)
+    
+    # Maak een bestand dat niet in het manifest staat
+    with open(os.path.join(tmp_path, "ignore.txt"), "w") as f:
+        f.write("test")
+    
+    # Should not raise an error when ignore_extra is True
+    manifest.verify(ignore_extra=True)
+    assert manifest.valid == True
 
-@patch("os.path.exists", return_value=True)
-@patch("os.walk")
-def test_append_new_files(mock_os_walk, mock_path_exists, mock_manifest):
-    """Test dat nieuwe bestanden worden toegevoegd aan het manifest."""
-    # Stel dat het manifest al bestaat met één bestand
-    manifest_data = json.dumps({"file1.txt": {"MD5Hash": "dummy_checksum"}})
+def test_manifest_append(tmp_path, config):
+    """Test het toevoegen van ontbrekende bestanden aan het manifest."""
+    manifest = Manifest(str(tmp_path), config=config)
+    
+    # Create empty manifest first
+    manifest.create_from_directory()
+    
+    # Maak een bestand dat niet in het manifest staat
+    test_file = os.path.join(tmp_path, "append.txt")
+    with open(test_file, "w") as f:
+        f.write("test")
+    
+    manifest.append()
+    assert "append.txt" in manifest.files
 
-    # Mock voor het openen van het manifestbestand (zowel voor lezen als schrijven)
-    with patch("builtins.open", mock_open(read_data=manifest_data)) as mock_file:
-        mock_os_walk.return_value = [("/mock_directory", [], ["file1.txt", "file2.txt"])]
+def test_manifest_update_entry(tmp_path, config):
+    """Test het bijwerken van een bestaand manifest entry."""
+    manifest = Manifest(str(tmp_path), config=config)
+    
+    # Voeg een test bestand toe
+    manifest.add_entry("test.txt", "md5hash123", datetime.now().isoformat())
+    
+    # Voeg extra informatie toe
+    manifest.extend_entry("test.txt", {"extra": "info"})
+    
+    assert manifest.files["test.txt"]["extra"] == "info"
 
-        # Voer de append operatie uit
-        mock_manifest.append()
-
-        # Controleer of het nieuwe bestand ('file2.txt') is toegevoegd
-        assert "file2.txt" in mock_manifest.files
-
-        # Controleer dat open() is aangeroepen voor lezen en schrijven
-        mock_file.assert_any_call("/mock_directory/mock_manifest.json", "r")  # Voor het laden van het manifest
-        mock_file.assert_any_call("/mock_directory/mock_manifest.json", "w")  # Voor het opslaan van het manifest
+def test_manifest_get_filenames(tmp_path, config):
+    """Test het ophalen van bestandsnamen uit het manifest."""
+    manifest = Manifest(str(tmp_path), config=config)
+    
+    # Voeg test bestanden toe
+    manifest.add_entry("test1.txt", "md5hash123", datetime.now().isoformat())
+    manifest.add_entry("test2.txt", "md5hash456", datetime.now().isoformat())
+    
+    filenames = manifest.get_filenames()
+    assert "test1.txt" in filenames
+    assert "test2.txt" in filenames

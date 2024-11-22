@@ -53,3 +53,8 @@ class Config:
             return self.__dict__['_settings'][name]
         else:
             raise AttributeError(f"The configuration variable '{name}' does not exist.")
+
+    @classmethod
+    def reset(cls):
+        """Resets the configuration singleton to its initial state."""
+        cls._instance = None

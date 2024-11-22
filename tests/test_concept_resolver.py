@@ -35,7 +35,14 @@ class TestConcept:
         # Mock het SPARQL antwoord
         mock_query = MagicMock()
         mock_query.query().convert.return_value = {
-            'results': {'bindings': [{'value': {'value': 'queried_value'}}]}
+            'results': {
+                'bindings': [{
+                    'value': {
+                        'type': 'literal',
+                        'value': 'queried_value'
+                    }
+                }]
+            }
         }
         mock_sparql_wrapper.return_value = mock_query
         
@@ -55,9 +62,15 @@ class TestConcept:
 # Test voor de ConceptResolver class
 class TestConceptResolver:
 
+    @patch('razu.concept_resolver.SparqlEndpointManager.get_endpoint_by_vocabulary')
+    @patch('razu.concept_resolver.SparqlEndpointManager.get_endpoint_by_uri')
     @patch('razu.concept_resolver.SPARQLWrapper')  # Mock de SPARQLWrapper om netwerkverzoeken te simuleren
-    def test_get_concept_cached(self, mock_sparql_wrapper):
+    def test_get_concept_cached(self, mock_sparql_wrapper, mock_get_endpoint_by_uri, mock_get_endpoint_by_vocabulary):
         """Test of de cache correct werkt voor termen."""
+        # Mock de endpoint URLs
+        mock_get_endpoint_by_vocabulary.return_value = "http://mock.endpoint/vocabulary"
+        mock_get_endpoint_by_uri.return_value = "http://mock.endpoint/uri"
+        
         cfg = RazuConfig()
         resolver = ConceptResolver("vocabulary")
         term = "example_term"
@@ -69,9 +82,15 @@ class TestConceptResolver:
         assert concept == cached_concept
         mock_sparql_wrapper.assert_not_called()
 
+    @patch('razu.concept_resolver.SparqlEndpointManager.get_endpoint_by_vocabulary')
+    @patch('razu.concept_resolver.SparqlEndpointManager.get_endpoint_by_uri')
     @patch('razu.concept_resolver.SPARQLWrapper')  # Mock de SPARQLWrapper om netwerkverzoeken te simuleren
-    def test_get_concept_from_sparql(self, mock_sparql_wrapper):
+    def test_get_concept_from_sparql(self, mock_sparql_wrapper, mock_get_endpoint_by_uri, mock_get_endpoint_by_vocabulary):
         """Test het ophalen van een concept via SPARQL."""
+        # Mock de endpoint URLs
+        mock_get_endpoint_by_vocabulary.return_value = "http://mock.endpoint/vocabulary"
+        mock_get_endpoint_by_uri.return_value = "http://mock.endpoint/uri"
+        
         cfg = RazuConfig()
         resolver = ConceptResolver("vocabulary")
         term = "example_term"
@@ -79,7 +98,14 @@ class TestConceptResolver:
         # Mock het SPARQL antwoord
         mock_query = MagicMock()
         mock_query.query().convert.return_value = {
-            'results': {'bindings': [{'uri': {'value': f'http://example.org/{cfg.resource_identifier}/concept'}}]}
+            'results': {
+                'bindings': [{
+                    'concept': {
+                        'type': 'uri',
+                        'value': f'http://example.org/{cfg.resource_identifier}/concept'
+                    }
+                }]
+            }
         }
         mock_sparql_wrapper.return_value = mock_query
         
@@ -88,27 +114,59 @@ class TestConceptResolver:
         assert concept.get_uri() == URIRef(f"http://example.org/{cfg.resource_identifier}/concept")
         assert resolver.cache[term].get_uri() == URIRef(f"http://example.org/{cfg.resource_identifier}/concept")
 
+    @patch('razu.concept_resolver.SparqlEndpointManager.get_endpoint_by_vocabulary')
+    @patch('razu.concept_resolver.SparqlEndpointManager.get_endpoint_by_uri')
     @patch('razu.concept_resolver.SPARQLWrapper')  # Mock de SPARQLWrapper om netwerkverzoeken te simuleren
-    def test_get_concept_value(self, mock_sparql_wrapper):
+    def test_get_concept_value(self, mock_sparql_wrapper, mock_get_endpoint_by_uri, mock_get_endpoint_by_vocabulary):
         """Test het ophalen van een waarde voor een concept en predicate."""
+        # Mock de endpoint URLs
+        mock_get_endpoint_by_vocabulary.return_value = "http://mock.endpoint/vocabulary"
+        mock_get_endpoint_by_uri.return_value = "http://mock.endpoint/uri"
+        
         cfg = RazuConfig()
         resolver = ConceptResolver("vocabulary")
         term = "example_term"
         predicate = URIRef("http://example.org/predicate")
         
-        # Mock het SPARQL antwoord voor zowel term als predicate
-        mock_query = MagicMock()
-        mock_query.query().convert.side_effect = [
-            # Eerste mock is voor get_concept
-            {
-                'results': {'bindings': [{'uri': {'value': f'http://example.org/{cfg.resource_identifier}/concept'}}]}
-            },
-            # Tweede mock is voor get_value
-            {
-                'results': {'bindings': [{'value': {'value': 'queried_value'}}]}
+        # Mock het SPARQL antwoord voor get_concept
+        mock_instance = MagicMock()
+        mock_instance.query().convert.return_value = {
+            'results': {
+                'bindings': [{
+                    'uri': {
+                        'type': 'uri',
+                        'value': f'http://example.org/{cfg.resource_identifier}/concept'
+                    }
+                }]
             }
-        ]
-        mock_sparql_wrapper.return_value = mock_query
+        }
         
+        # Mock het SPARQL antwoord voor get_value
+        mock_instance2 = MagicMock()
+        mock_instance2.query().convert.return_value = {
+            'results': {
+                'bindings': [{
+                    'value': {
+                        'type': 'literal',
+                        'value': 'queried_value'
+                    }
+                }]
+            }
+        }
+        
+        # Return verschillende mock instances voor elke SPARQLWrapper instantiatie
+        mock_sparql_wrapper.side_effect = [mock_instance, mock_instance2]
+        
+        # Debug prints
+        print("Testing get_concept_value...")
+        concept = resolver.get_concept(term)
+        print(f"Concept: {concept}")
+        if concept:
+            print(f"Concept URI: {concept.get_uri()}")
+            value = concept.get_value(predicate)
+            print(f"Value: {value}")
+        else:
+            print("No concept found!")
+            
         value = resolver.get_concept_value(term, predicate)
         assert value == "queried_value"
