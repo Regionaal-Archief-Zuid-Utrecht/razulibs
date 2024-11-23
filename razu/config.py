@@ -43,7 +43,7 @@ class Config:
     def __setattr__(self, name, value):
         """Adds a configuration variable or raises an error if it already exists."""
         if name in self.__dict__['_settings']:
-            raise ValueError(f"The configuration variable '{name}' cannot be overwritten.")
+            raise ValueError(f"The configuration variable '{name}' with value {self.__dict__['_settings'][name]} cannot be overwritten.")
         else:
             self.__dict__['_settings'][name] = value
 

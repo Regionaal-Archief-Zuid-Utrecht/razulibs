@@ -12,7 +12,7 @@ class TestConcept:
     def test_get_value_cached(self, mock_sparql_wrapper):
         """Test of de cache correct wordt gebruikt."""
         cfg = RazuConfig()
-        uri = URIRef(f"http://example.org/{cfg.resource_identifier}/concept")
+        uri = URIRef(f"http://example.org/{cfg.resource_identifier_segment}/concept")
         predicate = URIRef("http://example.org/predicate")
         concept = Concept(uri)
 
@@ -28,7 +28,7 @@ class TestConcept:
     def test_get_value_from_sparql(self, mock_sparql_wrapper):
         """Test het ophalen van waarde via SPARQL wanneer niet in cache."""
         cfg = RazuConfig()
-        uri = URIRef(f"http://example.org/{cfg.resource_identifier}/concept")
+        uri = URIRef(f"http://example.org/{cfg.resource_identifier_segment}/concept")
         predicate = URIRef("http://example.org/predicate")
         concept = Concept(uri)
         
@@ -54,7 +54,7 @@ class TestConcept:
     def test_get_uri(self):
         """Test of de URI correct wordt teruggegeven."""
         cfg = RazuConfig()
-        uri = URIRef(f"http://example.org/{cfg.resource_identifier}/concept")
+        uri = URIRef(f"http://example.org/{cfg.resource_identifier_segment}/concept")
         concept = Concept(uri)
         assert concept.get_uri() == uri
 
@@ -74,7 +74,7 @@ class TestConceptResolver:
         cfg = RazuConfig()
         resolver = ConceptResolver("vocabulary")
         term = "example_term"
-        cached_concept = Concept(URIRef(f"http://example.org/{cfg.resource_identifier}/concept"))
+        cached_concept = Concept(URIRef(f"http://example.org/{cfg.resource_identifier_segment}/concept"))
         resolver.cache[term] = cached_concept
         
         # Test dat de cache wordt gebruikt
@@ -102,7 +102,7 @@ class TestConceptResolver:
                 'bindings': [{
                     'concept': {
                         'type': 'uri',
-                        'value': f'http://example.org/{cfg.resource_identifier}/concept'
+                        'value': f'http://example.org/{cfg.resource_identifier_segment}/concept'
                     }
                 }]
             }
@@ -111,8 +111,8 @@ class TestConceptResolver:
         
         concept = resolver.get_concept(term)
         
-        assert concept.get_uri() == URIRef(f"http://example.org/{cfg.resource_identifier}/concept")
-        assert resolver.cache[term].get_uri() == URIRef(f"http://example.org/{cfg.resource_identifier}/concept")
+        assert concept.get_uri() == URIRef(f"http://example.org/{cfg.resource_identifier_segment}/concept")
+        assert resolver.cache[term].get_uri() == URIRef(f"http://example.org/{cfg.resource_identifier_segment}/concept")
 
     @patch('razu.concept_resolver.SparqlEndpointManager.get_endpoint_by_vocabulary')
     @patch('razu.concept_resolver.SparqlEndpointManager.get_endpoint_by_uri')
@@ -135,7 +135,7 @@ class TestConceptResolver:
                 'bindings': [{
                     'uri': {
                         'type': 'uri',
-                        'value': f'http://example.org/{cfg.resource_identifier}/concept'
+                        'value': f'http://example.org/{cfg.resource_identifier_segment}/concept'
                     }
                 }]
             }

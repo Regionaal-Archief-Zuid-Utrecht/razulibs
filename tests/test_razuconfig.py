@@ -15,11 +15,11 @@ def test_default_settings():
     """Test dat de standaardwaarden correct worden ingesteld."""
     config = RazuConfig()
     
-    assert config.RAZU_base_URI == "https://data.razu.nl/"
-    assert config.RAZU_file_id == "NL-WbDRAZU"
+    assert config.razu_base_uri == "https://data.razu.nl/"
+    assert config.razu_file_id == "NL-WbDRAZU"
     assert config.sparql_endpoint_prefix == "https://api.data.razu.nl/datasets/id/"
     assert config.sparql_endpoint_suffix == "/sparql"
-    assert config.resource_identifier == "id"
+    assert config.resource_identifier_segment == "id"
     assert config.metadata_suffix == "meta"
 
 
