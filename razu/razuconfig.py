@@ -14,12 +14,6 @@ class RazuConfig(Config):
             "resource_identifier_segment": "id",
             "metadata_suffix": "meta",
             "metadata_extension": "json",
-            "save_directory": ".",
-            "archive_creator_id": None,
-            "archive_id": None,
-            "manifest_filename": "manifest.json",
-            "eventlog_filename": "eventlog.json",
-            "filename_prefix": "razu"
         }
         instance = super(RazuConfig, cls).__new__(cls, **initial_settings)
 
