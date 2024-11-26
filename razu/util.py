@@ -11,6 +11,7 @@ def date_type(datestring: str) -> Literal:
     Converts a string into an RDF Literal with the appropriate datatype if it represents a date.
     - "yyyy-mm-dd" -> "yyyy-mm-dd"^^xsd:date
     - "yyyy" -> "yyyy-mm-dd"^^xsd:gYear
+    - "d{1,2}-d{1,2}-d{4}" -> "yyyy-mm-dd"^^xsd:date
     - Other string values -> Literal without a specific datatype
 
     Parameters:
@@ -25,11 +26,16 @@ def date_type(datestring: str) -> Literal:
     """
     date_pattern = re.compile(r"^\d{4}-\d{2}-\d{2}$")
     year_pattern = re.compile(r"^\d{4}$")
+    day_month_year_pattern = re.compile(r"^(\d{1,2})-(\d{1,2})-(\d{4})$")
 
     if date_pattern.match(datestring):
         return Literal(datestring, datatype=XSD.date)
     elif year_pattern.match(datestring):
         return Literal(datestring, datatype=XSD.gYear)
+    elif day_month_year_pattern.match(datestring):
+        day, month, year = day_month_year_pattern.match(datestring).groups()
+        formatted_date = f"{year}-{int(month):02d}-{int(day):02d}"
+        return Literal(formatted_date, datatype=XSD.date)
     else:
         return Literal(datestring)
 
