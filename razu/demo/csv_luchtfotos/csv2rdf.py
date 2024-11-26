@@ -136,7 +136,7 @@ if __name__ == "__main__":
             MDTO.dekkingInTijd: { 
                 RDF.type: MDTO.DekkingInTijdGegevens,
                 MDTO.dekkingInTijdBeginDatum: razu.util.date_type(row['Datering']),
-                MDTO.dekkingInTijdType: URIRef(dekkingintijdtypen.get_concept_uri("Opnamedatum"))
+                MDTO.dekkingInTijdType: URIRef(dekkingintijdtypen.get_concept_uri("Opname"))
             },
             MDTO.beperkingGebruik: [
                 { 
