@@ -9,9 +9,7 @@ from razu.meta_graph import MetaGraph, RDF, XSD, PREMIS, EROR, ERAR, PROV
 import razu.util as util
 
 
-# NL-WbDRAZU-K50907905-500.premis.json
 # https://data.razu.nl/id/event/NL-WbDRAZU-K50907905-500-e17676
-
 # https://data.razu.nl/id/event/NL-WbDRAZU-{archiefvormer}-{toegang}-{timestamp}
 
 
@@ -39,7 +37,7 @@ class Events:
 
             for s in self.graph.subjects():
                 if isinstance(s, URIRef):
-                    extracted_id = util.extract_id_str_from_filepath(s)
+                    extracted_id = util.extract_id_str_from_file_path(s)
                     event_id = int(extracted_id[1:])
                     self.current_id = max(self.current_id, event_id)
 

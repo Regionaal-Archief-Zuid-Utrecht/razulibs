@@ -76,7 +76,7 @@ def get_last_modified(file_path: str) -> str:
 
 def extract_part_from_filename(filename: str, part_number: int) -> str:
     """
-    Extracts a specific part of the filename based on its position after cfg.RAZU_file_id.
+    Extracts a specific part of the filename based on its position after cfg.razu_file_id.
     
     Parameters:
     -----------
@@ -93,14 +93,14 @@ def extract_part_from_filename(filename: str, part_number: int) -> str:
     Raises:
     -------
     ValueError:
-        If the RAZU file ID or the desired part is not found.
+        If the razu file ID or the desired part is not found.
     """
     cfg = RazuConfig()
 
-    start_index = filename.find(cfg.RAZU_file_id)
+    start_index = filename.find(cfg.razu_file_id)
     if start_index == -1:
-        raise ValueError(f"RAZU file ID '{cfg.RAZU_file_id}' not found in the filename.")
-    start_index += len(cfg.RAZU_file_id) + 1  
+        raise ValueError(f"razu file ID '{cfg.razu_file_id}' not found in the filename.")
+    start_index += len(cfg.razu_file_id) + 1  
     for _ in range(part_number - 1):
         start_index = filename.find('-', start_index) + 1
         if start_index == 0:

@@ -146,13 +146,9 @@ class Sip:
         self.manifest.save()
 
     def _create_new_sip(self, archive_creator_id, dataset_id):
-        if not os.path.exists(self.sip_directory):
-            os.makedirs(self.sip_directory)
-        elif os.listdir(self.sip_directory):
-            raise ValueError(f"The SIP directory '{self.sip_directory}' is not empty.")
         self.archive_creator_id = archive_creator_id
         self.dataset_id = dataset_id
-        print(f"Created empty SIP at {self.sip_directory}.")
+        os.makedirs(self.sip_directory, exist_ok=True)
 
     def _open_existing_sip(self):
         if not os.listdir(self.sip_directory):
@@ -166,7 +162,7 @@ class Sip:
                 if self.archive_creator_id is None:
                     self.archive_creator_id = util.extract_source_from_filename(filename)
                     self.dataset_id = util.extract_archive_from_filename(filename)
-                id = util.extract_id_from_filepath(filename)
+                id = util.extract_id_from_file_path(filename)
                 meta_resource = StructuredMetaResource(id=id)
                 meta_resource.load()
                 self.meta_resources[id] = meta_resource

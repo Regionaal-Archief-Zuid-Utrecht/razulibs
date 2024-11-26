@@ -1,9 +1,8 @@
-# Ignore Python bytecode files
 *.pyc
 __pycache__/
-out.ttl
-.idea
-razu/.env
-output/
 build/
 *.egg-info
+.idea
+.env
+out.ttl
+output/
