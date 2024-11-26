@@ -77,6 +77,7 @@ class StructuredMetaResource(MetaResource):
     _algoritmes = ConceptResolver("algoritme")
     _beperkingen_openbaarheid = ConceptResolver("openbaarheid")
     _bestandsformaten = ConceptResolver("bestandsformaat")
+    _dekkingintijdtypen = ConceptResolver("dekkingintijdtype")
     _licenties = ConceptResolver("licentie")
     _waarderingen = ConceptResolver("waardering")
 
@@ -152,6 +153,26 @@ class StructuredMetaResource(MetaResource):
         self.add_properties({RDF.type: rdf_type})
         self.is_modified = True
 
+    def set_classification(self, classification_uri: URIRef):
+        self.add_properties({MDTO.classificatie: classification_uri})
+        self.is_modified = True
+
+    def set_keywords(self, keywords: str, separator: str = ";"):
+        self.add_list_from_string(MDTO.trefwoord, keywords, separator)
+        self.is_modified = True
+
+    def set_applicable_period(self, start_date: str, end_date: str):
+        self.add_properties({
+            MDTO.dekkingInTijd: { 
+                RDF.type: MDTO.DekkingInTijdGegevens,
+                MDTO.dekkingInTijdBeginDatum: util.date_type(start_date),
+                MDTO.dekkingInTijdEindDatum: util.date_type(end_date),
+                MDTO.dekkingInTijdType: URIRef(StructuredMetaResource._dekkingintijdtypen.get_concept_uri("Van toepassing"))
+            }
+        })
+        self.is_modified = True
+            
+
     def set_md5_properties(self, md5checksum, checksum_datetime):
         self.add_properties({
             MDTO.checksum: {
@@ -208,7 +229,6 @@ class StructuredMetaResource(MetaResource):
             }
         })
         self.is_modified = True
-
 
     def set_metadata_source(self, source):
         self.metadata_sources.add(source)
