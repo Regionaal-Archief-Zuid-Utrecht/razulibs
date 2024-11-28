@@ -187,7 +187,7 @@ class ConceptResolver:
             print(f"Error querying the SPARQL endpoint: {e}")
             return None
 
-    def get_concept(self, term: str) -> Optional[Concept]:
+    def get_concept(self, term: str) -> Concept:
         """
         Retrieves a Concept object for the given term. Uses caching to avoid
         repeated queries for the same term.
@@ -200,7 +200,7 @@ class ConceptResolver:
         Returns:
         --------
         Concept:
-            A Concept object representing the URI of the given term, or None if the term was not found.
+            A Concept object representing the URI of the given term.
         """
         if term in self.cache:
             return self.cache[term]
@@ -215,7 +215,8 @@ class ConceptResolver:
                 concept = Concept(uri)
                 self.cache[term] = concept  # Cache the concept
                 return concept
-        return None
+        # If no concept is found, raise an error
+        raise ValueError(f"No Concept found for term: {term}")
 
     # shortcut methods
     def get_concept_value(self, term: str, predicate: URIRef) -> str:
