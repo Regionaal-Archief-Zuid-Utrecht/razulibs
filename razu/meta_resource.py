@@ -78,6 +78,7 @@ class StructuredMetaResource(MetaResource):
     _beperkingen_openbaarheid = ConceptResolver("openbaarheid")
     _bestandsformaten = ConceptResolver("bestandsformaat")
     _dekkingintijdtypen = ConceptResolver("dekkingintijdtype")
+    _eventtypen = ConceptResolver("eventtype")
     _licenties = ConceptResolver("licentie")
     _waarderingen = ConceptResolver("waardering")
 
@@ -172,6 +173,16 @@ class StructuredMetaResource(MetaResource):
         })
         self.is_modified = True
             
+
+    def set_publication_date(self, publication_date: str):
+        self.add_properties({
+            MDTO.event: {
+                RDF.type: MDTO.EventGegevens,
+                MDTO.eventType: URIRef(StructuredMetaResource._eventtypen.get_concept_uri("Publicatie")),
+                MDTO.eventTijd: util.date_type(publication_date)
+            } 
+        })
+        self.is_modified = True
 
     def set_md5_properties(self, md5checksum, checksum_datetime):
         self.add_properties({
