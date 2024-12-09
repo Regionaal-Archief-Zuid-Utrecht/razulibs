@@ -1,4 +1,4 @@
-from typing import Optional
+import sys
 from SPARQLWrapper import SPARQLWrapper, JSON
 from rdflib import URIRef
 from .sparql_endpoint_manager import SparqlEndpointManager
@@ -41,24 +41,12 @@ class Concept:
         self.sparql_endpoint = SparqlEndpointManager.get_endpoint_by_uri(uri)
         self.cache = {}
 
-    def get_value(self, predicate: URIRef) -> Optional[str]:
+    def get_value(self, predicate: URIRef) -> str:
         """
         Fetches the value for a given predicate for this concept.
 
-        This method executes a SPARQL query to retrieve the value associated
-        with the given predicate for this concept's URI. If the value has been
-        cached from a previous query, the cached value is returned instead of 
-        querying the SPARQL endpoint again.
-
-        Parameters:
-        -----------
-        predicate : URIRef
-            The predicate for which the value is requested.
-
-        Returns:
-        --------
-        str:
-            The value associated with the given predicate, or None if no value was found.
+        Executes a SPARQL query to retrieve the value associated with the given predicate for this concept's URI. 
+        Uses caching to avoid unnecessary queries for the same predicate.
         """
         predicate_str = str(predicate)
         
@@ -84,14 +72,15 @@ class Concept:
         try:
             response = sparql_service.query().convert()
             bindings = response.get('results', {}).get('bindings', [])
-            if bindings:
+            if bindings and 'value' in bindings[0]:
                 value = bindings[0]['value']['value']
-                self.cache[predicate_str] = value  # Cache the value
+                self.cache[predicate_str] = value
                 return value
+            else:
+                raise ValueError(f"No value found for {self.uri} and predicate: {predicate}")     
         except Exception as e:
             print(f"Error querying the SPARQL endpoint: {e}")
-
-        return None
+            sys.exit(1)
     
     def get_uri(self) -> URIRef:
         """
@@ -140,6 +129,38 @@ class ConceptResolver:
             self.cache = {}
             self.is_initialized = True  # Mark as initialized to avoid re-initialization
 
+    def get_concept(self, term: str) -> Concept:
+        """
+        Retrieves a Concept object for the given term. Uses caching to avoid
+        repeated queries for the same term.
+        """
+        if term in self.cache:
+            return self.cache[term]
+
+        query = self._build_query(term)
+        response = self._execute_query(query)
+
+        if response:
+            bindings = response.get('results', {}).get('bindings', [])
+            if bindings:
+                uri = URIRef(bindings[0]['uri']['value'])
+                concept = Concept(uri)
+                self.cache[term] = concept  # Cache the concept
+                return concept
+        # If no concept is found, raise an error
+        raise ValueError(f"No Concept found for term: {term}")
+        exit(1)
+
+    # shortcut
+    def get_concept_value(self, term: str, predicate: URIRef) -> str:
+        concept = self.get_concept(term)
+        return concept.get_value(predicate) if concept else None
+
+    # shortcut
+    def get_concept_uri(self, term: str) -> URIRef:
+        concept = self.get_concept(term)
+        return concept.get_uri() if concept else None
+
     def _build_query(self, term: str) -> str:
         """
         Builds the SPARQL query to fetch the URI for a given term.
@@ -162,7 +183,7 @@ class ConceptResolver:
         }} LIMIT 1
         """
 
-    def _execute_query(self, query: str) -> Optional[dict]:
+    def _execute_query(self, query: str) -> dict:
         """
         Executes the given SPARQL query and returns the response as a JSON object.
 
@@ -185,44 +206,4 @@ class ConceptResolver:
             return response
         except Exception as e:
             print(f"Error querying the SPARQL endpoint: {e}")
-            return None
-
-    def get_concept(self, term: str) -> Concept:
-        """
-        Retrieves a Concept object for the given term. Uses caching to avoid
-        repeated queries for the same term.
-
-        Parameters:
-        -----------
-        term : str
-            The term for which a Concept object is requested.
-
-        Returns:
-        --------
-        Concept:
-            A Concept object representing the URI of the given term.
-        """
-        if term in self.cache:
-            return self.cache[term]
-
-        query = self._build_query(term)
-        response = self._execute_query(query)
-
-        if response:
-            bindings = response.get('results', {}).get('bindings', [])
-            if bindings:
-                uri = URIRef(bindings[0]['uri']['value'])
-                concept = Concept(uri)
-                self.cache[term] = concept  # Cache the concept
-                return concept
-        # If no concept is found, raise an error
-        raise ValueError(f"No Concept found for term: {term}")
-
-    # shortcut methods
-    def get_concept_value(self, term: str, predicate: URIRef) -> str:
-        concept = self.get_concept(term)
-        return concept.get_value(predicate) if concept else None
-
-    def get_concept_uri(self, term: str) -> URIRef:
-        concept = self.get_concept(term)
-        return concept.get_uri() if concept else None
+            sys.exit(1)
