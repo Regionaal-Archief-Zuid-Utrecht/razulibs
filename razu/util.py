@@ -161,6 +161,9 @@ def extract_id_str_from_file_path(path: str) -> int:
 def extract_id_from_file_path(path: str) -> str:
     return int(extract_id_str_from_file_path(path))
 
+def extract_id_from_uid(uid: str) -> int:
+    return int(uid.split('-')[-1]) 
+
 def filename_without_extensions(filename: str) -> str:
     """
     Returns the filename without any extensions, removing everything after the first dot.
