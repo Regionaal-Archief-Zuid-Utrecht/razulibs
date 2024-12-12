@@ -1,10 +1,12 @@
 import os
 from rdflib import URIRef, Literal, BNode
 
+from typing import Callable
+
 from razu.incrementer import Incrementer
 from razu.razuconfig import RazuConfig
 from razu.rdf_resource import RDFResource
-from razu.meta_graph import MetaGraph, RDF, MDTO, DCT, PREMIS, XSD, SKOS, OWL
+from razu.meta_graph import MetaGraph, RDF, MDTO, DCT, PREMIS, XSD, SKOS
 from razu.concept_resolver import ConceptResolver
 import razu.util as util
 
@@ -45,10 +47,10 @@ class MetaResource(RDFResource):
     def _construct_identifiers(self, id=None, uid=None, uri=None):
         # uri takes precedence!
         if uri is not None:
-            id = util.extract_id_from_filepath(uri)
+            id = util.extract_id_from_file_path(uri)
             uid = self._construct_uid(id)
         elif uid is not None:
-            id = util.extract_id_from_filepath(uid)
+            id = util.extract_id_from_file_path(uid)
             uri = self._construct_uri(id)
         else:
             id = MetaResource._counter.next() if id is None else id
@@ -135,7 +137,7 @@ class StructuredMetaResource(MetaResource):
     def ext_file_fileformat_uri(self):
         return str(self._get_object_value(MDTO.bestandsformaat, self.uri))
     
-    def add(self, predicate: URIRef, obj, transformer: callable = Literal):
+    def add(self, predicate: URIRef, obj, transformer: Callable = Literal):
         super().add(predicate, obj, transformer)
         self.is_modified = True
     
@@ -143,7 +145,7 @@ class StructuredMetaResource(MetaResource):
         super().add_properties(rdf_properties)
         self.is_modified = True
 
-    def add_list_from_string(self, predicate: URIRef, item_list: str, separator: str, transformer: callable = Literal):
+    def add_list_from_string(self, predicate: URIRef, item_list: str, separator: str, transformer: Callable = Literal):
         super().add_list_from_string(predicate, item_list, separator, transformer)
         self.is_modified = True
 
@@ -152,6 +154,12 @@ class StructuredMetaResource(MetaResource):
 
     def set_type(self, rdf_type: URIRef):
         self.add_properties({RDF.type: rdf_type})
+        self.is_modified = True
+        
+    def set_name(self, name: str):
+        self.add_properties( {
+            MDTO.naam: name
+        })
         self.is_modified = True
 
     def set_classification(self, classification_uri: URIRef):
@@ -172,7 +180,17 @@ class StructuredMetaResource(MetaResource):
             }
         })
         self.is_modified = True
-            
+
+    def set_event_with_actor(self, event_type: str, event_date: str, event_actor: str):
+        self.add_properties({
+            MDTO.event: {
+                RDF.type: MDTO.EventGegevens,
+                MDTO.eventType: URIRef(StructuredMetaResource._eventtypen.get_concept_uri(event_type)),
+                MDTO.eventTijd: util.date_type(event_date),
+                MDTO.eventActor: URIRef(StructuredMetaResource._actoren.get_concept_uri(event_actor))
+            } 
+        })
+        self.is_modified = True
 
     def set_publication_date(self, publication_date: str):
         self.add_properties({

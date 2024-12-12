@@ -158,7 +158,7 @@ def extract_id_str_from_file_path(path: str) -> int:
     except (ValueError, TypeError):
         return None 
 
-def extract_id_from_file_path(path: str) -> str:
+def extract_id_from_file_path(path: str) -> int:
     return int(extract_id_str_from_file_path(path))
 
 def extract_id_from_uid(uid: str) -> int:
