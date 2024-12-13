@@ -12,9 +12,9 @@ class RunInfo():
         self.directory = directory
         self.name = None
         self.uri = None
-        self.start_time = None
-        self.end_time = None
-        
+        self.start_time : str = ""
+        self.end_time : str = ""
+
         if isinstance(application, str):
             self.id = application
             self._load()
