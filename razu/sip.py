@@ -64,10 +64,15 @@ class Sip:
             uris.append(meta_resource.ext_file_uri)
         return uris
 
-    def export_rdf(self, format='turtle'):
+    @property
+    def graph(self) -> MetaGraph:
         graph = MetaGraph()
         for resource in self.meta_resources.values():
             graph += resource.graph
+        return graph
+
+    def export_rdf(self, format='turtle') -> None:
+        graph = self.graph
         print(graph.serialize(format=format))
 
     def create_resource(self, id=None, rdf_type=None) -> StructuredMetaResource:
