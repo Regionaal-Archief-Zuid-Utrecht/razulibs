@@ -159,7 +159,6 @@ class Sip:
         if not os.listdir(self.sip_directory):
             raise ValueError(f"The SIP directory '{self.sip_directory}' is empty.")
         self.archive_creator_id, self.dataset_id = self._determine_ids_from_files_in_sip_directory()
-        print(f"Opened existing SIP at {self.sip_directory}.")
 
     def _load_graph(self):
         for filename in os.listdir(self.sip_directory):
