@@ -84,23 +84,9 @@ class StructuredMetaResource(MetaResource):
     _licenties = ConceptResolver("licentie")
     _waarderingen = ConceptResolver("waardering")
 
-    def __init__(self, id=None, rdf_type=None):
+    def __init__(self, id=None, rdf_type=MDTO.Informatieobject):
         super().__init__(id)
-
-        if rdf_type is None:
-            rdf_type = MDTO.Informatieobject
-        self.add_properties({
-            RDF.type: rdf_type,
-            MDTO.identificatie: {
-                RDF.type: MDTO.IdentificatieGegevens,
-                MDTO.identificatieBron: "e-Depot RAZU",
-                MDTO.identificatieKenmerk: self.uid
-            },
-            MDTO.waardering: StructuredMetaResource._waarderingen.get_concept('B').get_uri(),
-            MDTO.archiefvormer: StructuredMetaResource._actoren.get_concept(MetaResource._config.archive_creator_id).get_uri(),
-            DCT.hasFormat: URIRef(self.this_file_uri)
-        })
-        self.graph.add((URIRef(self.this_file_uri), RDF.type, PREMIS.File))
+        self._init_rdf_properties(rdf_type)
         self.metadata_sources = set()
         self.is_modified = True
 
@@ -271,3 +257,21 @@ class StructuredMetaResource(MetaResource):
                 if isinstance(s, BNode):
                     return o
         return None
+
+    def _init_rdf_properties(self, rdf_type):
+        properties = {
+            RDF.type: rdf_type,
+            MDTO.identificatie: {
+                RDF.type: MDTO.IdentificatieGegevens,
+                MDTO.identificatieBron: "e-Depot RAZU",
+                MDTO.identificatieKenmerk: self.uri
+            },
+            DCT.hasFormat: URIRef(self.this_file_uri)
+        }
+        if rdf_type == MDTO.Informatieobject:
+            properties.update({
+                MDTO.waardering: StructuredMetaResource._waarderingen.get_concept('B').get_uri(),
+                MDTO.archiefvormer: StructuredMetaResource._actoren.get_concept(MetaResource._config.archive_creator_id).get_uri()
+            })
+        self.add_properties(properties)
+        self.graph.add((URIRef(self.this_file_uri), RDF.type, PREMIS.File))
