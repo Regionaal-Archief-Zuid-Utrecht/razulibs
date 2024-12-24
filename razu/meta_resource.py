@@ -259,7 +259,7 @@ class StructuredMetaResource(MetaResource):
         return None
 
     def _init_rdf_properties(self, rdf_type):
-        properties = {
+        self.add_properties({
             RDF.type: rdf_type,
             MDTO.identificatie: {
                 RDF.type: MDTO.IdentificatieGegevens,
@@ -267,11 +267,10 @@ class StructuredMetaResource(MetaResource):
                 MDTO.identificatieKenmerk: self.uri
             },
             DCT.hasFormat: URIRef(self.this_file_uri)
-        }
+        })
         if rdf_type == MDTO.Informatieobject:
-            properties.update({
+            self.add_properties({
                 MDTO.waardering: StructuredMetaResource._waarderingen.get_concept('B').get_uri(),
                 MDTO.archiefvormer: StructuredMetaResource._actoren.get_concept(MetaResource._config.archive_creator_id).get_uri()
             })
-        self.add_properties(properties)
         self.graph.add((URIRef(self.this_file_uri), RDF.type, PREMIS.File))

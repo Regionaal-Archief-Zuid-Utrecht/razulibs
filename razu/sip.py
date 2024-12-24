@@ -9,6 +9,7 @@ from .meta_resource import StructuredMetaResource
 from .meta_graph import MetaGraph
 from .manifest import Manifest
 from .events import RazuEvents
+from .meta_graph import MDTO
 
 import razu.util as util
 
@@ -75,7 +76,7 @@ class Sip:
         graph = self.graph
         print(graph.serialize(format=format))
 
-    def create_resource(self, id=None, rdf_type=None) -> StructuredMetaResource:
+    def create_resource(self, id=None, rdf_type=MDTO.Informatieobject) -> StructuredMetaResource:
         if self.is_locked:
             raise AssertionError("Sip is locked. Cannot create resource.")
         resource = StructuredMetaResource(id, rdf_type)
