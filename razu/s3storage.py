@@ -4,6 +4,8 @@ import hashlib
 import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
 from dotenv import load_dotenv
+import mimetypes
+import urllib.parse
 
 
 class S3Storage:
@@ -51,7 +53,7 @@ class S3Storage:
             aws_secret_access_key=self.secret_key
         )
 
-    def check_or_create_bucket(self, bucket_name):
+    def check_or_create_bucket(self, bucket_name) -> bool:
         """
         Checks if a bucket exists in the S3 storage and creates it if it does not exist.
         
@@ -76,7 +78,7 @@ class S3Storage:
                 print(f"An error occurred while checking bucket '{bucket_name}': {e}")
                 return False
 
-    def store_file(self, bucket_name, filename, metadata):
+    def store_file(self, bucket_name, filename, metadata) -> None:
         """
         Uploads a file to the specified S3 bucket along with its metadata.
 
@@ -85,11 +87,16 @@ class S3Storage:
         :param metadata: A dictionary containing metadata for the uploaded file.
         """
         try:
+            mime_type, _ = mimetypes.guess_type(filename)
+            if mime_type is None:
+                mime_type = 'application/octet-stream'
+            
+            extra_args = {"Metadata": self._encode_metadata(metadata), "ContentType": mime_type}
             self.s3_client.upload_file(
                 filename,
                 bucket_name,
                 os.path.basename(filename),
-                ExtraArgs={"Metadata": metadata}
+                ExtraArgs=extra_args
             )
             print(f"File {filename} uploaded successfully.")
         except FileNotFoundError:
@@ -99,17 +106,7 @@ class S3Storage:
         except Exception as e:
             print(f"An error occurred: {e}")
 
-    def ls(self, bucket_name: str):
-        """
-        Lists the objects in the specified S3 bucket.
-
-        :param bucket_name: The name of the bucket to list objects from.
-        """
-        response = self.s3_client.list_objects_v2(Bucket=bucket_name)
-        for obj in response.get('Contents', []):
-            print(obj['Key'])
-
-    def get_file_metadata(self, bucket: str, file_key: str):
+    def get_file_metadata(self, bucket: str, file_key: str) -> dict:
         """
         Retrieves the metadata of a specific file (object) from an S3 bucket.
         
@@ -168,7 +165,7 @@ class S3Storage:
             else:
                 print(f"Upload verification failed for {file_key}. Local MD5: {local_md5}, S3 ETag: {s3_etag}")
 
-    def update_acl(self, bucket_name, file_key, acl="public-read"):
+    def update_acl(self, bucket_name, file_key, acl="public-read") -> None:
         """
         Updates the ACL (Access Control List) for a specific object in the S3 bucket.
 
@@ -182,7 +179,17 @@ class S3Storage:
         except Exception as e:
             print(f"An error occurred while updating ACL: {e}")
         
-    def get_bucket_policy(self, bucket_name):
+    def get_bucket_contents(self, bucket_name: str) -> list:
+        """
+        Gets a list of all object keys in the specified S3 bucket.
+        
+        :param bucket_name: The name of the bucket to list objects from.
+        :return: List of object keys in the bucket.
+        """
+        response = self.s3_client.list_objects_v2(Bucket=bucket_name)
+        return [obj['Key'] for obj in response.get('Contents', [])]
+    
+    def get_bucket_policy(self, bucket_name) -> str:
         """
         Retrieves the policy of a specific S3 bucket.
 
@@ -197,10 +204,10 @@ class S3Storage:
             error_code = e.response['Error']['Code']
             if error_code == 'NoSuchBucketPolicy':
                 print(f"No bucket policy found for {bucket_name}.")
-                return None
+                return ""
             else:
                 print(f"An error occurred: {e}")
-                return None
+                return ""
             
     def get_object_acl(self, bucket_name, file_key):
         """
@@ -235,3 +242,27 @@ class S3Storage:
             else:
                 print(f"An error occurred: {e}")
             return None
+
+    def ls(self, bucket_name: str) -> None:
+        """
+        Lists the objects in the specified S3 bucket.
+
+        :param bucket_name: The name of the bucket to list objects from.
+        """
+        for key in self.get_bucket_contents(bucket_name):
+            print(key)
+
+    def _encode_metadata(self, metadata):
+        """
+        URL encode metadata values to handle non-ASCII characters.
+        
+        :param metadata: Dictionary with metadata
+        :return: Dictionary with URL-encoded metadata values
+        """
+        encoded_metadata = {}
+        for key, value in metadata.items():
+            if isinstance(value, str):
+                encoded_metadata[key] = urllib.parse.quote(value)
+            else:
+                encoded_metadata[key] = urllib.parse.quote(str(value))
+        return encoded_metadata

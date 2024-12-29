@@ -1,5 +1,6 @@
-rdflib>=6.0.0
-SPARQLWrapper>=2.0.0
-pandas>=2.0.0
-boto3>=1.26.0
-python-dotenv>=1.0.0
+boto3
+python-dotenv
+pandas
+rdflib
+SPARQLWrapper
+pytest

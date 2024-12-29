@@ -9,6 +9,7 @@ from .meta_resource import StructuredMetaResource
 from .meta_graph import MetaGraph
 from .manifest import Manifest
 from .events import RazuEvents
+from .meta_graph import MDTO
 
 import razu.util as util
 
@@ -64,13 +65,18 @@ class Sip:
             uris.append(meta_resource.ext_file_uri)
         return uris
 
-    def export_rdf(self, format='turtle'):
+    @property
+    def graph(self) -> MetaGraph:
         graph = MetaGraph()
         for resource in self.meta_resources.values():
             graph += resource.graph
+        return graph
+
+    def export_rdf(self, format='turtle') -> None:
+        graph = self.graph
         print(graph.serialize(format=format))
 
-    def create_resource(self, id=None, rdf_type=None) -> StructuredMetaResource:
+    def create_resource(self, id=None, rdf_type=MDTO.Informatieobject) -> StructuredMetaResource:
         if self.is_locked:
             raise AssertionError("Sip is locked. Cannot create resource.")
         resource = StructuredMetaResource(id, rdf_type)
@@ -154,7 +160,6 @@ class Sip:
         if not os.listdir(self.sip_directory):
             raise ValueError(f"The SIP directory '{self.sip_directory}' is empty.")
         self.archive_creator_id, self.dataset_id = self._determine_ids_from_files_in_sip_directory()
-        print(f"Opened existing SIP at {self.sip_directory}.")
 
     def _load_graph(self):
         for filename in os.listdir(self.sip_directory):
