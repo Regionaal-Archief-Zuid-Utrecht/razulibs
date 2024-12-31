@@ -67,11 +67,6 @@ class IdentifierFactory:
         """Generate a unique identifier, like 'NL-WbDRAZU-G0321-661-4'."""
         return f"{self.uid_base}-{id}"
     
-    def make_uri_from_uid(self, kind: str, uid: str) -> str:
-        """Generate a URI for a specific resource, like 'https://data.razu.nl/id/object/NL-WbDRAZU-G0321-661-4'."""
-        return (
-            f"{self.config.razu_base_uri}"
-            f"{self.config.resource_identifier_segment}/"
-            f"{kind}/"
-            f"{uid}"
-        )
+    def make_uri_from_kind_uid(self, kind: str, uid: str) -> str:
+        """Generate a URI from a kind and uid, like 'https://data.razu.nl/id/resource/NL-WbDRAZU-G0321-661-4'."""
+        return f"{self.config.razu_base_uri}/{self.config.resource_identifier_segment}/{kind}/{uid}"
