@@ -1,6 +1,11 @@
-boto3
-python-dotenv
-pandas
-rdflib
-SPARQLWrapper
-pytest
+# Core dependencies
+boto3>=1.26.0
+python-dotenv>=1.0.0
+pandas>=2.0.0
+rdflib>=7.0.0
+SPARQLWrapper>=2.0.0
+pyyaml>=6.0.0
+appdirs>=1.4.4
+
+# Development dependencies
+pytest>=7.0.0
