@@ -30,17 +30,18 @@ class MetaResource(RDFResource):
         """
         self.kind = kind
         self._context = RunContext.get_instance()
+        self.id_factory = self._context.identifiers
         
         # Set ID and UID
         self.id = id if id else str(self._counter.next())
-        self.uid = uid if uid else self._context.identifiers.make_uid_from_id(self.id)
+        self.uid = uid if uid else self.id_factory.make_uid_from_id(self.id)
         
         # Get URI and initialize parent
-        uri_to_use = uri if uri else self._context.identifiers.make_uri_from_uid(self.kind, self.uid)
+        uri_to_use = uri if uri else self.id_factory.make_uri_from_kind_uid(self.kind, self.uid)
         super().__init__(uri=uri_to_use)
         
         # Set file paths
-        self.filename = self._construct_filename()
+        self.filename = self.id_factory.make_filename_from_id(self.id)
         self.file_path = os.path.join(self._context.sip_directory, self.filename)
         self.is_modified = False
 
@@ -61,36 +62,20 @@ class MetaResource(RDFResource):
             self.graph.parse(data=file.read(), format="json-ld")
         self.is_modified = False
 
-    def _construct_filename(self) -> str:
-        """Generate the filename for this resource."""
-        return (
-            f"{self._context.identifiers.uid_base}-{self.id}."
-            f"{self._context.metadata_suffix}.json"
-        )
-    
-    def _get_kind(self) -> str:
-        """Get the kind of resource. To be implemented by subclasses."""
-        raise NotImplementedError
-
     def _construct_identifiers(self, id=None, uid=None, uri=None):
         # uri takes precedence!
         if uri is not None:
-            id = util.extract_id_from_file_path(uri)
-            uid = self._construct_uid(id)
+            id = self.id_factory.extract_id_from_identifier(uri)
+            uid = self.id_factory.make_uid_from_id(id)
         elif uid is not None:
-            id = util.extract_id_from_file_path(uid)
-            uri = self._construct_uri(id)
+            id = self.id_factory.extract_id_from_identifier(uri)
+            uri = self.id_factory.make_uri_from_kind_uid(self.kind, uid)
         else:
             id = MetaResource._counter.next() if id is None else id
-            uid = self._construct_uid(id)
-            uri = self._construct_uri(id)
+            uid = self.id_factory.make_uid_from_id(id)
+            uri = self.id_factory.make_uri_from_kind_uid(self.kind, uid)
         return id, uid, URIRef(uri)
 
-    def _construct_uri(self, id) -> str:
-        return f"{self._context.object_uri_prefix}-{id}"
-
-    def _construct_uid(self, id) -> str:
-        return f"{self._context.identifiers.uid_base}-{id}"
 
 
 class StructuredMetaResource(MetaResource):
@@ -110,13 +95,7 @@ class StructuredMetaResource(MetaResource):
     _waarderingen = ConceptResolver("waardering")
 
     def __init__(self, id=None, rdf_type=MDTO.Informatieobject, kind='object'):
-        """Initialize a new StructuredMetaResource.
-        
-        Args:
-            id: Optional identifier
-            rdf_type: Optional RDF type
-            kind: Optional kind of resource
-        """
+        """Initialize a new StructuredMetaResource. """
         super().__init__(id)
         self._init_rdf_properties(rdf_type)
         self.kind = kind

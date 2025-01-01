@@ -1,53 +1,71 @@
+from typing import Dict, Optional, ClassVar
 from rdflib import URIRef
-from .razuconfig import RazuConfig
+
+from razu.config import Config
 
 
 class SparqlEndpointManager:
-    """
-    Static class responsible for determining the correct SPARQL endpoint
-    based on either a concept URI or a vocabulary name (part of URI).
-    """
+    """Manages SPARQL endpoints for different vocabularies."""
 
-    @staticmethod
-    def get_endpoint_by_vocabulary(vocabulary: str) -> str:
-        """
-        Determines the SPARQL endpoint based on the vocabulary.
+    _instance: ClassVar[Optional['SparqlEndpointManager']] = None
+    _config: ClassVar[Optional[Config]] = None
 
-        Parameters:
-        -----------
-        vocabulary : str
-            The category or vocabulary list to query (e.g., 'actor', 'category').
-
-        Returns:
-        --------
-        str:
-            The full SPARQL endpoint URL.
-        """
-        config = RazuConfig()
-        return f"{config.sparql_endpoint_prefix}{vocabulary}{config.sparql_endpoint_suffix}"
-
-    @staticmethod
-    def get_endpoint_by_uri(uri: URIRef) -> str:
-        """
-        Determines the SPARQL endpoint based on the concept's URI by extracting the part
-        after '/id/' (actually config.resource_identifier) and using it to form the SPARQL endpoint.
-
-        Parameters:
-        -----------
-        uri : URIRef
-            The URI of the concept.
-
-        Returns:
-        --------
-        str:
-            The full SPARQL endpoint URL for the given URI.
-        """
-        config = RazuConfig()
+    def __init__(self) -> None:
+        """Private constructor, use get_instance() instead."""
+        if self._instance is not None:
+            raise RuntimeError("Use SparqlEndpointManager.get_instance()")
         
-        uri_str = str(uri)
-        if f"/{config.resource_identifier_segment}/" in uri_str:
-            vocabulary = uri_str.split(f"/{config.resource_identifier_segment}/")[1].split("/")[0]
-        else:
-            raise ValueError(f"Invalid URI structure: No '/{config.resource_identifier_segment}/' segment found")
+        self._config = Config.get_instance()
 
-        return f"{config.sparql_endpoint_prefix}{vocabulary}{config.sparql_endpoint_suffix}"
+    @classmethod
+    def get_instance(cls) -> 'SparqlEndpointManager':
+        """Get the global instance."""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        """Reset the singleton instance (mainly for testing)."""
+        cls._instance = None
+        cls._config = None
+
+    @classmethod
+    def get_endpoint_by_vocabulary(cls, vocabulary: str) -> str:
+        """Get the SPARQL endpoint URL for a given vocabulary.
+        
+        Args:
+            vocabulary: The vocabulary to get the endpoint for
+            
+        Returns:
+            The endpoint URL
+            
+        Raises:
+            KeyError: If the vocabulary is not found
+        """
+        instance = cls.get_instance()
+        return instance._config.get_sparql_endpoint(vocabulary)
+
+    @classmethod
+    def get_endpoint_by_uri(cls, uri: URIRef) -> str:
+        """Get the SPARQL endpoint URL for a concept URI.
+        
+        Args:
+            uri: The URI of the concept
+            
+        Returns:
+            The endpoint URL
+            
+        Raises:
+            ValueError: If the URI doesn't contain a vocabulary segment
+            KeyError: If no endpoint is found for the vocabulary
+        """
+        instance = cls.get_instance()
+        uri_str = str(uri)
+        segment = f"/{instance._config.resource_identifier_segment}/"
+        
+        if segment not in uri_str:
+            raise ValueError(f"Invalid URI structure: No '{segment}' segment found")
+        
+        vocabulary = uri_str.split(segment)[1].split("/")[0]
+        return cls.get_endpoint_by_vocabulary(vocabulary)

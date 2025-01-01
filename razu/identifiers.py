@@ -69,4 +69,12 @@ class IdentifierFactory:
     
     def make_uri_from_kind_uid(self, kind: str, uid: str) -> str:
         """Generate a URI from a kind and uid, like 'https://data.razu.nl/id/resource/NL-WbDRAZU-G0321-661-4'."""
-        return f"{self.config.razu_base_uri}/{self.config.resource_identifier_segment}/{kind}/{uid}"
+        return f"{self.config.razu_base_uri}{self.config.resource_identifier_segment}/{kind}/{uid}"
+
+    def make_filename_from_id(self, id: str) -> str:
+        """Generate a filename from an object ID, like 'NL-WbDRAZU-G0321-661-4.meta.json'."""
+        return f"{self.uid_base}-{id}.{self.config.metadata_suffix}.{self.config.metadata_extension}"
+
+    def extract_id_from_identifier(self, identifier: str) -> str:
+        """Extract the object id from a file path or uri, like 'NL-WbDRAZU-G0321-661-4.meta.json'."""
+        return identifier.split(f"{self.uid_base}-")[1].split(f".{self.config.metadata_suffix}.{self.config.metadata_extension}")[0]
