@@ -4,7 +4,8 @@ from rdflib import URIRef, Literal, BNode
 from typing import Callable
 
 from razu.incrementer import Incrementer
-from razu.context import RunContext
+from razu.config import Config
+from razu.identifiers import Identifiers
 from razu.rdf_resource import RDFResource
 from razu.meta_graph import MetaGraph, RDF, MDTO, DCT, PREMIS, XSD, SKOS
 from razu.concept_resolver import ConceptResolver
@@ -29,8 +30,8 @@ class MetaResource(RDFResource):
             kind: Optional kind
         """
         self.kind = kind
-        self._context = RunContext.get_instance()
-        self.id_factory = self._context.identifiers
+        self._context = Config.get_instance()
+        self.id_factory = Identifiers(self._context)
         
         # Set ID and UID
         self.id = id if id else str(self._counter.next())
@@ -108,7 +109,7 @@ class StructuredMetaResource(MetaResource):
 
     @property
     def this_file_uri(self):
-        return f"{self._context.identifiers.cdn_base_uri}{self.uid}.{self._context.metadata_suffix}.{self._context.metadata_extension}"
+        return f"{self.id_factory.cdn_base_uri}{self.uid}.{self._context.metadata_suffix}.{self._context.metadata_extension}"
 
     @property
     def ext_file_uri(self):

@@ -32,19 +32,9 @@ class SparqlEndpointManager:
 
     @classmethod
     def get_endpoint_by_vocabulary(cls, vocabulary: str) -> str:
-        """Get the SPARQL endpoint URL for a given vocabulary.
-        
-        Args:
-            vocabulary: The vocabulary to get the endpoint for
-            
-        Returns:
-            The endpoint URL
-            
-        Raises:
-            KeyError: If the vocabulary is not found
-        """
-        instance = cls.get_instance()
-        return instance._config.get_sparql_endpoint(vocabulary)
+        """Get the SPARQL endpoint URL for a given vocabulary. """
+        config = Config.get_instance()
+        return f"{config.sparql_endpoint_prefix}{vocabulary}{config.sparql_endpoint_suffix}"
 
     @classmethod
     def get_endpoint_by_uri(cls, uri: URIRef) -> str:

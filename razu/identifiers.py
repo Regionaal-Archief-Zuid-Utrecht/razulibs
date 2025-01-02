@@ -1,15 +1,12 @@
 from dataclasses import dataclass
-from razu.config import ConfigBase
+from razu.config import Config
 
 
 @dataclass
-class IdentifierFactory:
-    """Factory for creating various identifiers used in the system,
-    including URIs, filenames, and CDN paths.
-    """
-    archive_id: str
-    archive_creator_id: str
-    config: ConfigBase
+class Identifiers:
+    """Logic for creating & extracting identifiers including URIs, filenames, and CDN paths. """
+
+    config: Config
     
     @property
     def uid_base(self) -> str:
@@ -18,15 +15,15 @@ class IdentifierFactory:
         """
         return (
             f"{self.config.razu_file_id}-"
-            f"{self.archive_creator_id}-"
-            f"{self.archive_id}"
+            f"{self.config.archive_creator_id}-"
+            f"{self.config.archive_id}"
         )
     
     @property
     def cdn_base_uri(self) -> str:
         """Generate the base URI for CDN resources, like 'https://g0321.opslag.razu.nl/'."""
         return (
-            f"https://{self.archive_creator_id.lower()}."
+            f"https://{self.config.archive_creator_id.lower()}."
             f"{self.config.storage_base_domain}/"
         )
     
@@ -50,7 +47,7 @@ class IdentifierFactory:
         """Generate the filename of the premis eventlog, like 'NL-WbDRAZU-G0321-661.eventlog.json'."""
         return f"{self.uid_base}.{self.config.eventlog_suffix}.{self.config.metadata_extension}"
     
-    def make_cdn_uri(self, uid: str, extension: str) -> str:
+    def make_cdn_uri_from_uid_extension(self, uid: str, extension: str) -> str:
         """Generate a full CDN URI for a resource."""
         return f"{self.cdn_base_uri}{uid}.{extension}"
     

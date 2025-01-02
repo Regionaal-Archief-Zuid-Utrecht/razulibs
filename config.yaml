@@ -1,11 +1,7 @@
 
-
-# Required settings
-# archive_creator_id: "G312"  # ID of the archive creator
-# archive_id: "661"          # ID of the archive
-
 razu_base_uri: "https://data.razu.nl/"
 resource_identifier_segment: "id"
+default_entity_kind_segment: "object"
 razu_file_id: "NL-WbDRAZU"
 
 metadata_suffix: "meta"
@@ -13,21 +9,13 @@ manifest_suffix: "manifest"
 eventlog_suffix: "eventlog"
 metadata_extension: "json"
 
-# SPARQL endpoints for each vocabulary
-sparql_endpoint_actor: "https://api.data.razu.nl/datasets/id/actor/sparql"
-sparql_endpoint_aggregatieniveau: "https://api.data.razu.nl/datasets/id/aggregatieniveau/sparql"
-sparql_endpoint_algoritme: "https://api.data.razu.nl/datasets/id/algoritme/sparql"
-sparql_endpoint_bestandsformaat: "https://api.data.razu.nl/datasets/id/bestandsformaat/sparql"
-sparql_endpoint_betrokkenheid: "https://api.data.razu.nl/datasets/id/betrokkenheid/sparql"
-sparql_endpoint_dekkingintijdtype: "https://api.data.razu.nl/datasets/id/dekkingintijdtype/sparql"
-sparql_endpoint_licentie: "https://api.data.razu.nl/datasets/id/licentie/sparql"
-sparql_endpoint_locatie: "https://api.data.razu.nl/datasets/id/locatie/sparql"
-sparql_endpoint_openbaarheid: "https://api.data.razu.nl/datasets/id/openbaarheid/sparql"
-sparql_endpoint_soort: "https://api.data.razu.nl/datasets/id/soort/sparql"
-sparql_endpoint_waardering: "https://api.data.razu.nl/datasets/id/waardering/sparql"
-
 storage_base_domain: "opslag.razu.nl"
 
-sources_directory: "bestanden"
-metadata_directory: "metadata"
-sip_directory: "sip"
+sparql_endpoint_prefix: "https://api.data.razu.nl/datasets/id/"
+sparql_endpoint_suffix: "/sparql"
+
+default_resources_directory: "bestanden"
+default_metadata_directory: "metadata"
+default_sip_directory: "sip"
+
+

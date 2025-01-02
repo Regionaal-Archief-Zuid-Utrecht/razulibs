@@ -3,69 +3,6 @@ import inspect
 from typing import Optional, Any, ClassVar
 from pathlib import Path
 from appdirs import user_config_dir
-from abc import ABC, abstractmethod
-
-
-class ConfigBase(ABC):
-    """Abstract base class for configuration.
-    
-    This class defines the required configuration properties that must be
-    implemented by any configuration class used with IdentifierFactory.
-    """
-    
-    @property
-    @abstractmethod
-    def razu_base_uri(self) -> str:
-        """Base URI for razu identifiers."""
-        pass
-    
-    @property
-    @abstractmethod
-    def resource_identifier_segment(self) -> str:
-        """Segment used in resource identifiers."""
-        pass
-    
-    @property
-    @abstractmethod
-    def razu_file_id(self) -> str:
-        """File ID for razu."""
-        pass
-    
-    @property
-    @abstractmethod
-    def storage_base_domain(self) -> str:
-        """Base domain for storage."""
-        pass
-    
-    @property
-    @abstractmethod
-    def metadata_suffix(self) -> str:
-        """Suffix for metadata files."""
-        pass
-    
-    @property
-    @abstractmethod
-    def manifest_suffix(self) -> str:
-        """Suffix for manifest files."""
-        pass
-    
-    @property
-    @abstractmethod
-    def eventlog_suffix(self) -> str:
-        """Suffix for eventlog files."""
-        pass
-    
-    @property
-    @abstractmethod
-    def metadata_extension(self) -> str:
-        """Extension for metadata files."""
-        pass
-    
-    @abstractmethod
-    def get_sparql_endpoint(self, vocabulary: str) -> str:
-        """Get the SPARQL endpoint URL for a vocabulary (e.g., 'actor')
-        """
-        pass
 
 
 class ConfigFileLocator:
@@ -130,11 +67,9 @@ class ConfigFileLocator:
         )
 
 
-class Config(ConfigBase):
+class Config:
     """Configuration class for managing application settings.
-    
-    This class reads configuration settings from a YAML file and implements
-    the required config properties defined in ConfigBase.
+    Reads configuration settings from a YAML file.
     """
     _instance: ClassVar[Optional['Config']] = None
     _config_filename: ClassVar[str] = 'config.yaml'
@@ -167,40 +102,19 @@ class Config(ConfigBase):
             raise ValueError(f"Error loading config file: {e}")
 
     @classmethod
-    def initialize(cls, config_file: Optional[str] = None) -> 'Config':
-        """Initialize the global config instance.
+    def get_instance(cls) -> 'Config':
+        """Get the global Config instance, initializing it if needed. """
+        if cls._instance is None:
+            cls._instance = cls.initialize()
+        return cls._instance
         
-        Args:
-            config_file: Optional path to config file. If not provided,
-                        will search in default locations.
-        
-        Returns:
-            The initialized config instance.
-            
-        Raises:
-            RuntimeError: If already initialized
-            FileNotFoundError: If config file not found
-            ValueError: If config file is invalid
-        """
+    @classmethod
+    def initialize(cls) -> 'Config':
+        """Initialize a new Config instance. """
         if cls._instance is not None:
             raise RuntimeError("Config already initialized")
-        cls._instance = cls(config_file)
-        return cls._instance
-    
-    @classmethod
-    def get_instance(cls) -> 'Config':
-        """Get the global config instance.
         
-        Returns:
-            The global config instance.
-            
-        Raises:
-            RuntimeError: If not yet initialized
-        """
-        if cls._instance is None:
-            raise RuntimeError(
-                "Config not initialized. Call Config.initialize() first"
-            )
+        cls._instance = cls()
         return cls._instance
     
     @classmethod
@@ -209,57 +123,29 @@ class Config(ConfigBase):
         cls._instance = None
 
     def __getattr__(self, name: str) -> Any:
-        """Get a configuration setting."""
+        """Get a configuration setting. """
         if name in self._settings:
             return self._settings[name]
         raise AttributeError(f"Config has no setting '{name}'")
 
-    # Required properties from ConfigBase
-    @property
-    def razu_base_uri(self) -> str:
-        return self._settings['razu_base_uri']
-    
-    @property
-    def resource_identifier_segment(self) -> str:
-        return self._settings['resource_identifier_segment']
-    
-    @property
-    def razu_file_id(self) -> str:
-        return self._settings['razu_file_id']
-    
-    @property
-    def storage_base_domain(self) -> str:
-        return self._settings['storage_base_domain']
-    
-    @property
-    def metadata_suffix(self) -> str:
-        return self._settings['metadata_suffix']
-    
-    @property
-    def manifest_suffix(self) -> str:
-        return self._settings['manifest_suffix']
-    
-    @property
-    def eventlog_suffix(self) -> str:
-        return self._settings['eventlog_suffix']
-    
-    @property
-    def metadata_extension(self) -> str:
-        return self._settings['metadata_extension']
-    
-    def get_sparql_endpoint(self, vocabulary: str) -> str:
-        """Get the SPARQL endpoint URL for a vocabulary.
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Handle attribute setting.
         
-        Args:
-            vocabulary: The vocabulary to get the endpoint for (e.g., 'actor')
-            
-        Returns:
-            The endpoint URL
-            
-        Raises:
-            KeyError: If no endpoint is configured for this vocabulary
+        We need this to handle the internal _settings dict differently
+        from regular configuration settings.
         """
-        key = f'sparql_endpoint_{vocabulary}'
-        if key not in self._settings:
-            raise KeyError(f"No endpoint configured for vocabulary '{vocabulary}'")
-        return self._settings[key]
+        if name == '_settings':
+            # Allow setting the internal _settings dict
+            super().__setattr__(name, value)
+        else:
+            # Handle all other attributes as config settings
+            if name in self._settings:
+                raise ValueError(f"Cannot override existing setting '{name}'")
+            self._settings[name] = value
+        
+    def add_properties(self, **kwargs) -> None:
+        """Set multiple configuration settings at once."""
+        for name in kwargs:
+            if name in self._settings:
+                raise ValueError(f"Cannot override existing setting '{name}'")
+        self._settings.update(kwargs)
