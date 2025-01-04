@@ -3,7 +3,8 @@ import sys
 import json
 from datetime import datetime
 
-from .razuconfig import RazuConfig
+from razu.config import Config
+from razu.identifiers import Identifiers
 import razu.util as util
 
 class Manifest:
@@ -11,44 +12,40 @@ class Manifest:
     A class to manage a manifest of files in a directory, ensuring that files are present 
     and checksums are correct. The manifest is stored as a JSON file that maps each file's 
     relative path to its MD5 checksum.
-
-    This class provides functionality to:
-    - Create a manifest from all files in a directory.
-    - Load an existing manifest and verify its integrity against the current directory structure.
-    - Append missing files to the manifest if it already exists.
-    - Save the manifest to a JSON file only if changes were made.
-    - Update an existing file entry in the manifest by adding extra values to the dictionary
-
-    Attributes:
-        directory (str): The directory being managed by the manifest.
-        manifest_file_path (str): The path to the JSON manifest file.
-        files (dict): A dictionary that stores relative file paths and their MD5 checksums.
-        is_valid (bool): Indicates if the manifest is valid after verification.
-        is_modified (bool): Indicates if the manifest has been modified since it was loaded or created.
-
     """
 
-    def __init__(self, manifest_directory, manifest_file=None, config=None):
-        """
-        Initialize the Manifest object. 
-        Load an existing manifest file or mark the manifest as invalid if the file does not exist.
-
-        Args:
-            manifest_directory (str): The directory to scan for files.
-            manifest_file (str): The name of the manifest file.
-            config (RazuConfig, optional): Configuration to use. If None, creates a new one.
-        """
-        self.directory = manifest_directory
-        self._cfg = config or RazuConfig()
-        self.manifest_file_path = os.path.join(manifest_directory, manifest_file or self._cfg.manifest_filename)
+    def __init__(self, save_directory):
+        self.save_directory = save_directory
+        self._cfg = Config.get_instance()
         self.files = {}
         self.is_valid = True
         self.is_modified = False
 
-        if os.path.exists(self.manifest_file_path):
-            self.load(self.manifest_file_path)
-        else:
-            self.is_valid = False  # No manifest yet, cannot be valid
+    @property
+    def manifest_file_path(self):
+        """Get the manifest file path. This is a property so it always uses the current config values."""
+        self.id_factory = Identifiers(self._cfg)
+        return os.path.join(self.save_directory, self.id_factory.manifest_filename)
+
+    @classmethod
+    def create_new(cls, save_directory) -> 'Manifest':
+        """ Create a new manifest instance for a new manifest file. """
+        manifest = cls(save_directory)
+        manifest.is_valid = False  # No manifest yet, cannot be valid
+        return manifest
+
+    @classmethod
+    def load_existing(cls, save_directory,  config=None) -> 'Manifest':
+        """ Load an existing manifest file. """
+        manifest = cls(save_directory)
+        manifest_path = manifest.manifest_file_path
+        
+        if not os.path.exists(manifest_path):
+            raise FileNotFoundError(f"Manifest file not found at '{manifest_path}'")
+            
+        manifest.load(manifest_path)
+        manifest.is_valid = True
+        return manifest
 
     def add_entry(self, file_path, md5hash, md5date):
         self.files[file_path] = {
@@ -61,22 +58,16 @@ class Manifest:
         return list(self.files.keys())
 
     def create_from_directory(self):
-        """
-        Create a manifest by scanning all files in the directory, 
-        excluding the manifest file itself.
-
-        Raises:
-            FileExistsError: If the manifest file already exists.
-        """
+        """ Create a manifest by scanning all files in the directory. """
         if os.path.exists(self.manifest_file_path):
             raise FileExistsError(f"Manifest '{self.manifest_file_path}' already exists.")
 
-        for root, dirs, files in os.walk(self.directory):
+        for root, dirs, files in os.walk(self.save_directory):
             for file in files:
                 if file == os.path.basename(self.manifest_file_path):
                     continue
                 file_path = os.path.join(root, file)
-                relative_path = os.path.relpath(file_path, self.directory)
+                relative_path = os.path.relpath(file_path, self.save_directory)
                 self.add_entry(relative_path, util.calculate_md5(file_path), datetime.now().isoformat())
         self.is_modified = True
         self.save()
@@ -84,26 +75,19 @@ class Manifest:
         print(f"Manifest created: {self.manifest_file_path}")
 
     def save(self):
-        """
-        Save the manifest to a JSON file, but only if the manifest has been modified.
-        """
+        """ Save the manifest to a JSON file, but only if the manifest has been modified. """
         if self.is_modified:
             with open(self.manifest_file_path, "w") as json_file:
                 json.dump(self.files, json_file, indent=4)
             self.is_modified = False
 
     def load(self, input_file):
-        """
-        Load a manifest from a JSON file.
-
-        Args:
-            input_file (str): The path to the manifest file.
-        """
+        """ Load a manifest from a JSON file. """
         with open(input_file, "r") as json_file:
             self.files = json.load(json_file)
         self.is_modified = False
 
-    def verify(self, ignore_missing=False, ignore_extra=False):
+    def verify(self, ignore_missing=False, ignore_extra=False) -> dict:
         """
         Verify that all files listed in the manifest exist and have the correct checksums.
         Also, check if there are extra files in the directory that are not listed in the manifest.
@@ -125,7 +109,7 @@ class Manifest:
         # Verify files listed in the manifest
         for file_path, file_info in self.files.items():
             expected_checksum = file_info["MD5Hash"]
-            absolute_path = os.path.join(self.directory, file_path)
+            absolute_path = os.path.join(self.save_directory, file_path)
             if not os.path.exists(absolute_path):
                 errors["missing_files"].append(file_path)
             else:
@@ -138,9 +122,9 @@ class Manifest:
                     })
 
         # Check for extra files in the directory
-        for root, dirs, files in os.walk(self.directory):
+        for root, dirs, files in os.walk(self.save_directory):
             for file in files:
-                relative_path = os.path.relpath(os.path.join(root, file), self.directory)
+                relative_path = os.path.relpath(os.path.join(root, file), self.save_directory)
                 if relative_path in {os.path.basename(self.manifest_file_path), self._cfg.eventlog_filename}:
                     continue
                 if relative_path not in self.files:
@@ -171,13 +155,13 @@ class Manifest:
 
         self.load(self.manifest_file_path)
 
-        for root, dirs, files in os.walk(self.directory):
+        for root, dirs, files in os.walk(self.save_directory):
             for file in files:
-                relative_path = os.path.relpath(os.path.join(root, file), self.directory)
+                relative_path = os.path.relpath(os.path.join(root, file), self.save_directory)
                 if relative_path == os.path.basename(self.manifest_file_path):
                     continue
                 if relative_path not in self.files:
-                    file_path = os.path.join(self.directory, relative_path)
+                    file_path = os.path.join(self.save_directory, relative_path)
                     self.add_entry(relative_path, util.calculate_md5(file_path), datetime.now().isoformat())
                     self.is_modified = True
 
@@ -224,11 +208,11 @@ if __name__ == "__main__":
         print("Usage: python manifest.py <directory> <manifest_file> <command>")
         sys.exit(1)
 
-    directory = sys.argv[1]
+    save_directory = sys.argv[1]
     manifest_file = sys.argv[2]
     command = sys.argv[3]
 
-    manifest = Manifest(directory, manifest_file)
+    manifest = Manifest(save_directory)
 
     if command == "create":
         try:
