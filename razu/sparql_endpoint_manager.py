@@ -14,10 +14,10 @@ class SparqlEndpointManager:
     @staticmethod
     def get_endpoint_by_uri(uri: URIRef) -> str:
         """Get the SPARQL endpoint URL for a concept URI. """
-        # Extract vocabulary from URI
+        config = Config.get_instance()
         uri_str = str(uri)
-        parts = uri_str.split('/')
-        if len(parts) < 4:
-            raise ValueError(f"URI does not contain a vocabulary segment: {uri}")
-        vocabulary = parts[4]
+        if f"/{config.resource_identifier_segment}/" in uri_str:
+            vocabulary = uri_str.split(f"/{config.resource_identifier_segment}/")[1].split("/")[0]
+        else:
+            raise ValueError(f"Invalid URI structure: No '/{config.resource_identifier_segment}/' segment found")
         return SparqlEndpointManager.get_endpoint_by_vocabulary(vocabulary)
