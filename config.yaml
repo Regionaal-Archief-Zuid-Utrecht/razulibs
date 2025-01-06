@@ -1,0 +1,21 @@
+
+razu_base_uri: "https://data.razu.nl/"
+resource_identifier_segment: "id"
+default_entity_kind_segment: "object"
+razu_file_id: "NL-WbDRAZU"
+
+metadata_suffix: "meta"
+manifest_suffix: "manifest"
+eventlog_suffix: "eventlog"
+metadata_extension: "json"
+
+storage_base_domain: "opslag.razu.nl"
+
+sparql_endpoint_prefix: "https://api.data.razu.nl/datasets/id/"
+sparql_endpoint_suffix: "/sparql"
+
+default_resources_directory: "bestanden"
+default_metadata_directory: "metadata"
+default_sip_directory: "sip"
+
+

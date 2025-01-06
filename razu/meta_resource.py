@@ -4,7 +4,8 @@ from rdflib import URIRef, Literal, BNode
 from typing import Callable
 
 from razu.incrementer import Incrementer
-from razu.razuconfig import RazuConfig
+from razu.config import Config
+from razu.identifiers import Identifiers
 from razu.rdf_resource import RDFResource
 from razu.meta_graph import MetaGraph, RDF, MDTO, DCT, PREMIS, XSD, SKOS
 from razu.concept_resolver import ConceptResolver
@@ -17,14 +18,32 @@ class MetaResource(RDFResource):
 
     Provides load(), save() and identifier (uri, uid & id)-logic.
     """
-    _config = RazuConfig()
     _counter = Incrementer(0)
 
-    def __init__(self, id=None, uid=None, uri=None):
-        self.id, self.uid, uri = self._construct_identifiers(id, uid, uri)
-        super().__init__(uri)
-        self.filename = self._construct_filename()
-        self.file_path = os.path.join(self._config.save_directory, self.filename)
+    def __init__(self, id=None, uid=None, uri=None, kind='object'):
+        """Initialize a new MetaResource.
+        
+        Args:
+            id: Optional identifier
+            uid: Optional unique identifier
+            uri: Optional URI
+            kind: Optional kind
+        """
+        self.kind = kind
+        self._context = Config.get_instance()
+        self.id_factory = Identifiers(self._context)
+        
+        # Set ID and UID
+        self.id = id if id else str(self._counter.next())
+        self.uid = uid if uid else self.id_factory.make_uid_from_id(self.id)
+        
+        # Get URI and initialize parent
+        uri_to_use = uri if uri else self.id_factory.make_uri_from_kind_uid(self.kind, self.uid)
+        super().__init__(uri=uri_to_use)
+        
+        # Set file paths
+        self.filename = self.id_factory.make_filename_from_id(self.id)
+        self.file_path = os.path.join(self._context.sip_directory, self.filename)
         self.is_modified = False
 
     def save(self) -> bool:
@@ -47,25 +66,17 @@ class MetaResource(RDFResource):
     def _construct_identifiers(self, id=None, uid=None, uri=None):
         # uri takes precedence!
         if uri is not None:
-            id = util.extract_id_from_file_path(uri)
-            uid = self._construct_uid(id)
+            id = self.id_factory.extract_id_from_identifier(uri)
+            uid = self.id_factory.make_uid_from_id(id)
         elif uid is not None:
-            id = util.extract_id_from_file_path(uid)
-            uri = self._construct_uri(id)
+            id = self.id_factory.extract_id_from_identifier(uri)
+            uri = self.id_factory.make_uri_from_kind_uid(self.kind, uid)
         else:
             id = MetaResource._counter.next() if id is None else id
-            uid = self._construct_uid(id)
-            uri = self._construct_uri(id)
+            uid = self.id_factory.make_uid_from_id(id)
+            uri = self.id_factory.make_uri_from_kind_uid(self.kind, uid)
         return id, uid, URIRef(uri)
 
-    def _construct_filename(self):
-        return f"{self._config.filename_prefix}-{self.id}.{self._config.metadata_suffix}.json"
-
-    def _construct_uri(self, id) -> str:
-        return f"{MetaResource._config.object_uri_prefix}-{id}"
-
-    def _construct_uid(self, id) -> str:
-        return f"{MetaResource._config.filename_prefix}-{id}"
 
 
 class StructuredMetaResource(MetaResource):
@@ -84,9 +95,11 @@ class StructuredMetaResource(MetaResource):
     _licenties = ConceptResolver("licentie")
     _waarderingen = ConceptResolver("waardering")
 
-    def __init__(self, id=None, rdf_type=MDTO.Informatieobject):
+    def __init__(self, id=None, rdf_type=MDTO.Informatieobject, kind='object'):
+        """Initialize a new StructuredMetaResource. """
         super().__init__(id)
         self._init_rdf_properties(rdf_type)
+        self.kind = kind
         self.metadata_sources = set()
         self.is_modified = True
 
@@ -96,7 +109,7 @@ class StructuredMetaResource(MetaResource):
 
     @property
     def this_file_uri(self):
-        return f"{MetaResource._config.cdn_base_uri}{self.uid}.{MetaResource._config.metadata_suffix}.{MetaResource._config.metadata_extension}"
+        return f"{self.id_factory.cdn_base_uri}{self.uid}.{self._context.metadata_suffix}.{self._context.metadata_extension}"
 
     @property
     def ext_file_uri(self):
@@ -136,7 +149,7 @@ class StructuredMetaResource(MetaResource):
         self.is_modified = True
 
     def validate_md5(self):
-        return util.calculate_md5(os.path.join(self._config.save_directory, self.ext_filename)) == self.ext_file_md5checksum
+        return util.calculate_md5(os.path.join(self._context.save_directory, self.ext_filename)) == self.ext_file_md5checksum
 
     def set_type(self, rdf_type: URIRef):
         self.add_properties({RDF.type: rdf_type})
@@ -203,7 +216,7 @@ class StructuredMetaResource(MetaResource):
         ext_file_fileformat_uri = StructuredMetaResource._bestandsformaten.get_concept(puid).get_uri()
         file_extension = StructuredMetaResource._bestandsformaten.get_concept(puid).get_value(SKOS.notation)
         ext_filename = f"{self.uid}.{file_extension}"
-        url = f"{MetaResource._config.cdn_base_uri}{ext_filename}"
+        url = f"{self._context.cdn_base_uri}{ext_filename}"
         self.add_properties({
             MDTO.bestandsformaat: ext_file_fileformat_uri,
             MDTO.URLBestand: Literal(url, datatype=XSD.anyURI),
@@ -271,6 +284,6 @@ class StructuredMetaResource(MetaResource):
         if rdf_type == MDTO.Informatieobject:
             self.add_properties({
                 MDTO.waardering: StructuredMetaResource._waarderingen.get_concept('B').get_uri(),
-                MDTO.archiefvormer: StructuredMetaResource._actoren.get_concept(MetaResource._config.archive_creator_id).get_uri()
+                MDTO.archiefvormer: StructuredMetaResource._actoren.get_concept(self._context.archive_creator_id).get_uri()
             })
         self.graph.add((URIRef(self.this_file_uri), RDF.type, PREMIS.File))
