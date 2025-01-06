@@ -3,7 +3,6 @@ import sys
 import json
 from datetime import datetime
 from typing import Dict, List, Optional
-
 from rdflib import RDF
 
 from razu.config import Config
@@ -12,11 +11,9 @@ from razu.meta_resource import StructuredMetaResource
 from razu.meta_graph import MDTO
 import razu.util as util
 
-
 class ManifestEntry:
-    """
-    Represents a single entry in the manifest, containing file metadata and checksum information.
-    """
+    """ Represents a single entry in the manifest, containing file metadata and checksum information."""
+
     def __init__(self, filename: str, md5hash: Optional[str] = None, md5date: Optional[str] = None, **kwargs):
         self.filename = filename
         self.md5hash = md5hash
@@ -85,26 +82,39 @@ class Manifest:
         self.save_directory = save_directory
         self._cfg = Config.get_instance()
         self.entries: Dict[str, ManifestEntry] = {}
+        self.manifest_filename = None  # Will be set by create_new or load_existing
         self.is_valid = True
         self.is_modified = False
 
     @property
     def manifest_file_path(self) -> str:
-        """Get the manifest file path. This is a property so it always uses the current config values."""
-        self.id_factory = Identifiers(self._cfg)
-        return os.path.join(self.save_directory, self.id_factory.manifest_filename)
+        """Get the manifest file path. Uses explicit filename if set, otherwise generates from id_factory."""
+        if self.manifest_filename is None:
+            # Only create id_factory when we need to generate the filename
+            id_factory = Identifiers(self._cfg)
+            return os.path.join(self.save_directory, id_factory.manifest_filename)
+        return os.path.join(self.save_directory, self.manifest_filename)
 
     @classmethod
     def create_new(cls, save_directory: str) -> 'Manifest':
         """Create a new manifest instance for a new manifest file."""
         manifest = cls(save_directory)
+        # For new manifests, we always need the id_factory
+        id_factory = Identifiers(manifest._cfg)
+        manifest.manifest_filename = id_factory.manifest_filename
         manifest.is_valid = False  # No manifest yet, cannot be valid
         return manifest
 
     @classmethod
-    def load_existing(cls, save_directory: str, config=None) -> 'Manifest':
-        """Load an existing manifest file."""
+    def load_existing(cls, save_directory: str, manifest_filename: str = None) -> 'Manifest':
+        """Load an existing manifest file.
+        
+        Args:
+            save_directory: Directory containing the manifest
+            manifest_filename: Optional explicit manifest filename. If not provided, uses id_factory to generate name.
+        """
         manifest = cls(save_directory)
+        manifest.manifest_filename = manifest_filename
         manifest_path = manifest.manifest_file_path
         
         if not os.path.exists(manifest_path):
@@ -143,25 +153,6 @@ class Manifest:
         """Get list of all filenames in the manifest"""
         return list(self.entries.keys())
 
-    def create_from_directory(self) -> None:
-        """Create a manifest by scanning all files in the directory."""
-        if os.path.exists(self.manifest_file_path):
-            raise FileExistsError(f"Manifest '{self.manifest_file_path}' already exists.")
-        for root, dirs, files in os.walk(self.save_directory):
-            for file in files:
-                if file == os.path.basename(self.manifest_file_path):
-                    continue
-                file_path = os.path.join(root, file)
-                relative_path = os.path.relpath(file_path, self.save_directory)
-                self.add_entry(
-                    relative_path,
-                    md5hash=util.calculate_md5(file_path),
-                    md5date=datetime.now().isoformat()
-                )
-        self.save()
-        self.is_valid = True
-        print(f"Manifest created: {self.manifest_file_path}")
-
     def save(self) -> None:
         """Save the manifest to a JSON file, but only if the manifest has been modified."""
         if self.is_modified:
@@ -183,14 +174,8 @@ class Manifest:
             }
         self.is_modified = False
 
-    def verify(self, ignore_missing: bool = False, ignore_extra: bool = False) -> dict:
-        """
-        Verify that all files listed in the manifest exist and have the correct checksums.
-        Also, check if there are extra files in the directory that are not listed in the manifest.
-
-        Args:
-            ignore_missing: If True, don't raise error for missing files
-            ignore_extra: If True, don't raise error for extra files
+    def validate(self, ignore_missing_files: bool = False, ignore_extra_files: bool = False) -> dict:
+        """ Verify 1 to 1 relationship between manifest entries and files in the directory. 
 
         Returns:
             dict: A dictionary of errors with keys 'missing_files', 'checksum_mismatch', and 'extra_files'
@@ -221,9 +206,9 @@ class Manifest:
                 if relative_path not in self.entries:
                     errors['extra_files'].append(relative_path)
 
-        if not ignore_missing and errors['missing_files']:
+        if not ignore_missing_files and errors['missing_files']:
             raise FileNotFoundError(f"Files missing: {errors['missing_files']}")
-        if not ignore_extra and errors['extra_files']:
+        if not ignore_extra_files and errors['extra_files']:
             raise FileExistsError(f"Extra files found: {errors['extra_files']}")
 
         return errors
@@ -232,34 +217,26 @@ class Manifest:
 if __name__ == "__main__":
     """Command-line interface for managing a file manifest."""
     if len(sys.argv) < 3:
-        print("Usage: python manifest.py <command> <directory> [--ignore-missing] [--ignore-extra]")
-        print("Commands:")
-        print("  create  - Create a new manifest for the directory")
-        print("  verify  - Verify files against existing manifest")
+        print("Usage: python manifest.py <directory> <manifest-file> [--ignore-missing] [--ignore-extra]")
+        print("\nExample:")
+        print("  python manifest.py sip NL-WbDRAZU-G0321-661.manifest.json")
         sys.exit(1)
 
-    command = sys.argv[1]
-    directory = sys.argv[2]
+    directory = sys.argv[1]
+    manifest_filename = sys.argv[2]
     ignore_missing = "--ignore-missing" in sys.argv
     ignore_extra = "--ignore-extra" in sys.argv
 
     try:
-        if command == "create":
-            manifest = Manifest.create_new(directory)
-            manifest.create_from_directory()
-        elif command == "verify":
-            manifest = Manifest.load_existing(directory)
-            errors = manifest.verify(ignore_missing, ignore_extra)
-            if any(errors.values()):
-                print("Verification failed:")
-                for error_type, files in errors.items():
-                    if files:
-                        print(f"{error_type}: {files}")
-            else:
-                print("Verification successful")
+        manifest = Manifest.load_existing(directory, manifest_filename=manifest_filename)
+        errors = manifest.validate(ignore_missing, ignore_extra)
+        if any(errors.values()):
+            print("Verification failed:")
+            for error_type, files in errors.items():
+                if files:
+                    print(f"{error_type}: {files}")
         else:
-            print(f"Unknown command: {command}")
-            sys.exit(1)
+            print(f"Directory {directory} complies with manifest {manifest_filename} and validated successfully.")
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)

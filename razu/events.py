@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from rdflib import URIRef, Literal
 
-from razu.razuconfig import RazuConfig
+from razu.run_context import RunContext
 from razu.rdf_resource import RDFResource
 from razu.meta_graph import MetaGraph, RDF, XSD, PREMIS, EROR, ERAR, PROV
 import razu.util as util
@@ -15,15 +15,15 @@ import razu.util as util
 
 class Events:
 
-    _cfg = RazuConfig()
 
     def __init__(self, sip_directory, eventlog_filename=None):
         """
         Initialize the Events object. 
         Load the eventlog file, if it exists.
         """
+        self._cfg = RunContext.get_instance()
         self.directory = sip_directory
-        self.file_path = os.path.join(sip_directory, eventlog_filename or Events._cfg.eventlog_filename)
+        self.file_path = os.path.join(sip_directory, eventlog_filename or self._cfg.identifiers.eventlog_filename)
         self.current_id = 0
 
         self.graph = MetaGraph()
