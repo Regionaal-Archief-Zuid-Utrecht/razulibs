@@ -7,7 +7,7 @@ from razu.concept_resolver import ConceptResolver
 from razu.meta_resource import StructuredMetaResource
 from razu.meta_graph import MetaGraph, MDTO
 from razu.manifest import Manifest
-# from razu.events import RazuEvents
+from razu.preservation_events import RazuPreservationEvents
 import razu.util as util
 
 
@@ -40,7 +40,7 @@ class MetaResourcesDict(dict[str, StructuredMetaResource]):
         for resource in self.values():
             callback(resource)
 
-    def process_referenced_files(self, callback: callable) -> None:
+    def process_with_referenced_files(self, callback: callable) -> None:
         """Process all meta resources with referenced files using the provided callback function."""
         for resource in self.with_referenced_files:
             callback(resource)
@@ -59,8 +59,9 @@ class Sip:
         self.resources_directory = resources_directory
         self.meta_resources = MetaResourcesDict()
 
+
     @classmethod
-    def create_new(cls, archive_creator_id: str, archive_id: str, sip_directory=None, resources_directory=None) -> 'Sip':
+    def create_new(cls, archive_creator_id: str, archive_id: str, sip_directory=None, resources_directory=None, ingestion_start_date=None) -> 'Sip':
         cfg = Config.get_instance()
         sip_directory = sip_directory or cfg.default_sip_directory
         resources_directory = resources_directory or cfg.default_resources_directory
@@ -88,7 +89,7 @@ class Sip:
         )
         os.makedirs(self.sip_directory, exist_ok=True)
         self.manifest = Manifest.create_new(self.sip_directory)
-        # self.log_event = RazuEvents(self.sip_directory)
+        self.log_event = RazuPreservationEvents(self.sip_directory)
 
     def _open_existing_sip(self):
         if not os.listdir(self.sip_directory):
@@ -102,7 +103,7 @@ class Sip:
         actoren = ConceptResolver('actor')
         self.archive_creator_uri = actoren.get_concept_uri(self.archive_creator_id)
         self.manifest = Manifest.load_existing(self.sip_directory)
-        # self.log_event = RazuEvents(self.sip_directory)
+        self.log_event = RazuPreservationEvents(self.sip_directory)
 
     def create_meta_resource(self, id=None, rdf_type=MDTO.Informatieobject) -> StructuredMetaResource:
         # if self.log_event.is_locked:
@@ -112,12 +113,12 @@ class Sip:
         self.meta_resources[meta_resource.id] = meta_resource
         return meta_resource
 
-    def store_resource(self, resource: StructuredMetaResource) -> None:
+    def store_metadata_resource(self, resource: StructuredMetaResource) -> None:
         """Store a resource in the SIP and update the manifest."""
         # if self.log_event.is_locked:
         #     raise AssertionError("Sip is locked. Cannot store resource.")
         if resource.save():
-            self.manifest.add_resource(resource, self.archive_creator_uri, self.archive_id)
+            self.manifest.add_metadata_resource(resource, self.archive_creator_uri, self.archive_id)
 
             # if resource.metadata_sources is None:
             #     self.log_event.metadata_modification(resource.this_file_uri, resource.this_file_uri)
@@ -134,15 +135,15 @@ class Sip:
             dest_filepath = os.path.join(self.sip_directory, resource.ext_filename)
             if not os.path.exists(dest_filepath):
                 shutil.copy2(origin_filepath, dest_filepath)
-                self.manifest.add_resource(resource, self.archive_creator_uri, self.archive_id)
+                self.manifest.add_referenced_resource(resource, self.archive_creator_uri, self.archive_id)
                 # self.log_event.filename_change(resource.ext_file_uri, resource.ext_file_original_filename, resource.ext_filename)
 
                 print(f"Stored referenced file {resource.ext_file_original_filename} as {resource.ext_file_uri}.")
 
     def store_meta_resources(self) -> None:
         """Store all meta resources and their referenced files."""
-        self.meta_resources.process_all(self.store_resource)
-        self.meta_resources.process_referenced_files(self.store_referenced_file)
+        self.meta_resources.process_all(self.store_metadata_resource)
+        self.meta_resources.process_with_referenced_files(self.store_referenced_file)
         # self.log_event.process_queue()
         # self.log_event.save()
         self.manifest.save()
@@ -155,8 +156,8 @@ class Sip:
 
     def save(self):
         """Save all meta resources and their referenced files."""
-        self.meta_resources.process_all(self.store_resource)
-        self.meta_resources.process_referenced_files(self.store_referenced_file)
+        self.meta_resources.process_all(self.store_metadata_resource)
+        self.meta_resources.process_with_referenced_files(self.store_referenced_file)
         # self.log_event.process_queue()
         # self.log_event.save()
         self.manifest.save()

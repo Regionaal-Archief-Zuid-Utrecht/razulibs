@@ -44,12 +44,10 @@ class ManifestEntry:
         return cls(filename, md5hash, md5date, **data)
 
     @classmethod
-    def from_resource(cls, resource: StructuredMetaResource, archive_creator_uri: str, dataset_id: str) -> 'ManifestEntry':
-        """ Create a manifest entry from a StructuredMetaResource. """
-        is_MDTO_bestand = (resource.uri, RDF.type, MDTO.Bestand) in resource.graph
-        if is_MDTO_bestand:
-            return cls(
-                resource.ext_filename,
+    def create_entry_for_metadata_resource(cls, resource: StructuredMetaResource, archive_creator_uri: str, dataset_id: str) -> 'ManifestEntry':
+        """ Create a manifest entry for a StructuredMetaResource. """
+        return cls(
+                filename=resource.ext_filename,
                 md5hash=resource.ext_file_md5checksum,
                 md5date=resource.ext_file_checksum_datetime,
                 ObjectUID=resource.uid,
@@ -58,17 +56,22 @@ class ManifestEntry:
                 FileFormat=resource.ext_file_fileformat_uri,
                 OriginalFilename=resource.ext_file_original_filename,
                 URI=resource.ext_file_uri
-            )
-        else:
-            return cls(
-                resource.filename,
-                md5hash=util.calculate_md5(resource.file_path),
-                md5date=datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-                ObjectUID=resource.uid,
-                Source=archive_creator_uri,
-                Dataset=dataset_id,
-                URI=resource.this_file_uri
-            )
+        )
+        
+    @classmethod
+    def create_entry_for_referenced_resource(cls, resource: StructuredMetaResource, archive_creator_uri: str, dataset_id: str) -> 'ManifestEntry':
+        """ Create a manifest entry for a file referenced by a StructuredMetaResource. """
+        return cls(
+            filename=resource.filename,
+            md5hash=util.calculate_md5(resource.file_path),
+            md5date=datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            ObjectUID=resource.uid,
+            Source=archive_creator_uri,
+            Dataset=dataset_id,
+            URI=resource.this_file_uri
+        )
+
+
 
 
 class Manifest:
@@ -131,9 +134,16 @@ class Manifest:
         self.is_modified = True
         return entry
 
-    def add_resource(self, resource: StructuredMetaResource, archive_creator_uri: str, dataset_id: str) -> ManifestEntry:
+    def add_metadata_resource(self, resource: StructuredMetaResource, archive_creator_uri: str, dataset_id: str) -> ManifestEntry:
         """Add a resource to the manifest"""
-        entry = ManifestEntry.from_resource(resource, archive_creator_uri, dataset_id)
+        entry = ManifestEntry.create_entry_for_metadata_resource(resource, archive_creator_uri, dataset_id)
+        self.entries[entry.filename] = entry
+        self.is_modified = True
+        return entry
+
+    def add_referenced_resource(self, resource: StructuredMetaResource, archive_creator_uri: str, dataset_id: str) -> ManifestEntry:
+        """Add a resource to the manifest"""
+        entry = ManifestEntry.create_entry_for_referenced_resource(resource, archive_creator_uri, dataset_id)
         self.entries[entry.filename] = entry
         self.is_modified = True
         return entry

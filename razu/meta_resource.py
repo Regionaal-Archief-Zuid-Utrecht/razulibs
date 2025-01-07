@@ -216,7 +216,7 @@ class StructuredMetaResource(MetaResource):
         ext_file_fileformat_uri = StructuredMetaResource._bestandsformaten.get_concept(puid).get_uri()
         file_extension = StructuredMetaResource._bestandsformaten.get_concept(puid).get_value(SKOS.notation)
         ext_filename = f"{self.uid}.{file_extension}"
-        url = f"{self._context.cdn_base_uri}{ext_filename}"
+        url = f"{self.id_factory.cdn_base_uri}{ext_filename}"
         self.add_properties({
             MDTO.bestandsformaat: ext_file_fileformat_uri,
             MDTO.URLBestand: Literal(url, datatype=XSD.anyURI),
