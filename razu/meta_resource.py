@@ -55,6 +55,7 @@ class MetaResource(RDFResource):
             self.graph.parse(data=file.read(), format="json-ld")
         self.is_modified = False
 
+
 class StructuredMetaResource(MetaResource):
     """
     Provides RDF structure templates for filling MetaResource,
@@ -128,7 +129,7 @@ class StructuredMetaResource(MetaResource):
         self.add_properties({RDF.type: rdf_type})
         
     def set_name(self, name: str) -> None:
-        self.add_properties( {MDTO.naam: name})
+        self.add_properties({MDTO.naam: name})
 
     def set_classification(self, classification_uri: URIRef) -> None:
         self.add_properties({MDTO.classificatie: classification_uri})
@@ -184,13 +185,13 @@ class StructuredMetaResource(MetaResource):
             MDTO.bestandsformaat: ext_file_fileformat_uri,
             MDTO.URLBestand: Literal(url, datatype=XSD.anyURI),
         })
-        self.add((URIRef(url), RDF.type, PREMIS.File))
+        self.add(URIRef(url), RDF.type, PREMIS.File)
 
     def set_filesize(self, filesize: int) -> None:
-        self.add_properties({ MDTO.omvang: Literal(filesize, datatype=XSD.integer)})
+        self.add_properties({MDTO.omvang: Literal(filesize, datatype=XSD.integer)})
 
     def set_original_filename(self, ext_file_original_filename: str) -> None:
-        self.add((URIRef(self.referenced_file_uri), PREMIS.originalName, Literal(ext_file_original_filename)))
+        self.add(URIRef(self.referenced_file_uri), PREMIS.originalName, Literal(ext_file_original_filename))
 
     def set_aggregation_level(self, aggregation_term) -> None:
         self.add_properties({MDTO.aggregatieniveau: StructuredMetaResource._aggregatieniveaus.get_concept(aggregation_term).get_uri()})
@@ -242,4 +243,4 @@ class StructuredMetaResource(MetaResource):
                 MDTO.waardering: StructuredMetaResource._waarderingen.get_concept('B').get_uri(),
                 MDTO.archiefvormer: StructuredMetaResource._actoren.get_concept(self._context.archive_creator_id).get_uri()
             })
-        self.add((URIRef(self.description_uri), RDF.type, PREMIS.File))
+        self.add(URIRef(self.description_uri), RDF.type, PREMIS.File)

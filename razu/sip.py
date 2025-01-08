@@ -70,7 +70,7 @@ class Sip:
         return sip
 
     @classmethod
-    def load_existing(cls, sip_directory: str, resources_directory:str) -> 'Sip':
+    def load_existing(cls, sip_directory: str, resources_directory: str) -> 'Sip':
         sip = cls(sip_directory, resources_directory)
         sip._open_existing_sip()
         sip._load_graph()
@@ -128,7 +128,7 @@ class Sip:
 
     def store_referenced_file(self, resource: StructuredMetaResource) -> None:
         """Store a referenced file in the SIP and update the manifest."""
-        if resource.has_external_file_reference:
+        if resource.has_referenced_file:
             origin_filepath = os.path.join(self.resources_directory, resource.referenced_file_original_filename)
             dest_filepath = os.path.join(self.sip_directory, resource.referenced_file_filename)
             if not os.path.exists(dest_filepath):
@@ -170,5 +170,5 @@ class Sip:
     def _determine_ids_from_files_in_sip_directory(self):
         filenames = [f for f in os.listdir(self.sip_directory) if os.path.isfile(os.path.join(self.sip_directory, f))]
         filename = filenames[0] if filenames else None
-        return  util.extract_source_from_filename(filename), util.extract_archive_from_filename(filename)
+        return util.extract_source_from_filename(filename), util.extract_archive_from_filename(filename)
         
