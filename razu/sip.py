@@ -164,7 +164,6 @@ class Sip:
         for filename in os.listdir(self.sip_directory):
             if filename.endswith(self.cfg.metadata_extension):
                 meta_resource = StructuredMetaResource()
-                meta_resource.file_path = os.path.join(self.sip_directory, filename)
                 meta_resource.load()
                 self.meta_resources[meta_resource.id] = meta_resource
 
@@ -172,3 +171,4 @@ class Sip:
         filenames = [f for f in os.listdir(self.sip_directory) if os.path.isfile(os.path.join(self.sip_directory, f))]
         filename = filenames[0] if filenames else None
         return  util.extract_source_from_filename(filename), util.extract_archive_from_filename(filename)
+        
