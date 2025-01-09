@@ -63,7 +63,12 @@ class Identifiers:
     def make_uid_from_id(self, id: str) -> str:
         """Generate a unique identifier, like 'NL-WbDRAZU-G0321-661-4'."""
         return f"{self.uid_base}-{id}"
-    
+
+    def make_uri_from_id(self, id: str) -> str:
+        """Generate a URI from an object ID, like 'https://data.razu.nl/id/object/NL-WbDRAZU-G0321-661-4'."""
+        uid = self.make_uid_from_id(id)
+        return self.make_uri_from_kind_uid('object', uid)
+
     def make_uri_from_kind_uid(self, kind: str, uid: str) -> str:
         """Generate a URI from a kind and uid, like 'https://data.razu.nl/id/resource/NL-WbDRAZU-G0321-661-4'."""
         return f"{self.config.razu_base_uri}{self.config.resource_identifier_segment}/{kind}/{uid}"

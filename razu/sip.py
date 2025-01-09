@@ -18,14 +18,14 @@ class MetaResourcesDict(dict[str, StructuredMetaResource]):
     @property
     def with_referenced_files(self) -> list:
         """Get list of resources that have referenced files."""
-        return [resource for resource in self.values() if resource.has_ext_file]
+        return [resource for resource in self.values() if resource.has_referenced_file]
 
     @property
     def referenced_file_uris(self) -> list:
         """Get URIs of all referenced files."""
         uris = []
         for meta_resource in self.with_referenced_files:
-            uris.append(meta_resource.ext_file_uri)
+            uris.append(meta_resource.referenced_file_uri)
         return uris
 
     @property
@@ -45,7 +45,8 @@ class MetaResourcesDict(dict[str, StructuredMetaResource]):
         for resource in self.values():
             callback(resource)
 
-    def process_with_referenced_files(self, callback: callable) -> None:
+
+    def process_having_referenced_files(self, callback: callable) -> None:
         """Process all meta resources with referenced files using the provided callback function."""
         for resource in self.with_referenced_files:
             callback(resource)
@@ -113,7 +114,6 @@ class Sip:
         # if self.log_event.is_locked:
         #     raise AssertionError("Sip is locked. Cannot create meta resource.")
         meta_resource = StructuredMetaResource(id=id, rdf_type=rdf_type)
-        meta_resource.file_path = os.path.join(self.sip_directory, meta_resource.filename)
         self.meta_resources[meta_resource.id] = meta_resource
         return meta_resource
 
@@ -130,24 +130,25 @@ class Sip:
             #     for source in resource.metadata_sources:
             #         self.log_event.metadata_modification(resource.this_file_uri, source)
 
-            print(f"Stored {resource.this_file_uri}.")
+            print(f"Stored {resource.description_uri}.")
 
     def store_referenced_file(self, resource: StructuredMetaResource) -> None:
         """Store a referenced file in the SIP and update the manifest."""
-        if resource.has_ext_file:
-            origin_filepath = os.path.join(self.resources_directory, resource.ext_file_original_filename)
-            dest_filepath = os.path.join(self.sip_directory, resource.ext_filename)
+        if resource.has_referenced_file:
+            origin_filepath = os.path.join(self.resources_directory, resource.referenced_file_original_filename)
+            dest_filepath = os.path.join(self.sip_directory, resource.referenced_file_filename)
             if not os.path.exists(dest_filepath):
                 shutil.copy2(origin_filepath, dest_filepath)
                 self.manifest.add_referenced_resource(resource, self.archive_creator_uri, self.archive_id)
                 # self.log_event.filename_change(resource.ext_file_uri, resource.ext_file_original_filename, resource.ext_filename)
 
-                print(f"Stored referenced file {resource.ext_file_original_filename} as {resource.ext_file_uri}.")
+                print(f"Stored referenced file {resource.referenced_file_original_filename} as {resource.referenced_file_uri}.")
 
     def store_meta_resources(self) -> None:
         """Store all meta resources and their referenced files."""
-        self.meta_resources.process_all(self.store_metadata_resource)
-        self.meta_resources.process_with_referenced_files(self.store_referenced_file)
+        self.meta_resources.process_all(self.store_resource)
+        self.meta_resources.process_having_referenced_files(self.store_referenced_file)
+
         # self.log_event.process_queue()
         # self.log_event.save()
         self.manifest.save()
@@ -160,15 +161,17 @@ class Sip:
 
     def save(self):
         """Save all meta resources and their referenced files."""
-        self.meta_resources.process_all(self.store_metadata_resource)
-        self.meta_resources.process_with_referenced_files(self.store_referenced_file)
-        self.log_event.process_queue()
-        self.log_event.save()
+
+        self.meta_resources.process_all(self.store_resource)
+        self.meta_resources.process_having_referenced_files(self.store_referenced_file)
+        # self.log_event.process_queue()
+        # self.log_event.save()
         self.manifest.save()
 
     def _load_graph(self):
         id_factory = Identifiers(self.cfg)
         for filename in os.listdir(self.sip_directory):
+
             if os.path.isfile(os.path.join(self.sip_directory, filename)) and filename.endswith(f"{self.cfg.metadata_suffix}.{self.cfg.metadata_extension}"):
                 if self.archive_creator_id is None:
                     self.archive_creator_id = id_factory.extract_source_id_from_filename(filename)
@@ -182,4 +185,5 @@ class Sip:
         id_factory = Identifiers(self.cfg)
         filenames = [f for f in os.listdir(self.sip_directory) if os.path.isfile(os.path.join(self.sip_directory, f))]
         filename = filenames[0] if filenames else None
+
         return  id_factory.extract_source_id_from_filename(filename), id_factory.extract_archive_id_from_filename(filename)
