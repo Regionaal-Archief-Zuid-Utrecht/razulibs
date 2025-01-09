@@ -16,13 +16,15 @@ import razu.util as util
 
 class PreservationEvents:
 
+    _cfg = Config.get_instance()
+    _id_factory = Identifiers(_cfg)
+
     def __init__(self, sip_directory, eventlog_filename=None):
         """Initialize the Events object & load the eventlog file, if it exists."""
-        self._cfg = Config.get_instance()
-        self.id_factory = Identifiers(self._cfg)
+
 
         self.directory = sip_directory
-        self.file_path = os.path.join(sip_directory, eventlog_filename or self.id_factory.eventlog_filename)
+        self.file_path = os.path.join(sip_directory, eventlog_filename or PreservationEvents._id_factory.eventlog_filename)
         self.current_id = 0
 
         self.graph = MetaGraph()
@@ -35,7 +37,7 @@ class PreservationEvents:
 
             for s in self.graph.subjects():
                 if isinstance(s, URIRef):
-                    extracted_id = self.id_factory.extract_id_from_identifier(s)
+                    extracted_id = PreservationEvents._id_factory.extract_id_from_identifier(s)
                     # extracted_id = util.extract_id_str_from_file_path(s) #TODO
                     event_id = int(extracted_id[1:])
                     self.current_id = max(self.current_id, event_id)
@@ -93,7 +95,7 @@ class PreservationEvents:
 
     def _next_uri(self) -> str:
         self.current_id += 1
-        return f"{self.id_factory.event_uri_prefix}-e{self.current_id}"
+        return f"{PreservationEvents._id_factory.event_uri_prefix}-e{self.current_id}"
     
     def _timestamp(self) -> str:
         return datetime.now(timezone.utc).isoformat()

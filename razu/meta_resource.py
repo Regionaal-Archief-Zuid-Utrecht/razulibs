@@ -21,22 +21,22 @@ class MetaResource(RDFResource):
     _id_factory = Identifiers(_context)
 
     def __init__(self, id: str | None = None):
-        self.id = id if id else str(self._counter.next())
-        uri = self._id_factory.make_uri_from_id(self.id)
+        self.id = id if id else str(MetaResource._counter.next())
+        uri = MetaResource._id_factory.make_uri_from_id(self.id)
         super().__init__(uri=uri)
         self.is_modified = True
 
     @property
     def uid(self):
-        return self._id_factory.make_uid_from_id(self.id)
+        return MetaResource._id_factory.make_uid_from_id(self.id)
 
     @property
     def filename(self):
-        return self._id_factory.make_filename_from_id(self.id)
+        return MetaResource._id_factory.make_filename_from_id(self.id)
 
     @property
     def file_path(self):
-        return os.path.join(self._context.sip_directory, self.filename)
+        return os.path.join(MetaResource._context.sip_directory, self.filename)
  
     def save(self) -> bool:
         if self.is_modified:
@@ -98,7 +98,7 @@ class StructuredMetaResource(MetaResource):
 
     @property
     def description_uri(self) -> str:
-        return f"{self._id_factory.cdn_base_uri}{self.uid}.{self._context.metadata_suffix}.{self._context.metadata_extension}"
+        return f"{MetaResource._id_factory.cdn_base_uri}{self.uid}.{MetaResource._context.metadata_suffix}.{MetaResource._context.metadata_extension}"
 
     @property
     def referenced_file_uri(self) -> str | None:
@@ -180,7 +180,7 @@ class StructuredMetaResource(MetaResource):
         ext_file_fileformat_uri = StructuredMetaResource._bestandsformaten.get_concept(puid).get_uri()
         file_extension = StructuredMetaResource._bestandsformaten.get_concept(puid).get_value(SKOS.notation)
         ext_filename = f"{self.uid}.{file_extension}"
-        url = f"{self._id_factory.cdn_base_uri}{ext_filename}"
+        url = f"{MetaResource._id_factory.cdn_base_uri}{ext_filename}"
         self.add_properties({
             MDTO.bestandsformaat: ext_file_fileformat_uri,
             MDTO.URLBestand: Literal(url, datatype=XSD.anyURI),
@@ -226,7 +226,7 @@ class StructuredMetaResource(MetaResource):
         return None
 
     def validate_referenced_file_md5checksum(self) -> bool:
-        return util.calculate_md5(os.path.join(self._context.save_directory, self.referenced_file_filename)) == self.referenced_file_md5checksum
+        return util.calculate_md5(os.path.join(MetaResource._context.save_directory, self.referenced_file_filename)) == self.referenced_file_md5checksum
 
     def _init_rdf_properties(self, rdf_type) -> None:
         self.add_properties({
@@ -241,6 +241,6 @@ class StructuredMetaResource(MetaResource):
         if rdf_type == MDTO.Informatieobject:
             self.add_properties({
                 MDTO.waardering: StructuredMetaResource._waarderingen.get_concept('B').get_uri(),
-                MDTO.archiefvormer: StructuredMetaResource._actoren.get_concept(self._context.archive_creator_id).get_uri()
+                MDTO.archiefvormer: StructuredMetaResource._actoren.get_concept(MetaResource._context.archive_creator_id).get_uri()
             })
         self.add_triple(URIRef(self.description_uri), RDF.type, PREMIS.File)
