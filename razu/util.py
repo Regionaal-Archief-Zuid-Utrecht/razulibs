@@ -106,37 +106,37 @@ def extract_part_from_filename(filename: str, part_number: int) -> str:
         return filename[start_index:]
     return filename[start_index:end_index]
 
-def extract_source_from_filename(filename: str) -> str:
-    """
-    Extracts the "source" part of the filename that comes after cfg.RAZU_file_id.
+# def extract_source_from_filename(filename: str) -> str:
+#     """
+#     Extracts the "source" part of the filename that comes after cfg.RAZU_file_id.
 
-    Parameters:
-    -----------
-    filename : str
-        The input filename.
+#     Parameters:
+#     -----------
+#     filename : str
+#         The input filename.
 
-    Returns:
-    --------
-    str
-        The extracted source part of the filename.
-    """
-    return extract_part_from_filename(filename, 1)
+#     Returns:
+#     --------
+#     str
+#         The extracted source part of the filename.
+#     """
+#     return extract_part_from_filename(filename, 1)
 
-def extract_archive_from_filename(filename: str) -> str:
-    """
-    Extracts the "archive" part of the filename that comes after cfg.RAZU_file_id and the source part.
+# def extract_archive_from_filename(filename: str) -> str:
+#     """
+#     Extracts the "archive" part of the filename that comes after cfg.RAZU_file_id and the source part.
 
-    Parameters:
-    -----------
-    filename : str
-        The input filename.
+#     Parameters:
+#     -----------
+#     filename : str
+#         The input filename.
 
-    Returns:
-    --------
-    str
-        The extracted archive part of the filename.
-    """
-    return extract_part_from_filename(filename, 2)
+#     Returns:
+#     --------
+#     str
+#         The extracted archive part of the filename.
+#     """
+#     return extract_part_from_filename(filename, 2)
 
 # def extract_id_str_from_file_path(path: str) -> int:
 #     basename = path.split('/')[-1]

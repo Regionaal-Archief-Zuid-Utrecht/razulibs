@@ -1,4 +1,4 @@
-
+# core settings for RAZU e-depot
 razu_base_uri: "https://data.razu.nl/"
 resource_identifier_segment: "id"
 default_entity_kind_segment: "object"
@@ -14,8 +14,10 @@ storage_base_domain: "opslag.razu.nl"
 sparql_endpoint_prefix: "https://api.data.razu.nl/datasets/id/"
 sparql_endpoint_suffix: "/sparql"
 
+# defaults
 default_resources_directory: "bestanden"
 default_metadata_directory: "metadata"
 default_sip_directory: "sip"
 
-
+default_av_executable: "clamscan"
+default_droid_executable: "/home/rene/bin/droid/droid.sh"

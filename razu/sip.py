@@ -3,11 +3,12 @@ import shutil
 from datetime import datetime
 
 from razu.config import Config
+from razu.identifiers import Identifiers
 from razu.concept_resolver import ConceptResolver
 from razu.meta_resource import StructuredMetaResource
 from razu.meta_graph import MetaGraph, MDTO
 from razu.manifest import Manifest
-# from razu.events import RazuEvents
+from razu.preservation_events import RazuPreservationEvents
 import razu.util as util
 
 
@@ -35,19 +36,20 @@ class MetaResourcesDict(dict[str, StructuredMetaResource]):
             graph += resource.graph
         return graph
 
+    def export_rdf(self, format: str = 'turtle') -> None:
+        """Export the combined RDF graph in the specified format."""
+        print(self.combined_rdf_graph.serialize(format=format))
+
     def process_all(self, callback: callable) -> None:
         """Process all meta resources using the provided callback function."""
         for resource in self.values():
             callback(resource)
 
+
     def process_having_referenced_files(self, callback: callable) -> None:
         """Process all meta resources with referenced files using the provided callback function."""
         for resource in self.with_referenced_files:
             callback(resource)
-
-    def export_rdf(self, format: str = 'turtle') -> None:
-        """Export the combined RDF graph in the specified format."""
-        print(self.combined_rdf_graph.serialize(format=format))
 
 
 class Sip:
@@ -59,8 +61,9 @@ class Sip:
         self.resources_directory = resources_directory
         self.meta_resources = MetaResourcesDict()
 
+
     @classmethod
-    def create_new(cls, archive_creator_id: str, archive_id: str, sip_directory=None, resources_directory=None) -> 'Sip':
+    def create_new(cls, archive_creator_id: str, archive_id: str, sip_directory=None, resources_directory=None, ingestion_start_date=None) -> 'Sip':
         cfg = Config.get_instance()
         sip_directory = sip_directory or cfg.default_sip_directory
         resources_directory = resources_directory or cfg.default_resources_directory
@@ -70,7 +73,7 @@ class Sip:
         return sip
 
     @classmethod
-    def load_existing(cls, sip_directory: str, resources_directory: str) -> 'Sip':
+    def load_existing(cls, sip_directory: str, resources_directory=None) -> 'Sip':
         sip = cls(sip_directory, resources_directory)
         sip._open_existing_sip()
         sip._load_graph()
@@ -88,7 +91,10 @@ class Sip:
         )
         os.makedirs(self.sip_directory, exist_ok=True)
         self.manifest = Manifest.create_new(self.sip_directory)
-        # self.log_event = RazuEvents(self.sip_directory)
+        self.log_event = RazuPreservationEvents(self.sip_directory)
+
+    def get_metadata_resource_by_id(self, id: str) -> StructuredMetaResource:
+            return self.meta_resources[id]
 
     def _open_existing_sip(self):
         if not os.listdir(self.sip_directory):
@@ -102,7 +108,7 @@ class Sip:
         actoren = ConceptResolver('actor')
         self.archive_creator_uri = actoren.get_concept_uri(self.archive_creator_id)
         self.manifest = Manifest.load_existing(self.sip_directory)
-        # self.log_event = RazuEvents(self.sip_directory)
+        self.log_event = RazuPreservationEvents(self.sip_directory)
 
     def create_meta_resource(self, id=None, rdf_type=MDTO.Informatieobject) -> StructuredMetaResource:
         # if self.log_event.is_locked:
@@ -111,12 +117,12 @@ class Sip:
         self.meta_resources[meta_resource.id] = meta_resource
         return meta_resource
 
-    def store_resource(self, resource: StructuredMetaResource) -> None:
+    def store_metadata_resource(self, resource: StructuredMetaResource) -> None:
         """Store a resource in the SIP and update the manifest."""
         # if self.log_event.is_locked:
         #     raise AssertionError("Sip is locked. Cannot store resource.")
         if resource.save():
-            self.manifest.add_resource(resource, self.archive_creator_uri, self.archive_id)
+            self.manifest.add_metadata_resource(resource, self.archive_creator_uri, self.archive_id)
 
             # if resource.metadata_sources is None:
             #     self.log_event.metadata_modification(resource.this_file_uri, resource.this_file_uri)
@@ -133,7 +139,7 @@ class Sip:
             dest_filepath = os.path.join(self.sip_directory, resource.referenced_file_filename)
             if not os.path.exists(dest_filepath):
                 shutil.copy2(origin_filepath, dest_filepath)
-                self.manifest.add_resource(resource, self.archive_creator_uri, self.archive_id)
+                self.manifest.add_referenced_resource(resource, self.archive_creator_uri, self.archive_id)
                 # self.log_event.filename_change(resource.ext_file_uri, resource.ext_file_original_filename, resource.ext_filename)
 
                 print(f"Stored referenced file {resource.referenced_file_original_filename} as {resource.referenced_file_uri}.")
@@ -142,6 +148,7 @@ class Sip:
         """Store all meta resources and their referenced files."""
         self.meta_resources.process_all(self.store_resource)
         self.meta_resources.process_having_referenced_files(self.store_referenced_file)
+
         # self.log_event.process_queue()
         # self.log_event.save()
         self.manifest.save()
@@ -154,6 +161,7 @@ class Sip:
 
     def save(self):
         """Save all meta resources and their referenced files."""
+
         self.meta_resources.process_all(self.store_resource)
         self.meta_resources.process_having_referenced_files(self.store_referenced_file)
         # self.log_event.process_queue()
@@ -161,14 +169,21 @@ class Sip:
         self.manifest.save()
 
     def _load_graph(self):
+        id_factory = Identifiers(self.cfg)
         for filename in os.listdir(self.sip_directory):
-            if filename.endswith(self.cfg.metadata_extension):
-                meta_resource = StructuredMetaResource()
+
+            if os.path.isfile(os.path.join(self.sip_directory, filename)) and filename.endswith(f"{self.cfg.metadata_suffix}.{self.cfg.metadata_extension}"):
+                if self.archive_creator_id is None:
+                    self.archive_creator_id = id_factory.extract_source_id_from_filename(filename)
+                    self.dataset_id = id_factory.extract_archive_id_from_filename(filename)
+                id = id_factory.extract_id_from_file_path(filename)
+                meta_resource = StructuredMetaResource(id=id)
                 meta_resource.load()
-                self.meta_resources[meta_resource.id] = meta_resource
+                self.meta_resources[id] = meta_resource
 
     def _determine_ids_from_files_in_sip_directory(self):
+        id_factory = Identifiers(self.cfg)
         filenames = [f for f in os.listdir(self.sip_directory) if os.path.isfile(os.path.join(self.sip_directory, f))]
         filename = filenames[0] if filenames else None
-        return util.extract_source_from_filename(filename), util.extract_archive_from_filename(filename)
-        
+
+        return  id_factory.extract_source_id_from_filename(filename), id_factory.extract_archive_id_from_filename(filename)

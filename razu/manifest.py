@@ -44,12 +44,10 @@ class ManifestEntry:
         return cls(filename, md5hash, md5date, **data)
 
     @classmethod
-    def from_resource(cls, resource: StructuredMetaResource, archive_creator_uri: str, dataset_id: str) -> 'ManifestEntry':
-        """ Create a manifest entry from a StructuredMetaResource. """
-        is_MDTO_bestand = (resource.uri, RDF.type, MDTO.Bestand) in resource.graph
-        if is_MDTO_bestand:
-            return cls(
-                resource.ext_filename,
+    def create_entry_for_metadata_resource(cls, resource: StructuredMetaResource, archive_creator_uri: str, dataset_id: str) -> 'ManifestEntry':
+        """ Create a manifest entry for a StructuredMetaResource. """
+        return cls(
+                filename=resource.ext_filename,
                 md5hash=resource.ext_file_md5checksum,
                 md5date=resource.ext_file_checksum_datetime,
                 ObjectUID=resource.uid,
@@ -58,17 +56,22 @@ class ManifestEntry:
                 FileFormat=resource.ext_file_fileformat_uri,
                 OriginalFilename=resource.ext_file_original_filename,
                 URI=resource.ext_file_uri
-            )
-        else:
-            return cls(
-                resource.filename,
-                md5hash=util.calculate_md5(resource.file_path),
-                md5date=datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-                ObjectUID=resource.uid,
-                Source=archive_creator_uri,
-                Dataset=dataset_id,
-                URI=resource.this_file_uri
-            )
+        )
+        
+    @classmethod
+    def create_entry_for_referenced_resource(cls, resource: StructuredMetaResource, archive_creator_uri: str, dataset_id: str) -> 'ManifestEntry':
+        """ Create a manifest entry for a file referenced by a StructuredMetaResource. """
+        return cls(
+            filename=resource.filename,
+            md5hash=util.calculate_md5(resource.file_path),
+            md5date=datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            ObjectUID=resource.uid,
+            Source=archive_creator_uri,
+            Dataset=dataset_id,
+            URI=resource.this_file_uri
+        )
+
+
 
 
 class Manifest:
@@ -131,9 +134,16 @@ class Manifest:
         self.is_modified = True
         return entry
 
-    def add_resource(self, resource: StructuredMetaResource, archive_creator_uri: str, dataset_id: str) -> ManifestEntry:
+    def add_metadata_resource(self, resource: StructuredMetaResource, archive_creator_uri: str, dataset_id: str) -> ManifestEntry:
         """Add a resource to the manifest"""
-        entry = ManifestEntry.from_resource(resource, archive_creator_uri, dataset_id)
+        entry = ManifestEntry.create_entry_for_metadata_resource(resource, archive_creator_uri, dataset_id)
+        self.entries[entry.filename] = entry
+        self.is_modified = True
+        return entry
+
+    def add_referenced_resource(self, resource: StructuredMetaResource, archive_creator_uri: str, dataset_id: str) -> ManifestEntry:
+        """Add a resource to the manifest"""
+        entry = ManifestEntry.create_entry_for_referenced_resource(resource, archive_creator_uri, dataset_id)
         self.entries[entry.filename] = entry
         self.is_modified = True
         return entry
@@ -174,8 +184,12 @@ class Manifest:
             }
         self.is_modified = False
 
-    def validate(self, ignore_missing_files: bool = False, ignore_extra_files: bool = False) -> dict:
+    def validate(self, ignore_files: list = None) -> dict:
         """ Verify 1 to 1 relationship between manifest entries and files in the directory. 
+
+        Args:
+            ignore_files: Optional list of filenames to ignore when checking for extra files.
+                         The manifest file itself is always ignored.
 
         Returns:
             dict: A dictionary of errors with keys 'missing_files', 'checksum_mismatch', and 'extra_files'
@@ -185,6 +199,9 @@ class Manifest:
             'checksum_mismatch': [],
             'extra_files': []
         }
+
+        ignore_files = ignore_files or []
+        ignore_files.append(os.path.basename(self.manifest_file_path))
 
         # Check manifest entries against filesystem
         for filename in self.entries:
@@ -199,37 +216,35 @@ class Manifest:
         # Check filesystem against manifest entries
         for root, dirs, files in os.walk(self.save_directory):
             for file in files:
-                if file == os.path.basename(self.manifest_file_path):
+                if file in ignore_files:
                     continue
                 file_path = os.path.join(root, file)
                 relative_path = os.path.relpath(file_path, self.save_directory)
                 if relative_path not in self.entries:
                     errors['extra_files'].append(relative_path)
 
-        if not ignore_missing_files and errors['missing_files']:
+        if errors['missing_files']:
             raise FileNotFoundError(f"Files missing: {errors['missing_files']}")
-        if not ignore_extra_files and errors['extra_files']:
+        if errors['extra_files']:
             raise FileExistsError(f"Extra files found: {errors['extra_files']}")
-
         return errors
 
 
 if __name__ == "__main__":
     """Command-line interface for managing a file manifest."""
     if len(sys.argv) < 3:
-        print("Usage: python manifest.py <directory> <manifest-file> [--ignore-missing] [--ignore-extra]")
+        print("Usage: python manifest.py <directory> <manifest-file> [files-to-ignore ...]")
         print("\nExample:")
-        print("  python manifest.py sip NL-WbDRAZU-G0321-661.manifest.json")
+        print("  python manifest.py sip NL-WbDRAZU-G0321-661.manifest.json eventlog.json metadata.json")
         sys.exit(1)
 
     directory = sys.argv[1]
     manifest_filename = sys.argv[2]
-    ignore_missing = "--ignore-missing" in sys.argv
-    ignore_extra = "--ignore-extra" in sys.argv
+    ignore_files = sys.argv[3:] if len(sys.argv) > 3 else None
 
     try:
         manifest = Manifest.load_existing(directory, manifest_filename=manifest_filename)
-        errors = manifest.validate(ignore_missing, ignore_extra)
+        errors = manifest.validate(ignore_files=ignore_files)
         if any(errors.values()):
             print("Verification failed:")
             for error_type, files in errors.items():
@@ -237,6 +252,8 @@ if __name__ == "__main__":
                     print(f"{error_type}: {files}")
         else:
             print(f"Directory {directory} complies with manifest {manifest_filename} and validated successfully.")
+            if ignore_files:
+                print(f"Note: The following files were ignored during validation: {', '.join(ignore_files)}")
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)

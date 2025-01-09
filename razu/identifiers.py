@@ -80,3 +80,33 @@ class Identifiers:
     def extract_id_from_identifier(self, identifier: str) -> str:
         """Extract the object id from a file path or uri, like 'NL-WbDRAZU-G0321-661-4.meta.json'."""
         return identifier.split(f"{self.uid_base}-")[1].split(f".{self.config.metadata_suffix}.{self.config.metadata_extension}")[0]
+
+    def extract_source_id_from_filename(self, filename: str) -> str:
+        return self._extract_part_from_filename(filename, 1)
+
+    def extract_archive_id_from_filename(self, filename: str) -> str:
+        return self._extract_part_from_filename(filename, 2)
+
+    def extract_id_from_filename(self, filename: str) -> str:
+        return self._extract_part_from_filename(filename, 3)
+
+    def extract_id_from_file_path(self, path: str) -> str:
+        basename = path.split('/')[-1]
+        part = self._extract_part_from_filename(basename, 3)
+        return part.split('.')[0]
+
+    def _extract_part_from_filename(self, filename: str, part_number: int) -> str:
+        """Extracts a specific part of the filename based on its position after cfg.razu_file_id."""
+        start_index = filename.find(self.config.razu_file_id)
+        if start_index == -1:
+            raise ValueError(f"razu file ID '{self.config.razu_file_id}' not found in the filename.")
+        start_index += len(self.config.razu_file_id) + 1  
+        for _ in range(part_number - 1):
+            start_index = filename.find('-', start_index) + 1
+            if start_index == 0:
+                raise ValueError(f"Part {part_number} not found in the filename.")
+        end_index = filename.find('-', start_index)
+        if end_index == -1:
+            return filename[start_index:]
+        return filename[start_index:end_index]
+

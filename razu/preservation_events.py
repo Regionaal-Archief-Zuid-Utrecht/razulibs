@@ -3,7 +3,8 @@ from datetime import datetime, timezone
 
 from rdflib import URIRef, Literal
 
-from razu.run_context import RunContext
+from razu.config import Config
+from razu.identifiers import Identifiers
 from razu.rdf_resource import RDFResource
 from razu.meta_graph import MetaGraph, RDF, XSD, PREMIS, EROR, ERAR, PROV
 import razu.util as util
@@ -13,17 +14,15 @@ import razu.util as util
 # https://data.razu.nl/id/event/NL-WbDRAZU-{archiefvormer}-{toegang}-{timestamp}
 
 
-class Events:
-
+class PreservationEvents:
 
     def __init__(self, sip_directory, eventlog_filename=None):
-        """
-        Initialize the Events object. 
-        Load the eventlog file, if it exists.
-        """
-        self._cfg = RunContext.get_instance()
+        """Initialize the Events object & load the eventlog file, if it exists."""
+        self._cfg = Config.get_instance()
+        self.id_factory = Identifiers(self._cfg)
+
         self.directory = sip_directory
-        self.file_path = os.path.join(sip_directory, eventlog_filename or self._cfg.identifiers.eventlog_filename)
+        self.file_path = os.path.join(sip_directory, eventlog_filename or self.id_factory.eventlog_filename)
         self.current_id = 0
 
         self.graph = MetaGraph()
@@ -31,13 +30,13 @@ class Events:
         self.is_modified = False
 
         if os.path.exists(self.file_path):
-            # Use explicit UTF-8 encoding when parsing the JSON-LD file
             with open(self.file_path, 'r', encoding='utf-8') as f:
                 self.graph.parse(data=f.read(), format="json-ld")
 
             for s in self.graph.subjects():
                 if isinstance(s, URIRef):
-                    extracted_id = util.extract_id_str_from_file_path(s)
+                    extracted_id = self.id_factory.extract_id_from_identifier(s)
+                    # extracted_id = util.extract_id_str_from_file_path(s) #TODO
                     event_id = int(extracted_id[1:])
                     self.current_id = max(self.current_id, event_id)
 
@@ -94,13 +93,13 @@ class Events:
 
     def _next_uri(self) -> str:
         self.current_id += 1
-        return f"{Events._cfg.event_uri_prefix}-e{self.current_id}"
+        return f"{self.id_factory.event_uri_prefix}-e{self.current_id}"
     
     def _timestamp(self) -> str:
         return datetime.now(timezone.utc).isoformat()
 
 
-class RazuEvents(Events):
+class RazuPreservationEvents(PreservationEvents):
 
     # eventtypes : https://id.loc.gov/vocabulary/preservation/eventType.html
     # https://id.loc.gov/vocabulary/preservation.html
