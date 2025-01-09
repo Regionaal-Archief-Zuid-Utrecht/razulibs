@@ -27,15 +27,15 @@ class MetaResource(RDFResource):
         self.is_modified = True
 
     @property
-    def uid(self):
+    def uid(self) -> str:
         return MetaResource._id_factory.make_uid_from_id(self.id)
 
     @property
-    def filename(self):
+    def filename(self) -> str:
         return MetaResource._id_factory.make_filename_from_id(self.id)
 
     @property
-    def file_path(self):
+    def file_path(self) -> str:
         return os.path.join(MetaResource._context.sip_directory, self.filename)
  
     def save(self) -> bool:
