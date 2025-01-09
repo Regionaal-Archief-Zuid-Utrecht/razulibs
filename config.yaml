@@ -1,4 +1,12 @@
-# core settings for RAZU e-depot
+# Copy this file to one of the following locations:
+# 1. The directory of the script that uses the library
+# 2. The current working directory
+# 3. The user's config directory:
+#    - Windows: %LOCALAPPDATA%\razu\config.yaml
+#    - macOS: ~/Library/Application Support/razu/config.yaml
+#    - Linux: ~/.config/razu/config.yaml
+
+# Core settings for RAZU e-depot:
 razu_base_uri: "https://data.razu.nl/"
 resource_identifier_segment: "id"
 default_entity_kind_segment: "object"
@@ -14,10 +22,10 @@ storage_base_domain: "opslag.razu.nl"
 sparql_endpoint_prefix: "https://api.data.razu.nl/datasets/id/"
 sparql_endpoint_suffix: "/sparql"
 
-# defaults
+# Defaults for a run session:
 default_resources_directory: "bestanden"
 default_metadata_directory: "metadata"
 default_sip_directory: "sip"
 
 default_av_executable: "clamscan"
-default_droid_executable: "/home/rene/bin/droid/droid.sh"
+default_droid_executable: "/home/rene/bin/droid/droid." 

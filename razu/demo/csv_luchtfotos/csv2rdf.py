@@ -3,21 +3,27 @@ import pandas as pd
 from rdflib import Literal, URIRef
 
 from razu.config import Config
-from razu.identifiers import Identifiers
 from razu.meta_resource import StructuredMetaResource
 from razu.concept_resolver import ConceptResolver
 from razu.meta_graph import MetaGraph, RDF, RDFS, MDTO, SCHEMA, GEO, PREMIS, XSD, SKOS
 
+import razu.util
+import extra                # Functions specific for this import
 
-import razu.util            # generieke functies
-import extra                # code specifiek voor deze import
+"""	
+This demo aims to provide a simple example of how  metadata from a CSV file can be transformed to RDF.
+
+The RDF conforms to the MDTO derived model as used by RAZU.
+The RDF is displayed on screen and saved to the default output directory (known as "context.default_sip_directory").
+
+Make sure the settings file config.yaml is available, in for example the present working directory.
+"""	
+
 
 def main():
-    # Create output directory
-    output_dir = "output"
-    os.makedirs(output_dir, exist_ok=True)
     
-    # Initialize concept resolvers
+    # Initialize RDF concept resolvers, used to convert labels, notations or identifiers
+    # in a given vocabulary to their respective URIs.
     actoren = ConceptResolver("actor")
     aggregatieniveaus = ConceptResolver("aggregatieniveau")
     algoritmes = ConceptResolver("algoritme")
@@ -30,39 +36,39 @@ def main():
     soorten = ConceptResolver("soort")
     waarderingen = ConceptResolver("waardering")
 
-    # Initialize global config
+    # Initialize global configuration
     context = Config.initialize()
 
-    # Initialize run context with archive details
+    # Initialize the context with settings for this specific run
     context.add_properties(
         archive_id="661",
         archive_creator_id=actoren.get_concept_value("Gemeente Houten", SKOS.notation),
         sip_directory=context.default_sip_directory
     )
 
-    # CSV-bestanden inlezen
+    # Read the CSV files with metadata and DROID outputs
     script_directory = os.path.dirname(os.path.abspath(__file__))
-    meta_path = os.path.join(script_directory, './metadata/metadata.csv')
-    droid_path = os.path.join(script_directory, './metadata/droid.csv')
+    meta_path = os.path.join(script_directory, f"./{context.default_metadata_directory}/metadata.csv")
+    droid_path = os.path.join(script_directory, f"./{context.default_metadata_directory}/droid.csv")
 
     meta_df = pd.read_csv(meta_path, delimiter=';')
     droid_df = pd.read_csv(droid_path, index_col='NAME')
-    droid_df['SIZE'] = droid_df['SIZE'].fillna(0).astype(int)  # forceer deze kolom 'SIZE' als integers
+    droid_df['SIZE'] = droid_df['SIZE'].fillna(0).astype(int)  # Force this column to be handled as integers
     checksum_date = razu.util.get_last_modified(droid_path)
 
     graph = MetaGraph()
 
-    # voor boekhouding rondom serie en datumrange, bij doorlopen csv:
+    # For bookkeeping around series and date range, while going through the csv:
     current_serie = None
     serie = None
     earliest_date = None
     latest_date = None
 
-    # behandel nu iedere regel van de metadata csv:
+    # Now process each row of the metadata spreadsheet:
     for index, row in meta_df.iterrows():
 
         # ARCHIEF
-        #  We maken 1x , bij de eerste rij, een resource voor de 'toegang' / het archief aan:
+        # The highest level is implictly defined in the metadata, create it when processing the first row:
         if index == 0:
             archive = StructuredMetaResource()
             archive.add_properties({
@@ -78,15 +84,15 @@ def main():
                 },
                 MDTO.waardering: URIRef(waarderingen.get_concept_uri("Blijvend te bewaren"))
             })
-            # wordt verderop dynamisch toegevoegd: mdto:dekkingInTijd en mdt:bevatOnderdeel
+            # Predicates to be added later in the script: mdto:dekkingInTijd en mdt:bevatOnderdeel
 
         # SERIE
         if current_serie != row['Serie']:
-            # we zijn bij een nieuwe serie beland (aanname is csv geordend per serie!):
+            # Assuming csv is ordered by series, this must be a new series
             current_serie = row['Serie']
 
             if serie is not None:
-                # bewaar de vorige serie in de graph
+                # Store the previous serie, we dealt with that already
                 serie.save()
                 graph += serie
 
@@ -103,7 +109,7 @@ def main():
                 }
             })
 
-            # maak relaties met bovenliggende archief:
+            # Add relations with the upper 'Archief' level
             archive.add(MDTO.bevatOnderdeel, serie.uri)
             serie.add(MDTO.isOnderdeelVan, archive.uri)
 
@@ -178,7 +184,7 @@ def main():
             } 
         })
 
-        # optionele velden voor het archiefstuk:
+        # Optional fields
         if not pd.isna(row['Plaats 2']):
             record.add(MDTO.dekkingInRuimte, URIRef(locaties.get_concept_uri(row['Plaats 2'])))
 
@@ -193,7 +199,7 @@ def main():
                 }
             })
 
-        # relaties archiefstuk en serie:
+        # Create links:
         serie.add(MDTO.bevatOnderdeel, record.uri)
         record.add(MDTO.isOnderdeelVan, serie.uri)
 
@@ -220,24 +226,24 @@ def main():
             )
         })
 
-        # relaties bestand en archiefstuk:
+        # Create links:
         record.add(MDTO.heeftRepresentatie, bestand.uri)
         bestand.add(MDTO.isRepresentatieVan, record.uri)
 
-        # bewaar & voeg archiefstuk & bestand toe aan graph
+        # Store and add to graph
         record.save()
         graph += record
         bestand.save()
         graph += bestand
 
-        # hiermee bepalen we de datumrange op archive-niveau:
-        # NB code gaat mogelijk mis als datum niet in iso-formaat
+        # Here we determine the date range at archive level:
+        # note that this code might go wrong if date not in iso-format
         if earliest_date is None or row['Datering'] < earliest_date:
             earliest_date = row['Datering'] 
         if latest_date is None or row['Datering'] > latest_date:
             latest_date = row['Datering'] 
 
-    # nu alle rijen doorlopen zijn, weten we de dekking in tijd vh archief:
+    # Now we have looped through all rows, we know the archive's coverage in time:
     archive.add_properties({
         MDTO.dekkingInTijd: {
             RDF.type: MDTO.DekkingInTijdGegevens,
@@ -249,7 +255,7 @@ def main():
 
     archive.save()
 
-    # dit is alleen relevant als we output willen zien van de gemaakte rdf:
+    # This is only relevant if we want to see the output of the generated rdf:
     graph += archive
     graph += serie
     print(graph.serialize(format='turtle'))

@@ -11,8 +11,6 @@ class RDFResource:
         """
         Initializes an RDFResource. If a URI is provided, it is used as the subject for the RDFResource;
         otherwise, a blank node is created.
-
-        :param uri: A URI string for the resource. If None, a blank node is created.
         """
         if uri:
             self.uri = URIRef(uri)
@@ -21,7 +19,7 @@ class RDFResource:
         self.graph = Graph()
 
     def __iter__(self):
-        """ Returns an iterator over the RDF graph. This allows iteration over all triples in the graph. """
+        """ Returns an iterator over the RDF graph, allows iteration over all triples in the graph. """
         return iter(self.graph)
 
     def __iadd__(self, other_graph: Graph) -> Graph:
@@ -29,37 +27,25 @@ class RDFResource:
         self.graph += other_graph
         return self.graph
 
-    def add(self, predicate: URIRef, obj, transformer: callable = Literal):
+    def add(self, triple_predicate: URIRef, triple_object, object_transformer: callable = Literal):
         """
         Adds a triple to the graph where the subject is the current RDFResource,
         the predicate is provided, and the object is transformed using the given transformer.
-
-        :param predicate: The URIRef representing the predicate of the triple.
-        :param obj: The object of the triple, which can be another RDFResource, a URIRef, or any value
-                    to be converted into a Literal.
-        :param transformer: A callable that transforms the object into a suitable type for RDF (default: Literal).
         """
-        if isinstance(obj, RDFResource):
-            self.graph.add((self.uri, predicate, obj.uri))
-            self.graph += obj.graph
-        elif isinstance(obj, URIRef):
-            self.graph.add((self.uri, predicate, obj))
+        if isinstance(triple_object, RDFResource):
+            self.graph.add((self.uri, triple_predicate, triple_object.uri))
+            self.graph += triple_object.graph
+        elif isinstance(triple_object, URIRef):
+            self.graph.add((self.uri, triple_predicate, triple_object))
         else:
-            self.graph.add((self.uri, predicate, transformer(obj)))
+            self.graph.add((self.uri, triple_predicate, object_transformer(triple_object)))
 
-    def add_list_from_string(self, predicate: URIRef, item_list: str, separator: str, transformer: callable = Literal):
-        """
-        Adds multiple triples to the graph based on a string of items separated by a specified separator.
-
-        :param predicate: The URIRef representing the predicate of each triple.
-        :param item_list: A string containing multiple items separated by the given separator.
-        :param separator: The separator used to split the string into individual items.
-        :param transformer: A callable that transforms each item into a suitable type for RDF (default: Literal).
-        """
-        if isinstance(item_list, str) and item_list:
-            elements = item_list.split(separator)
+    def add_list_from_string(self, triple_predicate: URIRef, triple_objects: str, object_separator: str, object_transformer: callable = Literal):
+        """Adds multiple triples to the graph based on a string of triple objects separated by a specified separator character."""
+        if isinstance(triple_objects, str) and triple_objects:
+            elements = triple_objects.split(object_separator)
             for part in elements:
-                self.add(predicate, transformer(part))
+                self.add(triple_predicate, object_transformer(part))
 
     def add_properties(self, rdf_properties: dict):
         """
