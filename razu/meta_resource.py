@@ -93,6 +93,10 @@ class StructuredMetaResource(MetaResource):
         self.is_modified = True
 
     @property
+    def has_metadata_sources(self) -> bool:
+        return bool(self.metadata_sources)
+
+    @property
     def has_referenced_file(self) -> bool:
         return self._get_object_value(MDTO.URLBestand, self.uri) is not None
 

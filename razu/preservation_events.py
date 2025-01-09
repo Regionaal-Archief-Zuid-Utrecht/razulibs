@@ -42,7 +42,9 @@ class PreservationEvents:
                     event_id = int(extracted_id[1:])
                     self.current_id = max(self.current_id, event_id)
 
-        self.is_locked = any(self.graph.triples((None, URIRef("http://www.loc.gov/premis/rdf/v3/eventType"), URIRef("http://id.loc.gov/vocabulary/preservation/eventType/ine"))))
+    @property
+    def is_locked(self):
+        return any(self.graph.triples((None, URIRef("http://www.loc.gov/premis/rdf/v3/eventType"), URIRef("http://id.loc.gov/vocabulary/preservation/eventType/ine"))))
 
     def to_queue(self, event, *args, **kwargs):
         """Voegt een event toe aan de queue voor uitgesteld uitvoeren."""

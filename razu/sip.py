@@ -124,12 +124,11 @@ class Sip:
         if resource.save():
             self.manifest.add_metadata_resource(resource, self.archive_creator_uri, self.archive_id)
 
-            # if resource.metadata_sources is None:
-            #     self.log_event.metadata_modification(resource.this_file_uri, resource.this_file_uri)
-            # else:
-            #     for source in resource.metadata_sources:
-            #         self.log_event.metadata_modification(resource.this_file_uri, source)
-
+            if resource.has_metadata_sources:
+                for source in resource.metadata_sources:
+                    self.log_event.metadata_modification(resource.description_uri, source)
+            else:
+                self.log_event.metadata_modification(resource.description_uri, resource.description_uri)
             print(f"Stored {resource.description_uri}.")
 
     def store_referenced_file(self, resource: StructuredMetaResource) -> None:
@@ -137,21 +136,11 @@ class Sip:
         if resource.has_referenced_file:
             origin_filepath = os.path.join(self.resources_directory, resource.referenced_file_original_filename)
             dest_filepath = os.path.join(self.sip_directory, resource.referenced_file_filename)
-            if not os.path.exists(dest_filepath):
-                shutil.copy2(origin_filepath, dest_filepath)
-                self.manifest.add_referenced_resource(resource, self.archive_creator_uri, self.archive_id)
-                # self.log_event.filename_change(resource.ext_file_uri, resource.ext_file_original_filename, resource.ext_filename)
-
-                print(f"Stored referenced file {resource.referenced_file_original_filename} as {resource.referenced_file_uri}.")
-
-    def store_meta_resources(self) -> None:
-        """Store all meta resources and their referenced files."""
-        self.meta_resources.process_all(self.store_metadata_resource)
-        self.meta_resources.process_having_referenced_files(self.store_referenced_file)
-
-        # self.log_event.process_queue()
-        # self.log_event.save()
-        self.manifest.save()
+        if not os.path.exists(dest_filepath):
+            shutil.copy2(origin_filepath, dest_filepath)
+            self.manifest.add_referenced_resource(resource, self.archive_creator_uri, self.archive_id)
+            self.log_event.filename_change(resource.description_uri, resource.referenced_file_original_filename, resource.referenced_file_filename)
+            print(f"Stored referenced file {resource.referenced_file_original_filename} as {resource.referenced_file_uri}.")
 
     def validate_referenced_files(self):
         pass
@@ -163,8 +152,8 @@ class Sip:
         """Save all meta resources and their referenced files."""
         self.meta_resources.process_all(self.store_metadata_resource)
         self.meta_resources.process_having_referenced_files(self.store_referenced_file)
-        # self.log_event.process_queue()
-        # self.log_event.save()
+        self.log_event.process_queue()
+        self.log_event.save()
         self.manifest.save()
 
     def _load_graph(self):
