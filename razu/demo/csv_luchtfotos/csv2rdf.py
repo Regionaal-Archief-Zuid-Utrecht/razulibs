@@ -12,7 +12,7 @@ import extra                # code specifiek voor deze import
 
 if __name__ == "__main__":
 
-    cfg = RazuConfig(archive_creator_id="G321", archive_id="661", save_directory="output")
+    cfg = RazuConfig(archive_creator_id="G0321", archive_id="661", save_directory="output")
 
     # CSV-bestanden inlezen, we combineren hier een metadata-csv met de output van DROID
     # voor oa. checksum en omvang bestand; TODO beter als dit al aangeleverd is in de metadata
@@ -232,7 +232,7 @@ if __name__ == "__main__":
             RDF.type: MDTO.DekkingInTijdGegevens,
             MDTO.dekkingInTijdBeginDatum: razu.util.date_type(earliest_date),
             MDTO.dekkingInTijdEindDatum: razu.util.date_type(latest_date),
-            MDTO.dekkingInTijdType: URIRef(dekkingintijdtypen.get_concept_uri("Opnamedatum"))
+            MDTO.dekkingInTijdType: URIRef(dekkingintijdtypen.get_concept_uri("Opname"))
         }
     })
 
