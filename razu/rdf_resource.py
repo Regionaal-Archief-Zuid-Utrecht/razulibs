@@ -27,25 +27,21 @@ class RDFResource:
         self.graph += other_graph
         return self.graph
 
-    def add(self, triple_predicate: URIRef, triple_object, object_transformer: callable = Literal):
+    def add_triple(self, subject: URIRef, predicate: URIRef, object) -> None:
+        self.graph.add((subject, predicate, object))
+
+    def add_property(self, predicate: URIRef, object, object_transformer: callable = Literal):
         """
         Adds a triple to the graph where the subject is the current RDFResource,
-        the predicate is provided, and the object is transformed using the given transformer.
+        the object is transformed using the given transformer.
         """
-        if isinstance(triple_object, RDFResource):
-            self.graph.add((self.uri, triple_predicate, triple_object.uri))
-            self.graph += triple_object.graph
-        elif isinstance(triple_object, URIRef):
-            self.graph.add((self.uri, triple_predicate, triple_object))
+        if isinstance(object, RDFResource):
+            self.add_triple(self.uri, predicate, object.uri)
+            self.graph += object.graph
+        elif isinstance(object, URIRef):
+            self.add_triple(self.uri, predicate, object)
         else:
-            self.graph.add((self.uri, triple_predicate, object_transformer(triple_object)))
-
-    def add_list_from_string(self, triple_predicate: URIRef, triple_objects: str, object_separator: str, object_transformer: callable = Literal):
-        """Adds multiple triples to the graph based on a string of triple objects separated by a specified separator character."""
-        if isinstance(triple_objects, str) and triple_objects:
-            elements = triple_objects.split(object_separator)
-            for part in elements:
-                self.add(triple_predicate, object_transformer(part))
+            self.add_triple(self.uri, predicate, object_transformer(object))
 
     def add_properties(self, rdf_properties: dict):
         """
@@ -59,16 +55,23 @@ class RDFResource:
             if isinstance(obj, dict):
                 nested_entity = RDFResource()
                 nested_entity.add_properties(obj)
-                self.add(predicate, nested_entity)
+                self.add_property(predicate, nested_entity)
             elif isinstance(obj, list):
                 for item in obj:
                     if isinstance(item, dict):
                         nested_entity = RDFResource()
                         nested_entity.add_properties(item)
-                        self.add(predicate, nested_entity)
+                        self.add_property(predicate, nested_entity)
                     elif isinstance(item, URIRef):
-                        self.graph.add((self.uri, predicate, item))
+                        self.add_triple(self.uri, predicate, item)
                     else:
-                        self.graph.add((self.uri, predicate, Literal(item)))
+                        self.add_triple(self.uri, predicate, Literal(item))
             else:
-                self.add(predicate, obj)
+                self.add_property(predicate, obj)
+
+    def add_properties_from_string(self, predicate: URIRef, objects: str, separator: str, object_transformer: callable = Literal):
+        """Adds multiple triples to the graph based on a string of objects separated by a specified separator character."""
+        if isinstance(objects, str) and objects:
+            elements = objects.split(separator)
+            for object_part in elements:
+                self.add_property(predicate, object_part, object_transformer)

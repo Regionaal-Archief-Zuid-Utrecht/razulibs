@@ -79,7 +79,7 @@ class StructuredMetaResource(MetaResource):
 
     def add(self, predicate: URIRef, obj, transformer: Callable = Literal) -> None:
         """Add a triple to the graph and mark as modified."""
-        super().add(predicate, obj, transformer)
+        super().add_property(predicate, obj, transformer)
         self.is_modified = True
     
     def add_properties(self, rdf_properties: dict) -> None:
@@ -89,7 +89,7 @@ class StructuredMetaResource(MetaResource):
 
     def add_list_from_string(self, predicate: URIRef, item_list: str, separator: str, transformer: Callable = Literal) -> None:
         """Add a list of values from a string and mark as modified."""
-        super().add_list_from_string(predicate, item_list, separator, transformer)
+        super().add_properties_from_string(predicate, item_list, separator, transformer)
         self.is_modified = True
 
     @property
@@ -185,13 +185,13 @@ class StructuredMetaResource(MetaResource):
             MDTO.bestandsformaat: ext_file_fileformat_uri,
             MDTO.URLBestand: Literal(url, datatype=XSD.anyURI),
         })
-        self.add(URIRef(url), RDF.type, PREMIS.File)
+        self.add_triple(URIRef(url), RDF.type, PREMIS.File)
 
     def set_filesize(self, filesize: int) -> None:
         self.add_properties({MDTO.omvang: Literal(filesize, datatype=XSD.integer)})
 
     def set_original_filename(self, ext_file_original_filename: str) -> None:
-        self.add(URIRef(self.referenced_file_uri), PREMIS.originalName, Literal(ext_file_original_filename))
+        self.add_triple(URIRef(self.referenced_file_uri), PREMIS.originalName, Literal(ext_file_original_filename))
 
     def set_aggregation_level(self, aggregation_term) -> None:
         self.add_properties({MDTO.aggregatieniveau: StructuredMetaResource._aggregatieniveaus.get_concept(aggregation_term).get_uri()})
@@ -243,4 +243,4 @@ class StructuredMetaResource(MetaResource):
                 MDTO.waardering: StructuredMetaResource._waarderingen.get_concept('B').get_uri(),
                 MDTO.archiefvormer: StructuredMetaResource._actoren.get_concept(self._context.archive_creator_id).get_uri()
             })
-        self.add(URIRef(self.description_uri), RDF.type, PREMIS.File)
+        self.add_triple(URIRef(self.description_uri), RDF.type, PREMIS.File)

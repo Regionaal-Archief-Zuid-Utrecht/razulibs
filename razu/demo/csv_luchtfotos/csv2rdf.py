@@ -45,6 +45,7 @@ def main():
         archive_creator_id=actoren.get_concept_value("Gemeente Houten", SKOS.notation),
         sip_directory=context.default_sip_directory
     )
+    os.makedirs(context.sip_directory, exist_ok=True)
 
     # Read the CSV files with metadata and DROID outputs
     script_directory = os.path.dirname(os.path.abspath(__file__))
