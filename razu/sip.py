@@ -110,10 +110,10 @@ class Sip:
         self.manifest = Manifest.load_existing(self.sip_directory)
         self.log_event = RazuPreservationEvents(self.sip_directory)
 
-    def create_meta_resource(self, id=None, rdf_type=MDTO.Informatieobject) -> StructuredMetaResource:
+    def create_meta_resource(self, id: str, rdf_type=MDTO.Informatieobject) -> StructuredMetaResource:
         # if self.log_event.is_locked:
         #     raise AssertionError("Sip is locked. Cannot create meta resource.")
-        meta_resource = StructuredMetaResource(id=id, rdf_type=rdf_type)
+        meta_resource = StructuredMetaResource(id, rdf_type=rdf_type)
         self.meta_resources[meta_resource.id] = meta_resource
         return meta_resource
 
@@ -146,7 +146,7 @@ class Sip:
 
     def store_meta_resources(self) -> None:
         """Store all meta resources and their referenced files."""
-        self.meta_resources.process_all(self.store_resource)
+        self.meta_resources.process_all(self.store_metadata_resource)
         self.meta_resources.process_having_referenced_files(self.store_referenced_file)
 
         # self.log_event.process_queue()
@@ -161,8 +161,7 @@ class Sip:
 
     def save(self):
         """Save all meta resources and their referenced files."""
-
-        self.meta_resources.process_all(self.store_resource)
+        self.meta_resources.process_all(self.store_metadata_resource)
         self.meta_resources.process_having_referenced_files(self.store_referenced_file)
         # self.log_event.process_queue()
         # self.log_event.save()

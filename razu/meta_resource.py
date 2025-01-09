@@ -20,7 +20,7 @@ class MetaResource(RDFResource):
     _context = Config.get_instance()
     _id_factory = Identifiers(_context)
 
-    def __init__(self, id=None):
+    def __init__(self, id: str | None = None):
         self.id = id if id else str(self._counter.next())
         uri = self._id_factory.make_uri_from_id(self.id)
         super().__init__(uri=uri)
@@ -72,7 +72,7 @@ class StructuredMetaResource(MetaResource):
     _licenties = ConceptResolver("licentie")
     _waarderingen = ConceptResolver("waardering")
 
-    def __init__(self, id=None, rdf_type=MDTO.Informatieobject):
+    def __init__(self, id: str | None = None, rdf_type=MDTO.Informatieobject):
         super().__init__(id)
         self._init_rdf_properties(rdf_type)
         self.metadata_sources = set()
