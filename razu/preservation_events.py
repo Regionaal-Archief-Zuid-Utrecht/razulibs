@@ -35,7 +35,8 @@ class PreservationEvents:
 
             for s in self.graph.subjects():
                 if isinstance(s, URIRef):
-                    extracted_id = util.extract_id_str_from_file_path(s) #TODO
+                    extracted_id = self.id_factory.extract_id_from_identifier(s)
+                    # extracted_id = util.extract_id_str_from_file_path(s) #TODO
                     event_id = int(extracted_id[1:])
                     self.current_id = max(self.current_id, event_id)
 
