@@ -88,7 +88,9 @@ class Identifiers:
         return self._extract_part_from_filename(filename, 2)
 
     def extract_id_from_filename(self, filename: str) -> str:
-        return self._extract_part_from_filename(filename, 3)
+        """Extract the object id from a filename."""
+        part = self._extract_part_from_filename(filename, 3)
+        return part.split('.')[0]
 
     def extract_id_from_file_path(self, path: str) -> str:
         basename = path.split('/')[-1]
@@ -109,4 +111,3 @@ class Identifiers:
         if end_index == -1:
             return filename[start_index:]
         return filename[start_index:end_index]
-
