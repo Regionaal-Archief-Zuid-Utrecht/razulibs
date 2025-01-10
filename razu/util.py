@@ -4,7 +4,7 @@ import hashlib
 
 from rdflib import Literal, XSD
 from datetime import datetime
-from .razuconfig import RazuConfig
+from razu.config import Config
 
 def date_type(datestring: str) -> Literal:
     """
@@ -13,16 +13,6 @@ def date_type(datestring: str) -> Literal:
     - "yyyy" -> "yyyy-mm-dd"^^xsd:gYear
     - "d{1,2}-d{1,2}-d{4}" -> "yyyy-mm-dd"^^xsd:date
     - Other string values -> Literal without a specific datatype
-
-    Parameters:
-    -----------
-    datestring : str
-        The string to be converted into a typed Literal.
-
-    Returns:
-    --------
-    rdflib.Literal
-        An RDF Literal with the appropriate datatype, if applicable.
     """
     date_pattern = re.compile(r"^\d{4}-\d{2}-\d{2}$")
     year_pattern = re.compile(r"^\d{4}$")
@@ -101,7 +91,7 @@ def extract_part_from_filename(filename: str, part_number: int) -> str:
     ValueError:
         If the razu file ID or the desired part is not found.
     """
-    cfg = RazuConfig()
+    cfg = Config.get_instance()
 
     start_index = filename.find(cfg.razu_file_id)
     if start_index == -1:
@@ -115,54 +105,6 @@ def extract_part_from_filename(filename: str, part_number: int) -> str:
     if end_index == -1:
         return filename[start_index:]
     return filename[start_index:end_index]
-
-def extract_source_from_filename(filename: str) -> str:
-    """
-    Extracts the "source" part of the filename that comes after cfg.RAZU_file_id.
-
-    Parameters:
-    -----------
-    filename : str
-        The input filename.
-
-    Returns:
-    --------
-    str
-        The extracted source part of the filename.
-    """
-    return extract_part_from_filename(filename, 1)
-
-def extract_archive_from_filename(filename: str) -> str:
-    """
-    Extracts the "archive" part of the filename that comes after cfg.RAZU_file_id and the source part.
-
-    Parameters:
-    -----------
-    filename : str
-        The input filename.
-
-    Returns:
-    --------
-    str
-        The extracted archive part of the filename.
-    """
-    return extract_part_from_filename(filename, 2)
-
-def extract_id_str_from_file_path(path: str) -> int:
-    basename = path.split('/')[-1]
-    part = extract_part_from_filename(basename, 3)
-    if part:
-        part = part.split('.')[0]
-    try:
-        return part
-    except (ValueError, TypeError):
-        return None 
-
-def extract_id_from_file_path(path: str) -> int:
-    return int(extract_id_str_from_file_path(path))
-
-def extract_id_from_uid(uid: str) -> int:
-    return int(uid.split('-')[-1]) 
 
 def filename_without_extensions(filename: str) -> str:
     """

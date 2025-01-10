@@ -1,29 +1,25 @@
-import os
+import os, sys
 import pandas as pd
 from rdflib import Literal, URIRef
 
 from razu.config import Config
-from razu.meta_resource import StructuredMetaResource
+from razu.incrementer import Incrementer
 from razu.concept_resolver import ConceptResolver
-from razu.meta_graph import MetaGraph, RDF, RDFS, MDTO, SCHEMA, GEO, PREMIS, XSD, SKOS
+from razu.meta_graph import RDF, RDFS, MDTO, SCHEMA, GEO, PREMIS, XSD, SKOS
+from razu.sip import Sip   
 
-import razu.util
-import extra                # Functions specific for this import
-
-"""	
-This demo aims to provide a simple example of how  metadata from a CSV file can be transformed to RDF.
-The RDF conforms to the MDTO derived model as used by RAZU.
-The RDF is displayed on screen and saved to the default output directory (known as "context.default_sip_directory").
-
-Make sure the settings file config.yaml is available, for example in the present working directory.
-"""	
-
-
+import razu.util            # generieke functies
+import extra                # code specifiek voor deze import
 
 def main():
+    # Create output directory
+    output_dir = "output"
+    os.makedirs(output_dir, exist_ok=True)
     
-    # Initialize RDF concept resolvers, used to convert labels, notations or identifiers
-    # in a given vocabulary to their respective URIs.
+    # Initialize global config
+    context = Config.initialize()
+
+    # Initialize concept resolvers
     actoren = ConceptResolver("actor")
     aggregatieniveaus = ConceptResolver("aggregatieniveau")
     algoritmes = ConceptResolver("algoritme")
@@ -36,42 +32,37 @@ def main():
     soorten = ConceptResolver("soort")
     waarderingen = ConceptResolver("waardering")
 
-    # Initialize global configuration
-    context = Config.initialize()
-
-    # Initialize the context with settings for this specific run
-    context.add_properties(
-        archive_id="661",
+    # Initialize sip with archive details
+    sip = Sip.create_new(
         archive_creator_id=actoren.get_concept_value("Gemeente Houten", SKOS.notation),
-        sip_directory=context.default_sip_directory
+        archive_id="661",
     )
-    os.makedirs(context.sip_directory, exist_ok=True)
 
-    # Read the CSV files with metadata and DROID outputs
+    # CSV-bestanden inlezen
     script_directory = os.path.dirname(os.path.abspath(__file__))
-    meta_path = os.path.join(script_directory, f"./{context.default_metadata_directory}/metadata.csv")
-    droid_path = os.path.join(script_directory, f"./{context.default_metadata_directory}/droid.csv")
+    meta_path = os.path.join(script_directory, './metadata/metadata.csv')
+    droid_path = os.path.join(script_directory, './metadata/droid.csv')
 
     meta_df = pd.read_csv(meta_path, delimiter=';')
     droid_df = pd.read_csv(droid_path, index_col='NAME')
-    droid_df['SIZE'] = droid_df['SIZE'].fillna(0).astype(int)  # Force this column to be handled as integers
+    droid_df['SIZE'] = droid_df['SIZE'].fillna(0).astype(int)  # forceer deze kolom 'SIZE' als integers
     checksum_date = razu.util.get_last_modified(droid_path)
 
-    graph = MetaGraph()
-
-    # For bookkeeping around series and date range, while going through the csv:
+    # voor boekhouding rondom serie en datumrange, bij doorlopen csv:
     current_serie = None
     serie = None
     earliest_date = None
     latest_date = None
 
-    # Now process each row of the metadata spreadsheet:
+    counter = Incrementer(0)
+
+    # behandel nu iedere regel van de metadata csv:
     for index, row in meta_df.iterrows():
 
         # ARCHIEF
-        # The highest level is implictly defined in the metadata, create it when processing the first row:
+        #  We maken 1x , bij de eerste rij, een resource voor de 'toegang' / het archief aan:
         if index == 0:
-            archive = StructuredMetaResource()
+            archive = sip.create_meta_resource(id=counter.next())
             archive.add_properties({
                 RDFS.label: "Luchtfoto's Gemeente Houten",
                 MDTO.naam: "Luchtfoto's Gemeente Houten",
@@ -85,19 +76,14 @@ def main():
                 },
                 MDTO.waardering: URIRef(waarderingen.get_concept_uri("Blijvend te bewaren"))
             })
-            # Predicates to be added later in the script: mdto:dekkingInTijd en mdt:bevatOnderdeel
+            # wordt verderop dynamisch toegevoegd: mdto:dekkingInTijd en mdt:bevatOnderdeel
 
         # SERIE
         if current_serie != row['Serie']:
-            # Assuming csv is ordered by series, this must be a new series
+            # we zijn bij een nieuwe serie beland (aanname is csv geordend per serie!):
             current_serie = row['Serie']
 
-            if serie is not None:
-                # Store the previous serie, we dealt with that already
-                serie.save()
-                graph += serie
-
-            serie = StructuredMetaResource()
+            serie = sip.create_meta_resource(id=counter.next())
             serie.add_properties({
                 RDFS.label: f"Luchtfoto's Houten serie {row['Serie']}",
                 MDTO.naam: f"Luchtfoto's Houten serie {row['Serie']}",
@@ -110,12 +96,12 @@ def main():
                 }
             })
 
-            # Add relations with the upper 'Archief' level
+            # maak relaties met bovenliggende archief:
             archive.add(MDTO.bevatOnderdeel, serie.uri)
             serie.add(MDTO.isOnderdeelVan, archive.uri)
 
         # RECORD / archiefstuk
-        record = StructuredMetaResource()
+        record = sip.create_meta_resource(id=counter.next())
         record.add_properties({
             RDFS.label: f"{row['Titel']}",
             MDTO.naam: f"{row['Titel']}",
@@ -185,7 +171,7 @@ def main():
             } 
         })
 
-        # Optional fields
+        # optionele velden voor het archiefstuk:
         if not pd.isna(row['Plaats 2']):
             record.add(MDTO.dekkingInRuimte, URIRef(locaties.get_concept_uri(row['Plaats 2'])))
 
@@ -200,51 +186,45 @@ def main():
                 }
             })
 
-        # Create links:
+        # relaties archiefstuk en serie:
         serie.add(MDTO.bevatOnderdeel, record.uri)
         record.add(MDTO.isOnderdeelVan, serie.uri)
 
         # BESTAND
-        original_filename = extra.maak_bestandsnaam(row['Doos-nummer'], row['Inventarisnummer'])
-        droid_row = droid_df.loc[original_filename] 
+        # original_filename = extra.maak_bestandsnaam(row['Doos-nummer'], row['Inventarisnummer'])
+        # droid_row = droid_df.loc[original_filename] 
 
-        bestand = StructuredMetaResource(rdf_type=MDTO.Bestand)
-        bestand.add_properties({
-            MDTO.naam: f"{row['Titel']} {row['Doos-nummer']}:{row['Volgnummer']}",
-            PREMIS.originalName: original_filename,
-            MDTO.checksum: { 
-                RDF.type: MDTO.ChecksumGegevens,
-                MDTO.checksumAlgoritme: URIRef(algoritmes.get_concept_uri("MD5")),
-                MDTO.checksumDatum: Literal(checksum_date, datatype=XSD.dateTime),
-                MDTO.checksumWaarde: f"{droid_row['MD5_HASH']}"  
-            },
-            MDTO.bestandsformaat: URIRef(bestandsformaten.get_concept_uri(droid_row['PUID'])),
-            MDTO.omvang: Literal(int(droid_row['SIZE']), datatype=XSD.integer),
-            MDTO.URLBestand: Literal(
-                f"https://{context.archive_creator_id.lower()}.{context.storage_base_domain}/{bestand.uid}"
-                f".{bestandsformaten.get_concept_value(droid_row['PUID'], SKOS.notation)}",
-                datatype=XSD.anyURI
-            )
-        })
+        # bestand = sip.create_meta_resource(id=counter.next(), rdf_type=MDTO.Bestand)
+        # bestand.add_properties({
+        #     MDTO.naam: f"{row['Titel']} {row['Doos-nummer']}:{row['Volgnummer']}",
+        #     PREMIS.originalName: original_filename,
+        #     MDTO.checksum: { 
+        #         RDF.type: MDTO.ChecksumGegevens,
+        #         MDTO.checksumAlgoritme: URIRef(algoritmes.get_concept_uri("MD5")),
+        #         MDTO.checksumDatum: Literal(checksum_date, datatype=XSD.dateTime),
+        #         MDTO.checksumWaarde: f"{droid_row['MD5_HASH']}"  
+        #     },
+        #     MDTO.bestandsformaat: URIRef(bestandsformaten.get_concept_uri(droid_row['PUID'])),
+        #     MDTO.omvang: Literal(int(droid_row['SIZE']), datatype=XSD.integer),
+        #     MDTO.URLBestand: Literal(
+        #         f"https://{context.archive_creator_id.lower()}.{context.storage_base_domain}/{bestand.uid}"
+        #         f".{bestandsformaten.get_concept_value(droid_row['PUID'], SKOS.notation)}",
+        #         datatype=XSD.anyURI
+        #     )
+        # })
 
-        # Create links:
-        record.add(MDTO.heeftRepresentatie, bestand.uri)
-        bestand.add(MDTO.isRepresentatieVan, record.uri)
+        # # relaties bestand en archiefstuk:
+        # record.add(MDTO.heeftRepresentatie, bestand.uri)
+        # bestand.add(MDTO.isRepresentatieVan, record.uri)
 
-        # Store and add to graph
-        record.save()
-        graph += record
-        bestand.save()
-        graph += bestand
-
-        # Here we determine the date range at archive level:
-        # note that this code might go wrong if date not in iso-format
+        # hiermee bepalen we de datumrange op archive-niveau:
+        # NB code gaat mogelijk mis als datum niet in iso-formaat
         if earliest_date is None or row['Datering'] < earliest_date:
             earliest_date = row['Datering'] 
         if latest_date is None or row['Datering'] > latest_date:
             latest_date = row['Datering'] 
 
-    # Now we have looped through all rows, we know the archive's coverage in time:
+    # nu alle rijen doorlopen zijn, weten we de dekking in tijd vh archief:
     archive.add_properties({
         MDTO.dekkingInTijd: {
             RDF.type: MDTO.DekkingInTijdGegevens,
@@ -254,12 +234,9 @@ def main():
         }
     })
 
-    archive.save()
-
-    # This is only relevant if we want to see the output of the generated rdf:
-    graph += archive
-    graph += serie
-    print(graph.serialize(format='turtle'))
+    sip.meta_resources.export_rdf()
+    sip.save()
+    sip.manifest.validate()
 
 if __name__ == "__main__":
     main()
