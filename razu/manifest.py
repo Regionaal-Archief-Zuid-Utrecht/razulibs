@@ -3,12 +3,10 @@ import sys
 import json
 from datetime import datetime
 from typing import Dict, List, Optional
-from rdflib import RDF
 
 from razu.config import Config
 from razu.identifiers import Identifiers
 from razu.meta_resource import StructuredMetaResource
-from razu.meta_graph import MDTO
 import razu.util as util
 
 class ManifestEntry:
@@ -55,8 +53,6 @@ class ManifestEntry:
             Dataset=dataset_id,
             URI=resource.description_uri
         )
-
-
         
     @classmethod
     def create_entry_for_referenced_resource(cls, resource: StructuredMetaResource, archive_creator_uri: str, dataset_id: str) -> 'ManifestEntry':
@@ -72,6 +68,7 @@ class ManifestEntry:
                 OriginalFilename=resource.referenced_file_original_filename,
                 URI=resource.referenced_file_uri
         )
+
 
 class Manifest:
     """

@@ -230,7 +230,7 @@ class StructuredMetaResource(MetaResource):
         return None
 
     def validate_referenced_file_md5checksum(self) -> bool:
-        return util.calculate_md5(os.path.join(MetaResource._context.save_directory, self.referenced_file_filename)) == self.referenced_file_md5checksum
+        return util.calculate_md5(os.path.join(MetaResource._context.sip_directory, self.referenced_file_filename)) == self.referenced_file_md5checksum
 
     def _init_rdf_properties(self, rdf_type) -> None:
         self.add_properties({

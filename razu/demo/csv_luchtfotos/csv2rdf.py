@@ -16,7 +16,7 @@ This demo aims to provide a simple example of how  metadata from a CSV file can 
 The RDF conforms to the MDTO derived model as used by RAZU.
 The RDF is displayed on screen and saved to the default output directory (known as "context.default_sip_directory").
 
-Make sure the settings file config.yaml is available, in for example the present working directory.
+Make sure the settings file config.yaml is available, for example in the present working directory.
 """	
 
 

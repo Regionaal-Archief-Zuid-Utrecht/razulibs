@@ -1,6 +1,8 @@
 import os
 import shutil
 from datetime import datetime
+from typing import Optional
+from functools import wraps
 
 from razu.config import Config
 from razu.identifiers import Identifiers
@@ -9,6 +11,7 @@ from razu.meta_resource import StructuredMetaResource
 from razu.meta_graph import MetaGraph, MDTO
 from razu.manifest import Manifest
 from razu.preservation_events import RazuPreservationEvents
+from razu.decorators import unless_locked
 import razu.util as util
 
 
@@ -26,6 +29,15 @@ class MetaResourcesDict(dict[str, StructuredMetaResource]):
         uris = []
         for meta_resource in self.with_referenced_files:
             uris.append(meta_resource.referenced_file_uri)
+        return uris
+
+    @property
+    def all_uris(self) -> list:
+        uris = []
+        for meta_resource in self.values():
+            uris.append(meta_resource.description_uri)
+            if meta_resource.has_referenced_file:
+                uris.append(meta_resource.referenced_file_uri)
         return uris
 
     @property
@@ -60,7 +72,10 @@ class Sip:
         self.sip_directory = sip_directory
         self.resources_directory = resources_directory
         self.meta_resources = MetaResourcesDict()
-
+    
+    @property
+    def is_locked(self) -> bool:
+        return self.log_event.is_locked
 
     @classmethod
     def create_new(cls, archive_creator_id: str, archive_id: str, sip_directory=None, resources_directory=None, ingestion_start_date=None) -> 'Sip':
@@ -110,20 +125,16 @@ class Sip:
         self.manifest = Manifest.load_existing(self.sip_directory)
         self.log_event = RazuPreservationEvents(self.sip_directory)
 
+    @unless_locked
     def create_meta_resource(self, id: str, rdf_type=MDTO.Informatieobject) -> StructuredMetaResource:
-        # if self.log_event.is_locked:
-        #     raise AssertionError("Sip is locked. Cannot create meta resource.")
         meta_resource = StructuredMetaResource(id, rdf_type=rdf_type)
         self.meta_resources[meta_resource.id] = meta_resource
         return meta_resource
 
     def store_metadata_resource(self, resource: StructuredMetaResource) -> None:
         """Store a resource in the SIP and update the manifest."""
-        # if self.log_event.is_locked:
-        #     raise AssertionError("Sip is locked. Cannot store resource.")
         if resource.save():
             self.manifest.add_metadata_resource(resource, self.archive_creator_uri, self.archive_id)
-
             if resource.has_metadata_sources:
                 for source in resource.metadata_sources:
                     self.log_event.metadata_modification(resource.description_uri, source)
@@ -131,7 +142,7 @@ class Sip:
                 self.log_event.metadata_modification(resource.description_uri, resource.description_uri)
             print(f"Stored {resource.description_uri}.")
 
-    def store_referenced_file(self, resource: StructuredMetaResource) -> None:
+    def store_referenced_file_if_missing(self, resource: StructuredMetaResource) -> None:
         """Store a referenced file in the SIP and update the manifest."""
         if resource.has_referenced_file:
             origin_filepath = os.path.join(self.resources_directory, resource.referenced_file_original_filename)
@@ -143,18 +154,22 @@ class Sip:
             print(f"Stored referenced file {resource.referenced_file_original_filename} as {resource.referenced_file_uri}.")
 
     def validate_referenced_files(self):
-        pass
-        # self.meta_resources.process_referenced_files(
-        #     lambda resource: self.log_event.fixity_check(resource.ext_file_uri, resource.validate_md5())
-        # )
+        self.meta_resources.process_having_referenced_files(
+            lambda resource: self.log_event.fixity_check(resource.referenced_file_uri, resource.validate_referenced_file_md5checksum())
+        )
 
     def save(self):
         """Save all meta resources and their referenced files."""
         self.meta_resources.process_all(self.store_metadata_resource)
-        self.meta_resources.process_having_referenced_files(self.store_referenced_file)
+        if self.resources_directory:
+            self.meta_resources.process_having_referenced_files(self.store_referenced_file_if_missing)
         self.log_event.process_queue()
         self.log_event.save()
         self.manifest.save()
+
+    @unless_locked
+    def lock(self):
+        self.log_event.ingestion_end(self.meta_resources.all_uris)
 
     def _load_graph(self):
         id_factory = Identifiers(self.cfg)
@@ -173,5 +188,4 @@ class Sip:
         id_factory = Identifiers(self.cfg)
         filenames = [f for f in os.listdir(self.sip_directory) if os.path.isfile(os.path.join(self.sip_directory, f))]
         filename = filenames[0] if filenames else None
-
         return  id_factory.extract_source_id_from_filename(filename), id_factory.extract_archive_id_from_filename(filename)

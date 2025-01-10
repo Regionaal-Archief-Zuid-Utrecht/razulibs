@@ -1,18 +1,15 @@
 import os
 from datetime import datetime, timezone
-
 from rdflib import URIRef, Literal
 
 from razu.config import Config
 from razu.identifiers import Identifiers
+from razu.meta_graph import MetaGraph, PREMIS, XSD, EROR, ERAR, PROV, RDF
+from razu.decorators import unless_locked
 from razu.rdf_resource import RDFResource
-from razu.meta_graph import MetaGraph, RDF, XSD, PREMIS, EROR, ERAR, PROV
-import razu.util as util
-
 
 # https://data.razu.nl/id/event/NL-WbDRAZU-K50907905-500-e17676
 # https://data.razu.nl/id/event/NL-WbDRAZU-{archiefvormer}-{toegang}-{timestamp}
-
 
 class PreservationEvents:
 
@@ -21,8 +18,6 @@ class PreservationEvents:
 
     def __init__(self, sip_directory, eventlog_filename=None):
         """Initialize the Events object & load the eventlog file, if it exists."""
-
-
         self.directory = sip_directory
         self.file_path = os.path.join(sip_directory, eventlog_filename or PreservationEvents._id_factory.eventlog_filename)
         self.current_id = 0
@@ -38,7 +33,6 @@ class PreservationEvents:
             for s in self.graph.subjects():
                 if isinstance(s, URIRef):
                     extracted_id = PreservationEvents._id_factory.extract_id_from_identifier(s)
-                    # extracted_id = util.extract_id_str_from_file_path(s) #TODO
                     event_id = int(extracted_id[1:])
                     self.current_id = max(self.current_id, event_id)
 
@@ -64,8 +58,6 @@ class PreservationEvents:
         self.queue.clear()
 
     def save(self):
-        if self.is_locked:
-            raise AssertionError("Sip is locked. Cannot save eventlog.")
         if self.is_modified:
             try:
                 with open(self.file_path, 'w', encoding='utf-8') as file:
@@ -74,9 +66,8 @@ class PreservationEvents:
             except IOError as e:
                 print(f"Error saving file {self.file_path}: {e}")
  
+    @unless_locked
     def _add(self, properties, tool=None, timestamp=None, started_at=None):
-        if self.is_locked:
-            raise AssertionError("Sip is locked. Cannot store resource.")
         timestamp = self._timestamp() if timestamp is None else timestamp
         event = RDFResource(self._next_uri())
         event.add_properties({
