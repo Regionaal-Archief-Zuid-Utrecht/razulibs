@@ -1,8 +1,5 @@
 import os
 import shutil
-from datetime import datetime
-from typing import Optional
-from functools import wraps
 
 from razu.config import Config
 from razu.identifiers import Identifiers
@@ -19,49 +16,41 @@ class MetaResourcesDict(dict[str, StructuredMetaResource]):
     """Provides dict with additional methods for working with meta resources."""
     
     @property
-    def with_referenced_files(self) -> list:
+    def with_referenced_files(self) -> list[StructuredMetaResource]:
         """Get list of resources that have referenced files."""
-        return [resource for resource in self.values() if resource.has_referenced_file]
+        return [meta_resource for meta_resource in self.values() if meta_resource.has_referenced_file]
 
     @property
-    def referenced_file_uris(self) -> list:
+    def description_uris(self) -> list[str]:
+        """Get URIs of all resource descriptions."""
+        return [meta_resource.description_uri for meta_resource in self.values()]
+
+    @property
+    def referenced_file_uris(self) -> list[str]:
         """Get URIs of all referenced files."""
-        uris = []
-        for meta_resource in self.with_referenced_files:
-            uris.append(meta_resource.referenced_file_uri)
-        return uris
+        return [meta_resource.referenced_file_uri for meta_resource in self.with_referenced_files]
 
     @property
-    def all_uris(self) -> list:
-        uris = []
-        for meta_resource in self.values():
-            uris.append(meta_resource.description_uri)
-            if meta_resource.has_referenced_file:
-                uris.append(meta_resource.referenced_file_uri)
-        return uris
+    def all_uris(self) -> list[str]:
+        """Get all URIs (both description and referenced file URIs)."""
+        return self.description_uris + self.referenced_file_uris
 
     @property
     def combined_rdf_graph(self) -> MetaGraph:
         """Get combined RDF graph of all meta resources."""
-        graph = MetaGraph()
-        for resource in self.values():
-            graph += resource.graph
-        return graph
+        return reduce(add, (meta_resource.graph for meta_resource in self.values()), MetaGraph())
 
     def export_rdf(self, format: str = 'turtle') -> None:
         """Export the combined RDF graph in the specified format."""
         print(self.combined_rdf_graph.serialize(format=format))
 
-    def process_all(self, callback: callable) -> None:
+    def process_all(self, callback: Callable[[StructuredMetaResource], None]) -> None:
         """Process all meta resources using the provided callback function."""
-        for resource in self.values():
-            callback(resource)
+        list(map(callback, self.values()))
 
-
-    def process_having_referenced_files(self, callback: callable) -> None:
+    def process_having_referenced_files(self, callback: Callable[[StructuredMetaResource], None]) -> None:
         """Process all meta resources with referenced files using the provided callback function."""
-        for resource in self.with_referenced_files:
-            callback(resource)
+        list(map(callback, self.with_referenced_files))
 
 
 class Sip:
@@ -109,7 +98,7 @@ class Sip:
         self.log_event = RazuPreservationEvents(self.sip_directory)
 
     def get_metadata_resource_by_id(self, id: str) -> StructuredMetaResource:
-            return self.meta_resources[id]
+        return self.meta_resources[id]
 
     def _open_existing_sip(self):
         if not os.listdir(self.sip_directory):
@@ -144,11 +133,12 @@ class Sip:
 
     def store_referenced_file_if_missing(self, resource: StructuredMetaResource) -> None:
         """Store a referenced file in the SIP and update the manifest."""
-        if resource.has_referenced_file:
+        if not resource.has_referenced_file:
+            return
+        destination_filepath = os.path.join(self.sip_directory, resource.referenced_file_filename)
+        if not os.path.exists(destination_filepath):
             origin_filepath = os.path.join(self.resources_directory, resource.referenced_file_original_filename)
-            dest_filepath = os.path.join(self.sip_directory, resource.referenced_file_filename)
-        if not os.path.exists(dest_filepath):
-            shutil.copy2(origin_filepath, dest_filepath)
+            shutil.copy2(origin_filepath, destination_filepath)
             self.manifest.add_referenced_resource(resource, self.archive_creator_uri, self.archive_id)
             self.log_event.filename_change(resource.description_uri, resource.referenced_file_original_filename, resource.referenced_file_filename)
             print(f"Stored referenced file {resource.referenced_file_original_filename} as {resource.referenced_file_uri}.")
@@ -174,7 +164,6 @@ class Sip:
     def _load_graph(self):
         id_factory = Identifiers(self.cfg)
         for filename in os.listdir(self.sip_directory):
-
             if os.path.isfile(os.path.join(self.sip_directory, filename)) and filename.endswith(f"{self.cfg.metadata_suffix}.{self.cfg.metadata_extension}"):
                 if self.archive_creator_id is None:
                     self.archive_creator_id = id_factory.extract_source_id_from_filename(filename)
