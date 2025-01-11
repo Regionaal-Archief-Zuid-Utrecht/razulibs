@@ -1,28 +1,25 @@
 import os
 from datetime import datetime, timezone
-
 from rdflib import URIRef, Literal
 
 from razu.config import Config
 from razu.identifiers import Identifiers
+from razu.meta_graph import MetaGraph, PREMIS, XSD, EROR, ERAR, PROV, RDF
+from razu.decorators import unless_locked
 from razu.rdf_resource import RDFResource
-from razu.meta_graph import MetaGraph, RDF, XSD, PREMIS, EROR, ERAR, PROV
-import razu.util as util
-
 
 # https://data.razu.nl/id/event/NL-WbDRAZU-K50907905-500-e17676
 # https://data.razu.nl/id/event/NL-WbDRAZU-{archiefvormer}-{toegang}-{timestamp}
 
-
 class PreservationEvents:
+
+    _cfg = Config.get_instance()
+    _id_factory = Identifiers(_cfg)
 
     def __init__(self, sip_directory, eventlog_filename=None):
         """Initialize the Events object & load the eventlog file, if it exists."""
-        self._cfg = Config.get_instance()
-        self.id_factory = Identifiers(self._cfg)
-
         self.directory = sip_directory
-        self.file_path = os.path.join(sip_directory, eventlog_filename or self.id_factory.eventlog_filename)
+        self.file_path = os.path.join(sip_directory, eventlog_filename or PreservationEvents._id_factory.eventlog_filename)
         self.current_id = 0
 
         self.graph = MetaGraph()
@@ -35,12 +32,13 @@ class PreservationEvents:
 
             for s in self.graph.subjects():
                 if isinstance(s, URIRef):
-                    extracted_id = self.id_factory.extract_id_from_identifier(s)
-                    # extracted_id = util.extract_id_str_from_file_path(s) #TODO
+                    extracted_id = PreservationEvents._id_factory.extract_id_from_identifier(s)
                     event_id = int(extracted_id[1:])
                     self.current_id = max(self.current_id, event_id)
 
-        self.is_locked = any(self.graph.triples((None, URIRef("http://www.loc.gov/premis/rdf/v3/eventType"), URIRef("http://id.loc.gov/vocabulary/preservation/eventType/ine"))))
+    @property
+    def is_locked(self):
+        return any(self.graph.triples((None, URIRef("http://www.loc.gov/premis/rdf/v3/eventType"), URIRef("http://id.loc.gov/vocabulary/preservation/eventType/ine"))))
 
     def to_queue(self, event, *args, **kwargs):
         """Voegt een event toe aan de queue voor uitgesteld uitvoeren."""
@@ -60,8 +58,6 @@ class PreservationEvents:
         self.queue.clear()
 
     def save(self):
-        if self.is_locked:
-            raise AssertionError("Sip is locked. Cannot save eventlog.")
         if self.is_modified:
             try:
                 with open(self.file_path, 'w', encoding='utf-8') as file:
@@ -70,9 +66,8 @@ class PreservationEvents:
             except IOError as e:
                 print(f"Error saving file {self.file_path}: {e}")
  
+    @unless_locked
     def _add(self, properties, tool=None, timestamp=None, started_at=None):
-        if self.is_locked:
-            raise AssertionError("Sip is locked. Cannot store resource.")
         timestamp = self._timestamp() if timestamp is None else timestamp
         event = RDFResource(self._next_uri())
         event.add_properties({
@@ -93,7 +88,7 @@ class PreservationEvents:
 
     def _next_uri(self) -> str:
         self.current_id += 1
-        return f"{self.id_factory.event_uri_prefix}-e{self.current_id}"
+        return f"{PreservationEvents._id_factory.event_uri_prefix}-e{self.current_id}"
     
     def _timestamp(self) -> str:
         return datetime.now(timezone.utc).isoformat()

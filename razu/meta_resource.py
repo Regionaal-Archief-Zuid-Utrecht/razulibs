@@ -20,23 +20,23 @@ class MetaResource(RDFResource):
     _context = Config.get_instance()
     _id_factory = Identifiers(_context)
 
-    def __init__(self, id=None):
-        self.id = id if id else str(self._counter.next())
-        uri = self._id_factory.make_uri_from_id(self.id)
+    def __init__(self, id: str | None = None):
+        self.id = id if id else str(MetaResource._counter.next())
+        uri = MetaResource._id_factory.make_uri_from_id(self.id)
         super().__init__(uri=uri)
         self.is_modified = True
 
     @property
-    def uid(self):
-        return self._id_factory.make_uid_from_id(self.id)
+    def uid(self) -> str:
+        return MetaResource._id_factory.make_uid_from_id(self.id)
 
     @property
-    def filename(self):
-        return self._id_factory.make_filename_from_id(self.id)
+    def filename(self) -> str:
+        return MetaResource._id_factory.make_filename_from_id(self.id)
 
     @property
-    def file_path(self):
-        return os.path.join(self._context.sip_directory, self.filename)
+    def file_path(self) -> str:
+        return os.path.join(MetaResource._context.sip_directory, self.filename)
  
     def save(self) -> bool:
         if self.is_modified:
@@ -72,14 +72,14 @@ class StructuredMetaResource(MetaResource):
     _licenties = ConceptResolver("licentie")
     _waarderingen = ConceptResolver("waardering")
 
-    def __init__(self, id=None, rdf_type=MDTO.Informatieobject):
+    def __init__(self, id: str | None = None, rdf_type=MDTO.Informatieobject):
         super().__init__(id)
         self._init_rdf_properties(rdf_type)
         self.metadata_sources = set()
 
     def add(self, predicate: URIRef, obj, transformer: Callable = Literal) -> None:
         """Add a triple to the graph and mark as modified."""
-        super().add(predicate, obj, transformer)
+        super().add_property(predicate, obj, transformer)
         self.is_modified = True
     
     def add_properties(self, rdf_properties: dict) -> None:
@@ -89,8 +89,12 @@ class StructuredMetaResource(MetaResource):
 
     def add_list_from_string(self, predicate: URIRef, item_list: str, separator: str, transformer: Callable = Literal) -> None:
         """Add a list of values from a string and mark as modified."""
-        super().add_list_from_string(predicate, item_list, separator, transformer)
+        super().add_properties_from_string(predicate, item_list, separator, transformer)
         self.is_modified = True
+
+    @property
+    def has_metadata_sources(self) -> bool:
+        return bool(self.metadata_sources)
 
     @property
     def has_referenced_file(self) -> bool:
@@ -98,7 +102,7 @@ class StructuredMetaResource(MetaResource):
 
     @property
     def description_uri(self) -> str:
-        return f"{self._id_factory.cdn_base_uri}{self.uid}.{self._context.metadata_suffix}.{self._context.metadata_extension}"
+        return f"{MetaResource._id_factory.cdn_base_uri}{self.uid}.{MetaResource._context.metadata_suffix}.{MetaResource._context.metadata_extension}"
 
     @property
     def referenced_file_uri(self) -> str | None:
@@ -180,18 +184,18 @@ class StructuredMetaResource(MetaResource):
         ext_file_fileformat_uri = StructuredMetaResource._bestandsformaten.get_concept(puid).get_uri()
         file_extension = StructuredMetaResource._bestandsformaten.get_concept(puid).get_value(SKOS.notation)
         ext_filename = f"{self.uid}.{file_extension}"
-        url = f"{self._id_factory.cdn_base_uri}{ext_filename}"
+        url = f"{MetaResource._id_factory.cdn_base_uri}{ext_filename}"
         self.add_properties({
             MDTO.bestandsformaat: ext_file_fileformat_uri,
             MDTO.URLBestand: Literal(url, datatype=XSD.anyURI),
         })
-        self.add(URIRef(url), RDF.type, PREMIS.File)
+        self.add_triple(URIRef(url), RDF.type, PREMIS.File)
 
     def set_filesize(self, filesize: int) -> None:
         self.add_properties({MDTO.omvang: Literal(filesize, datatype=XSD.integer)})
 
     def set_original_filename(self, ext_file_original_filename: str) -> None:
-        self.add(URIRef(self.referenced_file_uri), PREMIS.originalName, Literal(ext_file_original_filename))
+        self.add_triple(URIRef(self.referenced_file_uri), PREMIS.originalName, Literal(ext_file_original_filename))
 
     def set_aggregation_level(self, aggregation_term) -> None:
         self.add_properties({MDTO.aggregatieniveau: StructuredMetaResource._aggregatieniveaus.get_concept(aggregation_term).get_uri()})
@@ -226,7 +230,7 @@ class StructuredMetaResource(MetaResource):
         return None
 
     def validate_referenced_file_md5checksum(self) -> bool:
-        return util.calculate_md5(os.path.join(self._context.save_directory, self.referenced_file_filename)) == self.referenced_file_md5checksum
+        return util.calculate_md5(os.path.join(MetaResource._context.sip_directory, self.referenced_file_filename)) == self.referenced_file_md5checksum
 
     def _init_rdf_properties(self, rdf_type) -> None:
         self.add_properties({
@@ -241,6 +245,6 @@ class StructuredMetaResource(MetaResource):
         if rdf_type == MDTO.Informatieobject:
             self.add_properties({
                 MDTO.waardering: StructuredMetaResource._waarderingen.get_concept('B').get_uri(),
-                MDTO.archiefvormer: StructuredMetaResource._actoren.get_concept(self._context.archive_creator_id).get_uri()
+                MDTO.archiefvormer: StructuredMetaResource._actoren.get_concept(MetaResource._context.archive_creator_id).get_uri()
             })
-        self.add(URIRef(self.description_uri), RDF.type, PREMIS.File)
+        self.add_triple(URIRef(self.description_uri), RDF.type, PREMIS.File)

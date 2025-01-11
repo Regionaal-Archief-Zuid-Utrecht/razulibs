@@ -109,11 +109,11 @@ class Config:
         return cls._instance
 
     @classmethod
-    def initialize(cls) -> 'Config':
+    def initialize(cls, config_file: Optional[str] = None) -> 'Config':
         """Initialize a new Config instance."""
         if cls._instance is not None:
             return cls._instance
-        cls._instance = cls()
+        cls._instance = cls(config_file=config_file)
         return cls._instance
     
     @classmethod
