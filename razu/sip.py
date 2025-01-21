@@ -8,7 +8,7 @@ from razu.config import Config
 from razu.identifiers import Identifiers
 from razu.concept_resolver import ConceptResolver
 from razu.meta_resource import StructuredMetaResource
-from razu.meta_graph import MetaGraph, MDTO
+from razu.meta_graph import MetaGraph, LDTO
 from razu.manifest import Manifest
 from razu.preservation_events import RazuPreservationEvents
 from razu.decorators import unless_locked
@@ -86,7 +86,8 @@ class Sip:
         sip._load_graph()
         return sip
 
-    def _create_new_sip(self, archive_creator_id, archive_id):
+    def _initialize_sip(self, archive_creator_id, archive_id):
+        """Initialize common SIP properties and objects."""
         actoren = ConceptResolver('actor')
         self.archive_creator_id = archive_creator_id
         self.archive_id = archive_id
@@ -94,31 +95,28 @@ class Sip:
         self.cfg.add_properties(
             archive_id=archive_id,
             archive_creator_id=archive_creator_id,
-            sip_directory=self.sip_directory,
+            archive_creator_uri=self.archive_creator_uri,
+            sip_directory=self.sip_directory
         )
-        os.makedirs(self.sip_directory, exist_ok=True)
-        self.manifest = Manifest.create_new(self.sip_directory)
         self.log_event = RazuPreservationEvents(self.sip_directory)
 
-    def get_metadata_resource_by_id(self, id: str) -> StructuredMetaResource:
-        return self.meta_resources[id]
+    def _create_new_sip(self, archive_creator_id, archive_id):
+        self._initialize_sip(archive_creator_id, archive_id)
+        os.makedirs(self.sip_directory, exist_ok=True)
+        self.manifest = Manifest.create_new(self.sip_directory)
 
     def _open_existing_sip(self):
         if not os.listdir(self.sip_directory):
             raise ValueError(f"The SIP directory '{self.sip_directory}' is empty, cannot load SIP.")
         self.archive_creator_id, self.archive_id = self._determine_ids_from_files_in_sip_directory()
-        self.cfg.add_properties(
-            archive_id=self.archive_id,
-            archive_creator_id=self.archive_creator_id,
-            sip_directory=self.sip_directory,
-        )   
-        actoren = ConceptResolver('actor')
-        self.archive_creator_uri = actoren.get_concept_uri(self.archive_creator_id)
+        self._initialize_sip(self.archive_creator_id, self.archive_id)
         self.manifest = Manifest.load_existing(self.sip_directory)
-        self.log_event = RazuPreservationEvents(self.sip_directory)
+
+    def get_metadata_resource_by_id(self, id: str) -> StructuredMetaResource:
+        return self.meta_resources[id]
 
     @unless_locked
-    def create_meta_resource(self, id: str, rdf_type=MDTO.Informatieobject) -> StructuredMetaResource:
+    def create_meta_resource(self, id: str, rdf_type=LDTO.Informatieobject) -> StructuredMetaResource:
         meta_resource = StructuredMetaResource(id, rdf_type=rdf_type)
         self.meta_resources[meta_resource.id] = meta_resource
         return meta_resource
