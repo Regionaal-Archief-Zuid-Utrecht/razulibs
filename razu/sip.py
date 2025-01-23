@@ -77,6 +77,7 @@ class Sip:
 
         sip = cls(sip_directory, resources_directory)
         sip._create_new_sip(archive_creator_id, archive_id)
+        sip.log_event.to_queue('ingestion_start', lambda: sip.meta_resources.referenced_file_uris, timestamp=ingestion_start_date)
         return sip
 
     @classmethod
