@@ -83,8 +83,19 @@ class Sip:
 
         sip = cls(sip_directory, resources_directory)
         sip._create_new_sip(archive_creator_id, archive_id)
-        sip.log_event.to_queue('ingestion_start', lambda: sip.meta_resources.referenced_file_uris, timestamp=ingestion_start_date)
-        sip.log_event.to_queue('virus_check', lambda: sip.meta_resources.referenced_file_uris, True, '-', clamav_info.uri, clamav_info.end_time, clamav_info.start_time)
+        sip.log_event.to_queue('ingestion_start', 
+            subject=lambda: sip.meta_resources.referenced_file_uris, 
+            timestamp=ingestion_start_date
+        )
+        sip.log_event.to_queue('virus_check', 
+            subject=lambda: sip.meta_resources.referenced_file_uris,
+            is_successful=True,
+            tool=clamav_info.uri,
+            timestamp=clamav_info.end_time,
+            started_at=clamav_info.start_time
+        )
+
+
         # TODO: logging related to droid analysis (format & digest) should move here too
         # TODO: comes with some complexity due to need for delayed processing using lamdas 
         # TODO: maybe simply move these to the save method (no need for delayed processing....)
@@ -134,18 +145,16 @@ class Sip:
         return meta_resource
 
     def store_metadata_resource(self, resource: StructuredMetaResource) -> None:
-        """Store a resource in the SIP and update the manifest."""
         if resource.save():
             self.manifest.add_metadata_resource(resource, self.archive_creator_uri, self.archive_id)
             if resource.has_metadata_sources:
                 for source in resource.metadata_sources:
-                    self.log_event.metadata_modification(resource.description_uri, source)
+                    self.log_event.metadata_modification(source, resource.description_uri)
             else:
                 self.log_event.metadata_modification(resource.description_uri, resource.description_uri)
             print(f"Stored {resource.description_uri}.")
 
-    def store_referenced_file_if_missing(self, resource: StructuredMetaResource) -> None:
-        """Store a referenced file in the SIP and update the manifest."""
+    def store_referenced_file_if_missing_in_sip(self, resource: StructuredMetaResource) -> None:
         if not resource.has_referenced_file:
             return
         destination_filepath = os.path.join(self.sip_directory, resource.referenced_file_filename)
@@ -153,7 +162,7 @@ class Sip:
             origin_filepath = os.path.join(self.resources_directory, resource.referenced_file_original_filename)
             shutil.copy2(origin_filepath, destination_filepath)
             self.manifest.add_referenced_resource(resource, self.archive_creator_uri, self.archive_id)
-            self.log_event.filename_change(resource.description_uri, resource.referenced_file_original_filename, resource.referenced_file_filename)
+            self.log_event.filename_change(resource.referenced_file_uri , resource.referenced_file_original_filename, resource.referenced_file_filename)
             print(f"Stored referenced file {resource.referenced_file_original_filename} as {resource.referenced_file_uri}.")
 
     def validate_referenced_files(self):
@@ -165,7 +174,7 @@ class Sip:
         """Save all meta resources and their referenced files."""
         self.meta_resources.process_all(self.store_metadata_resource)
         if self.resources_directory:
-            self.meta_resources.process_having_referenced_files(self.store_referenced_file_if_missing)
+            self.meta_resources.process_having_referenced_files(self.store_referenced_file_if_missing_in_sip)
         self.log_event.process_queue()
         self.log_event.save()
         self.manifest.save()
