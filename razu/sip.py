@@ -11,6 +11,7 @@ from razu.meta_resource import StructuredMetaResource
 from razu.meta_graph import MetaGraph, LDTO
 from razu.manifest import Manifest
 from razu.preservation_events import RazuPreservationEvents
+from razu.run_info import RunInfo
 from razu.decorators import unless_locked
 import razu.util as util
 
@@ -70,14 +71,24 @@ class Sip:
         return self.log_event.is_locked
 
     @classmethod
-    def create_new(cls, archive_creator_id: str, archive_id: str, sip_directory=None, resources_directory=None, ingestion_start_date=None) -> 'Sip':
+    def create_new(cls, archive_creator_id: str, archive_id: str, sip_directory=None, resources_directory=None) -> 'Sip':
         cfg = Config.get_instance()
         sip_directory = sip_directory or cfg.default_sip_directory
         resources_directory = resources_directory or cfg.default_resources_directory
 
+        clamav_info = RunInfo("metadata", "clamav")
+        droid_info = RunInfo("metadata", "droid")
+        ingestion_start_date = min(clamav_info.start_time, droid_info.start_time)
+
+
         sip = cls(sip_directory, resources_directory)
         sip._create_new_sip(archive_creator_id, archive_id)
         sip.log_event.to_queue('ingestion_start', lambda: sip.meta_resources.referenced_file_uris, timestamp=ingestion_start_date)
+        sip.log_event.to_queue('virus_check', lambda: sip.meta_resources.referenced_file_uris, True, '-', clamav_info.uri, clamav_info.end_time, clamav_info.start_time)
+        # TODO: logging related to droid analysis (format & digest) should move here too
+        # TODO: comes with some complexity due to need for delayed processing using lamdas 
+        # TODO: maybe simply move these to the save method (no need for delayed processing....)
+        
         return sip
 
     @classmethod
