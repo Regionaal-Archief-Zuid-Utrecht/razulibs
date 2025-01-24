@@ -154,13 +154,14 @@ class RazuPreservationEvents(PreservationEvents):
             PREMIS.outcomeNote: hash            # TODO: als DROID de tool is, hoe maken we dan expliciet dat het een md5hash is?
         }, tool, timestamp, started_at)
 
-    def metadata_modification(self, subject, result, tool=None, timestamp=None):
+    def metadata_modification(self, subject, result, tool=None, timestamp=None, description=''):
         subject_value = [URIRef(s) for s in subject] if isinstance(subject, set) else URIRef(subject)
         self._add({ 
             PREMIS.eventType: URIRef('http://id.loc.gov/vocabulary/preservation/eventType/mem'),
             EROR.sou: subject_value,
             ERAR.imp: URIRef('https://data.razu.nl/id/actor/2bdb658a032a405d71c19159bd2bbb3a'),
             PREMIS.outcome: self._outcome_uri(True),
+            PROV.description: description,
             PROV.generated: URIRef(result)
         }, tool, timestamp)
 

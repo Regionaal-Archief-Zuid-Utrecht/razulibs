@@ -147,11 +147,11 @@ class Sip:
     def store_metadata_resource(self, resource: StructuredMetaResource) -> None:
         if resource.save():
             self.manifest.add_metadata_resource(resource, self.archive_creator_uri, self.archive_id)
-            if resource.has_metadata_sources:
-                for source in resource.metadata_sources:
-                    self.log_event.metadata_modification(source, resource.description_uri)
+            event_description = "Metadata modified." if resource.is_from_existing else "Metadata object created."
+            if resource.is_based_on_sources:
+                self.log_event.metadata_modification(resource.based_on_sources, resource.description_uri, description=event_description)
             else:
-                self.log_event.metadata_modification(resource.description_uri, resource.description_uri)
+                self.log_event.metadata_modification(resource.description_uri, resource.description_uri, description=event_description)
             print(f"Stored {resource.description_uri}.")
 
     def store_referenced_file_if_missing_in_sip(self, resource: StructuredMetaResource) -> None:

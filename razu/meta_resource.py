@@ -25,6 +25,7 @@ class MetaResource(RDFResource):
         uri = MetaResource._id_factory.make_uri_from_id(self.id)
         super().__init__(uri=uri)
         self.is_modified = True
+        self.is_from_existing = False
 
     @property
     def uid(self) -> str:
@@ -54,6 +55,7 @@ class MetaResource(RDFResource):
         with open(self.file_path, 'r', encoding='utf-8') as file:
             self.graph.parse(data=file.read(), format="json-ld")
         self.is_modified = False
+        self.is_from_existing = True
 
 
 class StructuredMetaResource(MetaResource):
@@ -75,7 +77,7 @@ class StructuredMetaResource(MetaResource):
     def __init__(self, id: str | None = None, rdf_type=LDTO.Informatieobject):
         super().__init__(id)
         self._init_rdf_properties(rdf_type)
-        self.metadata_sources = set()
+        self.based_on_sources = set()
 
     def add(self, predicate: URIRef, obj, transformer: Callable = Literal) -> None:
         """Add a triple to the graph and mark as modified."""
@@ -93,8 +95,8 @@ class StructuredMetaResource(MetaResource):
         self.is_modified = True
 
     @property
-    def has_metadata_sources(self) -> bool:
-        return bool(self.metadata_sources)
+    def is_based_on_sources(self) -> bool:
+        return bool(self.based_on_sources)
 
     @property
     def has_referenced_file(self) -> bool:
@@ -219,8 +221,8 @@ class StructuredMetaResource(MetaResource):
             }
         })
 
-    def set_metadata_source(self, source) -> None:
-        self.metadata_sources.add(source)
+    def add_based_on_source(self, source) -> None:
+        self.based_on_sources.add(source)
 
     def _get_object_value(self, predicate, subject=None) -> Any:
         if subject is not None:
