@@ -103,7 +103,7 @@ class StructuredMetaResource(MetaResource):
         return self._get_object_value(LDTO.URLBestand, self.uri) is not None
 
     @property
-    def description_uri(self) -> str:
+    def metadata_file_uri(self) -> str:
         return f"{MetaResource._id_factory.cdn_base_uri}{self.uid}.{MetaResource._context.metadata_suffix}.{MetaResource._context.metadata_extension}"
 
     @property
@@ -245,11 +245,11 @@ class StructuredMetaResource(MetaResource):
                 LDTO.identificatieBron: "e-Depot RAZU",
                 LDTO.identificatieKenmerk: self.uri
             },
-            DCT.hasFormat: URIRef(self.description_uri)
+            DCT.hasFormat: URIRef(self.metadata_file_uri)
         })
         if rdf_type == LDTO.Informatieobject:
             self.add_properties({
                 LDTO.waardering: StructuredMetaResource._waarderingen.get_concept('B').get_uri(),
                 LDTO.archiefvormer: StructuredMetaResource._actoren.get_concept(MetaResource._context.archive_creator_id).get_uri()
             })
-        self.add_triple(URIRef(self.description_uri), RDF.type, PREMIS.File)
+        self.add_triple(URIRef(self.metadata_file_uri), RDF.type, PREMIS.File)

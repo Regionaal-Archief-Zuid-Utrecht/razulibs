@@ -27,7 +27,7 @@ class MetaResourcesDict(dict[str, StructuredMetaResource]):
     @property
     def description_uris(self) -> list[str]:
         """Get URIs of all resource descriptions."""
-        return [meta_resource.description_uri for meta_resource in self.values()]
+        return [meta_resource.metadata_file_uri for meta_resource in self.values()]
 
     @property
     def referenced_file_uris(self) -> list[str]:
@@ -149,10 +149,10 @@ class Sip:
             self.manifest.add_metadata_resource(resource, self.archive_creator_uri, self.archive_id)
             event_description = "Metadata modified." if resource.is_from_existing else "Metadata object created."
             if resource.is_based_on_sources:
-                self.log_event.metadata_modification(resource.based_on_sources, resource.description_uri, description=event_description)
+                self.log_event.metadata_modification(resource.based_on_sources, resource.metadata_file_uri, description=event_description)
             else:
-                self.log_event.metadata_modification(resource.description_uri, resource.description_uri, description=event_description)
-            print(f"Stored {resource.description_uri}.")
+                self.log_event.metadata_modification(resource.metadata_file_uri, resource.metadata_file_uri, description=event_description)
+            print(f"Stored {resource.metadata_file_uri}.")
 
     def store_referenced_file_if_missing_in_sip(self, resource: StructuredMetaResource) -> None:
         if not resource.has_referenced_file:
