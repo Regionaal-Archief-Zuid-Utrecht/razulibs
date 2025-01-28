@@ -1,13 +1,17 @@
 import os
 import shutil
+from typing import Callable, Dict, List, Optional
+from functools import reduce
+from operator import add
 
 from razu.config import Config
 from razu.identifiers import Identifiers
 from razu.concept_resolver import ConceptResolver
 from razu.meta_resource import StructuredMetaResource
-from razu.meta_graph import MetaGraph, MDTO
+from razu.meta_graph import MetaGraph, LDTO
 from razu.manifest import Manifest
 from razu.preservation_events import RazuPreservationEvents
+from razu.run_info import RunInfo
 from razu.decorators import unless_locked
 import razu.util as util
 
@@ -23,7 +27,7 @@ class MetaResourcesDict(dict[str, StructuredMetaResource]):
     @property
     def description_uris(self) -> list[str]:
         """Get URIs of all resource descriptions."""
-        return [meta_resource.description_uri for meta_resource in self.values()]
+        return [meta_resource.metadata_file_uri for meta_resource in self.values()]
 
     @property
     def referenced_file_uris(self) -> list[str]:
@@ -67,13 +71,35 @@ class Sip:
         return self.log_event.is_locked
 
     @classmethod
-    def create_new(cls, archive_creator_id: str, archive_id: str, sip_directory=None, resources_directory=None, ingestion_start_date=None) -> 'Sip':
+    def create_new(cls, archive_creator_id: str, archive_id: str, sip_directory=None, resources_directory=None) -> 'Sip':
         cfg = Config.get_instance()
         sip_directory = sip_directory or cfg.default_sip_directory
         resources_directory = resources_directory or cfg.default_resources_directory
 
+        clamav_info = RunInfo("metadata", "clamav")
+        droid_info = RunInfo("metadata", "droid")
+        ingestion_start_date = min(clamav_info.start_time, droid_info.start_time)
+
+
         sip = cls(sip_directory, resources_directory)
         sip._create_new_sip(archive_creator_id, archive_id)
+        sip.log_event.to_queue('ingestion_start', 
+            subject=lambda: sip.meta_resources.referenced_file_uris, 
+            timestamp=ingestion_start_date
+        )
+        sip.log_event.to_queue('virus_check', 
+            subject=lambda: sip.meta_resources.referenced_file_uris,
+            is_successful=True,
+            tool=clamav_info.uri,
+            timestamp=clamav_info.end_time,
+            started_at=clamav_info.start_time
+        )
+
+
+        # TODO: logging related to droid analysis (format & digest) should move here too
+        # TODO: comes with some complexity due to need for delayed processing using lamdas 
+        # TODO: maybe simply move these to the save method (no need for delayed processing....)
+        
         return sip
 
     @classmethod
@@ -83,7 +109,8 @@ class Sip:
         sip._load_graph()
         return sip
 
-    def _create_new_sip(self, archive_creator_id, archive_id):
+    def _initialize_sip(self, archive_creator_id, archive_id):
+        """Initialize common SIP properties and objects."""
         actoren = ConceptResolver('actor')
         self.archive_creator_id = archive_creator_id
         self.archive_id = archive_id
@@ -91,48 +118,43 @@ class Sip:
         self.cfg.add_properties(
             archive_id=archive_id,
             archive_creator_id=archive_creator_id,
-            sip_directory=self.sip_directory,
+            archive_creator_uri=self.archive_creator_uri,
+            sip_directory=self.sip_directory
         )
-        os.makedirs(self.sip_directory, exist_ok=True)
-        self.manifest = Manifest.create_new(self.sip_directory)
         self.log_event = RazuPreservationEvents(self.sip_directory)
 
-    def get_metadata_resource_by_id(self, id: str) -> StructuredMetaResource:
-        return self.meta_resources[id]
+    def _create_new_sip(self, archive_creator_id, archive_id):
+        self._initialize_sip(archive_creator_id, archive_id)
+        os.makedirs(self.sip_directory, exist_ok=True)
+        self.manifest = Manifest.create_new(self.sip_directory)
 
     def _open_existing_sip(self):
         if not os.listdir(self.sip_directory):
             raise ValueError(f"The SIP directory '{self.sip_directory}' is empty, cannot load SIP.")
         self.archive_creator_id, self.archive_id = self._determine_ids_from_files_in_sip_directory()
-        self.cfg.add_properties(
-            archive_id=self.archive_id,
-            archive_creator_id=self.archive_creator_id,
-            sip_directory=self.sip_directory,
-        )   
-        actoren = ConceptResolver('actor')
-        self.archive_creator_uri = actoren.get_concept_uri(self.archive_creator_id)
+        self._initialize_sip(self.archive_creator_id, self.archive_id)
         self.manifest = Manifest.load_existing(self.sip_directory)
-        self.log_event = RazuPreservationEvents(self.sip_directory)
+
+    def get_metadata_resource_by_id(self, id: str) -> StructuredMetaResource:
+        return self.meta_resources[id]
 
     @unless_locked
-    def create_meta_resource(self, id: str, rdf_type=MDTO.Informatieobject) -> StructuredMetaResource:
+    def create_meta_resource(self, id: str, rdf_type=LDTO.Informatieobject) -> StructuredMetaResource:
         meta_resource = StructuredMetaResource(id, rdf_type=rdf_type)
         self.meta_resources[meta_resource.id] = meta_resource
         return meta_resource
 
     def store_metadata_resource(self, resource: StructuredMetaResource) -> None:
-        """Store a resource in the SIP and update the manifest."""
         if resource.save():
             self.manifest.add_metadata_resource(resource, self.archive_creator_uri, self.archive_id)
-            if resource.has_metadata_sources:
-                for source in resource.metadata_sources:
-                    self.log_event.metadata_modification(resource.description_uri, source)
+            event_description = "Metadata modified." if resource.is_from_existing else "Metadata object created."
+            if resource.is_based_on_sources:
+                self.log_event.metadata_modification(resource.based_on_sources, resource.metadata_file_uri, description=event_description)
             else:
-                self.log_event.metadata_modification(resource.description_uri, resource.description_uri)
-            print(f"Stored {resource.description_uri}.")
+                self.log_event.metadata_modification(resource.metadata_file_uri, resource.metadata_file_uri, description=event_description)
+            print(f"Stored {resource.metadata_file_uri}.")
 
-    def store_referenced_file_if_missing(self, resource: StructuredMetaResource) -> None:
-        """Store a referenced file in the SIP and update the manifest."""
+    def store_referenced_file_if_missing_in_sip(self, resource: StructuredMetaResource) -> None:
         if not resource.has_referenced_file:
             return
         destination_filepath = os.path.join(self.sip_directory, resource.referenced_file_filename)
@@ -140,7 +162,7 @@ class Sip:
             origin_filepath = os.path.join(self.resources_directory, resource.referenced_file_original_filename)
             shutil.copy2(origin_filepath, destination_filepath)
             self.manifest.add_referenced_resource(resource, self.archive_creator_uri, self.archive_id)
-            self.log_event.filename_change(resource.description_uri, resource.referenced_file_original_filename, resource.referenced_file_filename)
+            self.log_event.filename_change(resource.referenced_file_uri , resource.referenced_file_original_filename, resource.referenced_file_filename)
             print(f"Stored referenced file {resource.referenced_file_original_filename} as {resource.referenced_file_uri}.")
 
     def validate_referenced_files(self):
@@ -152,7 +174,7 @@ class Sip:
         """Save all meta resources and their referenced files."""
         self.meta_resources.process_all(self.store_metadata_resource)
         if self.resources_directory:
-            self.meta_resources.process_having_referenced_files(self.store_referenced_file_if_missing)
+            self.meta_resources.process_having_referenced_files(self.store_referenced_file_if_missing_in_sip)
         self.log_event.process_queue()
         self.log_event.save()
         self.manifest.save()

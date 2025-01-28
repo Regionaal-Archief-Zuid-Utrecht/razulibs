@@ -43,8 +43,8 @@ class PreservationEvents:
     def to_queue(self, event, *args, **kwargs):
         """Voegt een event toe aan de queue voor uitgesteld uitvoeren."""
         # Sla args en kwargs op met lambda voor uitgestelde evaluatie waar nodig
-        deferred_args = [arg if callable(arg) else lambda: arg for arg in args]
-        deferred_kwargs = {k: (v if callable(v) else lambda: v) for k, v in kwargs.items()}
+        deferred_args = [arg if callable(arg) else (lambda arg=arg: arg) for arg in args]
+        deferred_kwargs = {k: (v if callable(v) else (lambda v=v: v)) for k, v in kwargs.items()}
         self.queue.append((event, deferred_args, deferred_kwargs))
 
     def process_queue(self):
@@ -52,8 +52,8 @@ class PreservationEvents:
         for event, args, kwargs in self.queue:
             func = getattr(self, event)
             # Voer elke lambda uit om de actuele waarden op te halen
-            resolved_args = [arg() if callable(arg) else arg for arg in args]
-            resolved_kwargs = {k: (v() if callable(v) else v) for k, v in kwargs.items()}
+            resolved_args = [arg() for arg in args]
+            resolved_kwargs = {k: v() for k, v in kwargs.items()}
             func(*resolved_args, **resolved_kwargs)
         self.queue.clear()
 
@@ -154,17 +154,20 @@ class RazuPreservationEvents(PreservationEvents):
             PREMIS.outcomeNote: hash            # TODO: als DROID de tool is, hoe maken we dan expliciet dat het een md5hash is?
         }, tool, timestamp, started_at)
 
-    def metadata_modification(self, subject, result, tool=None, timestamp=None):
+    def metadata_modification(self, subject, result, tool=None, timestamp=None, description=''):
         subject_value = [URIRef(s) for s in subject] if isinstance(subject, set) else URIRef(subject)
         self._add({ 
             PREMIS.eventType: URIRef('http://id.loc.gov/vocabulary/preservation/eventType/mem'),
             EROR.sou: subject_value,
             ERAR.imp: URIRef('https://data.razu.nl/id/actor/2bdb658a032a405d71c19159bd2bbb3a'),
             PREMIS.outcome: self._outcome_uri(True),
+            PROV.description: description,
             PROV.generated: URIRef(result)
         }, tool, timestamp)
 
-    def virus_check(self, subject, is_successful, note, tool=None, timestamp=None, started_at=None):
+    # sip.log_event.to_queue('virus_check', lambda: sip.meta_resources.referenced_file_uris, True, '-', clamav_info.uri, clamav_info.end_time, clamav_info.start_time)
+
+    def virus_check(self, subject, is_successful, note='', tool=None, timestamp=None, started_at=None):
         subject_value = [URIRef(s) for s in subject] if isinstance(subject, list) else URIRef(subject)
         self._add({
             PREMIS.eventType: URIRef('http://id.loc.gov/vocabulary/preservation/eventType/vir'),
@@ -172,7 +175,7 @@ class RazuPreservationEvents(PreservationEvents):
             ERAR.imp: URIRef('https://data.razu.nl/id/actor/2bdb658a032a405d71c19159bd2bbb3a'),
             PREMIS.outcome: self._outcome_uri(True),
             PREMIS.outcomeNote: note,
-        }, tool, timestamp, started_at)
+        }, timestamp=timestamp, tool=tool, started_at=started_at)
 
     def _outcome_uri(self, is_successful) -> URIRef:
         return URIRef("http://id.loc.gov/vocabulary/preservation/eventOutcome/suc") if is_successful else URIRef("http://id.loc.gov/vocabulary/preservation/eventOutcome/fail")

@@ -51,7 +51,7 @@ class ManifestEntry:
             ObjectUID=resource.uid,
             Source=archive_creator_uri,
             Dataset=dataset_id,
-            URI=resource.description_uri
+            URI=resource.metadata_file_uri
         )
         
     @classmethod
