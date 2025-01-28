@@ -202,18 +202,12 @@ class StructuredMetaResource(MetaResource):
 
     def set_restrictions_public_availability(self, beperking_term) -> None:
         self.add_properties({
-            MDTO.beperkingGebruik: {
-                RDF.type: MDTO.BeperkingGebruikGegevens,  
-                MDTO.beperkingGebruikType: StructuredMetaResource._beperkingen_openbaarheid.get_concept(beperking_term).get_uri()
-            }
+            MDTO.beperkingGebruik: StructuredMetaResource._beperkingen_openbaarheid.get_concept(beperking_term).get_uri()
         })
 
     def set_license(self, license_term) -> None:
         self.add_properties({
-            MDTO.beperkingGebruik: {
-                RDF.type: MDTO.BeperkingGebruikGegevens,  
-                MDTO.beperkingGebruikType: StructuredMetaResource._licenties.get_concept(license_term).get_uri()
-            }
+            MDTO.beperkingGebruik: StructuredMetaResource._licenties.get_concept(license_term).get_uri()
         })
 
     def set_metadata_source(self, source) -> None:
