@@ -207,12 +207,12 @@ class StructuredMetaResource(MetaResource):
 
     def set_restrictions_public_availability(self, beperking_term) -> None:
         self.add_properties({
-            MDTO.beperkingGebruik: StructuredMetaResource._beperkingen_openbaarheid.get_concept(beperking_term).get_uri()
+            LDTO.beperkingGebruik: StructuredMetaResource._beperkingen_openbaarheid.get_concept(beperking_term).get_uri()
         })
 
     def set_license(self, license_term) -> None:
         self.add_properties({
-            MDTO.beperkingGebruik: StructuredMetaResource._licenties.get_concept(license_term).get_uri()
+            LDTO.beperkingGebruik: StructuredMetaResource._licenties.get_concept(license_term).get_uri()
         })
 
     def add_based_on_source(self, source) -> None:
