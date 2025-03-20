@@ -316,6 +316,84 @@ class S3Storage:
             print(f"Failed to get versioning status for bucket '{bucket_name}': {e}")
             return "Error"
 
+    def delete_bucket(self, bucket_name, force=False) -> bool:
+        """
+        Deletes an S3 bucket. By default, the bucket must be empty.
+        
+        :param bucket_name: The name of the bucket to delete.
+        :param force: If True, all objects in the bucket will be deleted before deleting the bucket.
+        :return: True if the bucket was deleted successfully, False otherwise.
+        """
+        try:
+            # Check if bucket exists
+            self.s3_client.head_bucket(Bucket=bucket_name)
+            
+            # If force is True, delete all objects in the bucket first
+            if force:
+                print(f"Force option enabled. Deleting all objects in bucket '{bucket_name}'...")
+                
+                # List and delete all object versions if versioning is enabled
+                try:
+                    # Check if versioning is enabled
+                    versioning_status = self.get_bucket_versioning(bucket_name)
+                    if versioning_status == "Enabled" or versioning_status == "Suspended":
+                        # Delete all versions and delete markers
+                        versions_response = self.s3_client.list_object_versions(Bucket=bucket_name)
+                        
+                        # Delete versions
+                        if 'Versions' in versions_response:
+                            for version in versions_response['Versions']:
+                                self.s3_client.delete_object(
+                                    Bucket=bucket_name,
+                                    Key=version['Key'],
+                                    VersionId=version['VersionId']
+                                )
+                        
+                        # Delete delete markers
+                        if 'DeleteMarkers' in versions_response:
+                            for marker in versions_response['DeleteMarkers']:
+                                self.s3_client.delete_object(
+                                    Bucket=bucket_name,
+                                    Key=marker['Key'],
+                                    VersionId=marker['VersionId']
+                                )
+                except Exception as e:
+                    print(f"Error deleting versioned objects: {e}")
+                    return False
+                
+                # Delete all non-versioned objects
+                try:
+                    objects_response = self.s3_client.list_objects_v2(Bucket=bucket_name)
+                    if 'Contents' in objects_response:
+                        for obj in objects_response['Contents']:
+                            self.s3_client.delete_object(
+                                Bucket=bucket_name,
+                                Key=obj['Key']
+                            )
+                except Exception as e:
+                    print(f"Error deleting objects: {e}")
+                    return False
+                
+                print(f"All objects in bucket '{bucket_name}' have been deleted.")
+            
+            # Delete the bucket
+            self.s3_client.delete_bucket(Bucket=bucket_name)
+            print(f"Bucket '{bucket_name}' deleted successfully.")
+            return True
+            
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            if error_code == '404':
+                print(f"Bucket '{bucket_name}' does not exist.")
+            elif error_code == 'BucketNotEmpty':
+                print(f"Bucket '{bucket_name}' is not empty. Use force=True to delete all objects first.")
+            else:
+                print(f"Failed to delete bucket '{bucket_name}': {e}")
+            return False
+        except Exception as e:
+            print(f"An error occurred while deleting bucket '{bucket_name}': {e}")
+            return False
+
     def _encode_metadata(self, metadata):
         """
         URL encode metadata values to handle non-ASCII characters.
