@@ -64,7 +64,6 @@ class EDepot(S3Storage):
         :param sip_directory: The directory where the files listed in the manifest are located.
         """
         manifest = Manifest(sip_directory)
-
         manifest.load_existing(sip_directory, manifest_file)
 
         for filename, properties in manifest.files.items():
@@ -79,7 +78,8 @@ class EDepot(S3Storage):
         :param manifest_file: The path to the manifest file.
         :param sip_directory: The directory where the files listed in the manifest are located.
         """
-        manifest = Manifest(sip_directory, manifest_file)
+        manifest = Manifest(sip_directory)
+        manifest.load_existing(sip_directory, manifest_file)
         for filename, properties in manifest.files.items():
             bucket_name = self._get_bucket_name(properties)
             md = properties["MD5Hash"]
@@ -93,7 +93,8 @@ class EDepot(S3Storage):
         :param sip_directory: The directory where the files listed in the manifest are located.
         :param acl: The access control list setting to apply to the files (default is 'public-read').
         """
-        manifest = Manifest(sip_directory, manifest_file)
+        manifest = Manifest(sip_directory)
+        manifest.load_existing(sip_directory, manifest_file)
         for filename, properties in manifest.files.items():
             bucket_name = self._get_bucket_name(properties)
             self.update_acl(bucket_name, filename, acl)
