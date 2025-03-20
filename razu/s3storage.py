@@ -129,24 +129,21 @@ class S3Storage:
             if mime_type is None:
                 mime_type = 'application/octet-stream'
             
-            # Bepaal de bestandsgrootte
-            file_size = os.path.getsize(filename)
-            
             # Maak de extra argumenten voor de upload
             extra_args = {
                 "Metadata": self._encode_metadata(metadata), 
-                "ContentType": mime_type,
-                "ContentLength": file_size
+                "ContentType": mime_type
             }
             
-            # Bepaal de bestandsnaam (key) voor S3
-            key = os.path.basename(filename)
+            # Upload het bestand met open() om ervoor te zorgen dat de bestandsgrootte bekend is
+            object_key = os.path.basename(filename)
             
-            # Upload het bestand
+            # Gebruik upload_file in plaats van put_object voor grote bestanden
+            # upload_file handelt automatisch de bestandsgrootte en chunking af
             self.s3_client.upload_file(
                 filename,
                 bucket_name,
-                os.path.basename(filename),
+                object_key,
                 ExtraArgs=extra_args
             )
             print(f"File {filename} uploaded successfully.")
