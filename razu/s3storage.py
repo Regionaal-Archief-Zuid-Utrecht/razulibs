@@ -42,6 +42,10 @@ class S3Storage:
         env_path = os.path.join(os.path.dirname(__file__), '.env')
         load_dotenv(env_path)
 
+        # Stel omgevingsvariabelen in om het MissingContentLength probleem op te lossen
+        os.environ['AWS_REQUEST_CHECKSUM_CALCULATION'] = 'when_required'
+        os.environ['AWS_RESPONSE_CHECKSUM_VALIDATION'] = 'when_required'
+
         self.endpoint = os.getenv('S3_ENDPOINT')
         self.access_key = os.getenv('S3_ACCESS_KEY')
         self.secret_key = os.getenv('S3_SECRET_KEY')
