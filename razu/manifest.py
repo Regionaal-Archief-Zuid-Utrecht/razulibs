@@ -224,32 +224,122 @@ class Manifest:
         if errors['extra_files']:
             raise FileExistsError(f"Extra files found: {errors['extra_files']}")
         return errors
+        
+    @classmethod
+    def create_from_directory(cls, directory: str, manifest_filename: str = None, 
+                              ignore_files: list = None, include_metadata: bool = True) -> 'Manifest':
+        """Create a new manifest by scanning all files in a directory.
+        
+        Args:
+            directory: Directory to scan for files
+            manifest_filename: Optional explicit manifest filename. If not provided, uses id_factory to generate name.
+            ignore_files: Optional list of filenames to ignore when scanning
+            include_metadata: Whether to include file metadata like size and last modified date
+            
+        Returns:
+            A new Manifest instance with entries for all files in the directory
+        """
+        manifest = cls.create_new(directory)
+        if manifest_filename:
+            manifest.manifest_filename = manifest_filename
+            
+        ignore_files = ignore_files or []
+        ignore_files.append(os.path.basename(manifest.manifest_file_path))
+        
+        # Scan directory and add all files to manifest
+        for root, _, files in os.walk(directory):
+            for file in files:
+                if file in ignore_files:
+                    continue
+                    
+                file_path = os.path.join(root, file)
+                relative_path = os.path.relpath(file_path, directory)
+                
+                # Skip the manifest file itself
+                if relative_path == os.path.basename(manifest.manifest_file_path):
+                    continue
+                    
+                # Calculate MD5 hash
+                md5hash = util.calculate_md5(file_path)
+                md5date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+                
+                # Add optional metadata
+                metadata = {}
+                if include_metadata:
+                    file_stat = os.stat(file_path)
+                    metadata.update({
+                        'FileSize': file_stat.st_size,
+                        'LastModified': util.get_last_modified(file_path),
+                        'FileExtension': util.get_full_extension(file),
+                    })
+                
+                # Add entry to manifest
+                manifest.add_entry(
+                    relative_path,
+                    md5hash=md5hash,
+                    md5date=md5date,
+                    **metadata
+                )
+        
+        manifest.is_valid = True
+        manifest.is_modified = True
+        return manifest
 
 
 if __name__ == "__main__":
     """Command-line interface for managing a file manifest."""
-    if len(sys.argv) < 3:
-        print("Usage: python manifest.py <directory> <manifest-file> [files-to-ignore ...]")
-        print("\nExample:")
-        print("  python manifest.py sip NL-WbDRAZU-G0321-661.manifest.json eventlog.json metadata.json")
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Manage file manifests for directories")
+    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
+    
+    # Create command
+    create_parser = subparsers.add_parser("create", help="Create a new manifest from directory contents")
+    create_parser.add_argument("directory", help="Directory to scan")
+    create_parser.add_argument("--output", "-o", dest="manifest_filename", 
+                              help="Output manifest filename (default: auto-generated)")
+    create_parser.add_argument("--ignore", "-i", nargs="+", dest="ignore_files",
+                              help="Files to ignore during scanning")
+    create_parser.add_argument("--no-metadata", dest="include_metadata", action="store_false",
+                              help="Don't include file metadata in manifest")
+    
+    # Validate command
+    validate_parser = subparsers.add_parser("validate", help="Validate directory against manifest")
+    validate_parser.add_argument("directory", help="Directory to validate")
+    validate_parser.add_argument("manifest_filename", help="Manifest file to validate against")
+    validate_parser.add_argument("--ignore", "-i", nargs="+", dest="ignore_files",
+                                help="Files to ignore during validation")
+    
+    # Parse arguments
+    args = parser.parse_args()
+    
+    if not args.command:
+        parser.print_help()
         sys.exit(1)
-
-    directory = sys.argv[1]
-    manifest_filename = sys.argv[2]
-    ignore_files = sys.argv[3:] if len(sys.argv) > 3 else None
-
+    
     try:
-        manifest = Manifest.load_existing(directory, manifest_filename=manifest_filename)
-        errors = manifest.validate(ignore_files=ignore_files)
-        if any(errors.values()):
-            print("Verification failed:")
-            for error_type, files in errors.items():
-                if files:
-                    print(f"{error_type}: {files}")
-        else:
-            print(f"Directory {directory} complies with manifest {manifest_filename} and validated successfully.")
-            if ignore_files:
-                print(f"Note: The following files were ignored during validation: {', '.join(ignore_files)}")
+        if args.command == "create":
+            manifest = Manifest.create_from_directory(
+                args.directory,
+                manifest_filename=args.manifest_filename,
+                ignore_files=args.ignore_files,
+                include_metadata=args.include_metadata
+            )
+            manifest.save()
+            print(f"Created manifest with {len(manifest.entries)} entries at {manifest.manifest_file_path}")
+            
+        elif args.command == "validate":
+            manifest = Manifest.load_existing(args.directory, manifest_filename=args.manifest_filename)
+            errors = manifest.validate(ignore_files=args.ignore_files)
+            if any(errors.values()):
+                print("Validation failed:")
+                for error_type, files in errors.items():
+                    if files:
+                        print(f"{error_type}: {files}")
+            else:
+                print(f"Directory {args.directory} complies with manifest {args.manifest_filename} and validated successfully.")
+                if args.ignore_files:
+                    print(f"Note: The following files were ignored during validation: {', '.join(args.ignore_files)}")
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)

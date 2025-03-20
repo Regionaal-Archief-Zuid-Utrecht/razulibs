@@ -1,11 +1,13 @@
 import os
-
+import json
 from rdflib.namespace import SKOS
+from typing import Any, Callable, TypeVar, Optional, Dict, List, Union
 
 from razu.concept_resolver import Concept
 from razu.manifest import Manifest
 from razu.s3storage import S3Storage
 
+T = TypeVar('T')
 
 class EDepot(S3Storage):
     """
@@ -24,6 +26,35 @@ class EDepot(S3Storage):
         :return: The bucket name as a lowercase string.
         """
         return Concept(properties["Source"]).get_value(SKOS.notation).lower()
+
+    def print_output(self, method: Callable[..., T], *args, print_output: bool = True, 
+                                  pretty_print: bool = True, **kwargs) -> Optional[T]:
+        """
+        A generic wrapper function that executes a method and either returns its result or prints it.
+
+        Args:
+            method: The method to execute.
+            *args: Positional arguments to pass to the method.
+            print_output: If True, prints the output instead of returning it.
+            pretty_print: If True, formats the output for better readability (when printing).
+            **kwargs: Keyword arguments to pass to the method.
+
+        Returns:
+            The result of the method if print_output is False, otherwise None.
+        """
+        result = method(*args, **kwargs)
+        
+        if print_output and result is not None:
+            if pretty_print:
+                if isinstance(result, (dict, list)):
+                    print(json.dumps(result, indent=2, default=str))
+                else:
+                    print(result)
+            else:
+                print(result)
+            return None
+        
+        return result
 
     def store_files_from_manifest(self, manifest_file, sip_directory):
         """

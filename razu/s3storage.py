@@ -34,7 +34,7 @@ class S3Storage:
         s3_client (boto3.Client): Initialized S3 client for performing operations.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initializes the S3 client with credentials and endpoint information from environment variables.
         The credentials and endpoint are loaded from a .env file.
@@ -53,15 +53,18 @@ class S3Storage:
             aws_secret_access_key=self.secret_key
         )
 
-    def check_or_create_bucket(self, bucket_name) -> bool:
+    def check_or_create_bucket(self, bucket_name, enable_versioning=False) -> bool:
         """
         Checks if a bucket exists in the S3 storage and creates it if it does not exist.
         
         :param bucket_name: The name of the bucket to check or create.
+        :param enable_versioning: If True, enables versioning on the bucket after creation.
         :return: True if the bucket exists or was created successfully, False if an error occurred.
         """
         try:
             self.s3_client.head_bucket(Bucket=bucket_name)
+            if enable_versioning:
+                self.set_bucket_versioning(bucket_name)
             return True
         except ClientError as e:
             error_code = int(e.response['Error']['Code'])
@@ -70,6 +73,10 @@ class S3Storage:
                 try:
                     self.s3_client.create_bucket(Bucket=bucket_name)
                     print(f"Bucket '{bucket_name}' created successfully.")
+                    
+                    if enable_versioning:
+                        self.set_bucket_versioning(bucket_name)
+                        
                     return True
                 except Exception as e:
                     print(f"Failed to create bucket '{bucket_name}': {e}")
@@ -77,6 +84,32 @@ class S3Storage:
             else:
                 print(f"An error occurred while checking bucket '{bucket_name}': {e}")
                 return False
+                
+    def set_bucket_versioning(self, bucket_name, status="Enabled") -> bool:
+        """
+        Sets the versioning status on an S3 bucket.
+        
+        :param bucket_name: The name of the bucket to set versioning status on.
+        :param status: The versioning status to set. Valid values are 'Enabled' or 'Suspended'.
+                      Default is 'Enabled'.
+        :return: True if versioning status was set successfully, False otherwise.
+        """
+        if status not in ["Enabled", "Suspended"]:
+            print(f"Invalid versioning status: {status}. Valid values are 'Enabled' or 'Suspended'.")
+            return False
+            
+        try:
+            self.s3_client.put_bucket_versioning(
+                Bucket=bucket_name,
+                VersioningConfiguration={
+                    'Status': status
+                }
+            )
+            print(f"Versioning status set to '{status}' for bucket '{bucket_name}'.")
+            return True
+        except Exception as e:
+            print(f"Failed to set versioning status for bucket '{bucket_name}': {e}")
+            return False
 
     def store_file(self, bucket_name, filename, metadata) -> None:
         """
@@ -127,7 +160,7 @@ class S3Storage:
             print(f"An error occurred while retrieving metadata: {e}")
             return None
 
-    def verify_upload(self, bucket_name, file_key, local_md5):
+    def verify_upload(self, bucket_name, file_key, local_md5) -> None:
         """
         Verifies if a file was correctly uploaded by comparing its local MD5 checksum with the S3 ETag.
 
@@ -243,14 +276,45 @@ class S3Storage:
                 print(f"An error occurred: {e}")
             return None
 
-    def ls(self, bucket_name: str) -> None:
+    def list_buckets(self):
         """
-        Lists the objects in the specified S3 bucket.
+        Lists all available buckets.
 
-        :param bucket_name: The name of the bucket to list objects from.
+        Returns:
+            list: A list of dictionaries containing bucket information.
+                  Each dictionary contains 'Name' and 'CreationDate' of the bucket.
+
+        Raises:
+            NoCredentialsError: If credentials are not properly configured.
+            ClientError: If there's an error in the S3 client operation.
         """
-        for key in self.get_bucket_contents(bucket_name):
-            print(key)
+        try:
+            response = self.s3_client.list_buckets()
+            return response['Buckets']
+        except (NoCredentialsError, ClientError) as e:
+            raise e
+
+    def get_bucket_versioning(self, bucket_name) -> str:
+        """
+        Gets the versioning status of an S3 bucket.
+        
+        :param bucket_name: The name of the bucket to check versioning status for.
+        :return: The versioning status ('Enabled', 'Suspended', or 'Not enabled') of the bucket.
+        """
+        try:
+            response = self.s3_client.get_bucket_versioning(Bucket=bucket_name)
+            
+            # If 'Status' key exists in the response, versioning is either Enabled or Suspended
+            if 'Status' in response:
+                status = response['Status']
+                print(f"Versioning status for bucket '{bucket_name}': {status}")
+                return status
+            else:
+                print(f"Versioning is not enabled for bucket '{bucket_name}'.")
+                return "Not enabled"
+        except Exception as e:
+            print(f"Failed to get versioning status for bucket '{bucket_name}': {e}")
+            return "Error"
 
     def _encode_metadata(self, metadata):
         """
