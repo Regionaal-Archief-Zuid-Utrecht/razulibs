@@ -120,11 +120,29 @@ class S3Storage:
         :param metadata: A dictionary containing metadata for the uploaded file.
         """
         try:
+            # Controleer of het bestand bestaat
+            if not os.path.exists(filename):
+                raise FileNotFoundError(f"The file {filename} was not found.")
+                
+            # Bepaal het MIME-type
             mime_type, _ = mimetypes.guess_type(filename)
             if mime_type is None:
                 mime_type = 'application/octet-stream'
             
-            extra_args = {"Metadata": self._encode_metadata(metadata), "ContentType": mime_type}
+            # Bepaal de bestandsgrootte
+            file_size = os.path.getsize(filename)
+            
+            # Maak de extra argumenten voor de upload
+            extra_args = {
+                "Metadata": self._encode_metadata(metadata), 
+                "ContentType": mime_type,
+                "ContentLength": file_size
+            }
+            
+            # Bepaal de bestandsnaam (key) voor S3
+            key = os.path.basename(filename)
+            
+            # Upload het bestand
             self.s3_client.upload_file(
                 filename,
                 bucket_name,
@@ -137,7 +155,7 @@ class S3Storage:
         except NoCredentialsError:
             print("Credentials not available.")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"An error occurred: Failed to upload {filename} to {bucket_name}/{os.path.basename(filename)}: {e}")
 
     def get_file_metadata(self, bucket: str, file_key: str) -> dict:
         """
