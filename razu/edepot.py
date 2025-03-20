@@ -63,7 +63,10 @@ class EDepot(S3Storage):
         :param manifest_file: The path to the manifest file.
         :param sip_directory: The directory where the files listed in the manifest are located.
         """
-        manifest = Manifest(sip_directory, manifest_file)
+        manifest = Manifest(sip_directory)
+
+        manifest.load_existing(sip_directory, manifest_file)
+
         for filename, properties in manifest.files.items():
             full_filename = os.path.join(sip_directory, filename)
             bucket_name = self._get_bucket_name(properties)
