@@ -60,10 +60,10 @@ class MetaResourcesDict(dict[str, StructuredMetaResource]):
 class Sip:
     """Represents a SIP (Submission Information Package)"""
 
-    def __init__(self, sip_directory, resources_directory):
+    def __init__(self, sip_root, resources_root):
         self.cfg = Config.get_instance()
-        self.sip_directory = sip_directory
-        self.resources_directory = resources_directory
+        self.sip_directory = sip_root
+        self.resources_directory = resources_root
         self.meta_resources = MetaResourcesDict()
     
     @property
@@ -71,9 +71,9 @@ class Sip:
         return self.log_event.is_locked
 
     @classmethod
-    def create_new(cls, archive_creator_id: str, archive_id: str, sip_directory=None, resources_directory=None) -> 'Sip':
+    def create_new(cls, archive_creator_id: str, archive_id: str, sip_root=None, resources_directory=None) -> 'Sip':
         cfg = Config.get_instance()
-        sip_directory = sip_directory or cfg.default_sip_directory
+        sip_root = sip_root or cfg.default_sip_directory
         resources_directory = resources_directory or cfg.default_resources_directory
 
         clamav_info = RunInfo("metadata", "clamav")
@@ -81,7 +81,7 @@ class Sip:
         ingestion_start_date = min(clamav_info.start_time, droid_info.start_time)
 
 
-        sip = cls(sip_directory, resources_directory)
+        sip = cls(sip_root, resources_directory)
         sip._create_new_sip(archive_creator_id, archive_id)
         sip.log_event.to_queue('ingestion_start', 
             subject=lambda: sip.meta_resources.referenced_file_uris, 
