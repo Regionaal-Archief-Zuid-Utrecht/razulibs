@@ -6,3 +6,4 @@ build/
 .env
 out.ttl
 output/
+.vscode/settings.json

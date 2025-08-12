@@ -167,15 +167,18 @@ class S3Storage:
         try:
             response = self.s3_client.head_object(Bucket=bucket, Key=file_key)
             metadata = response.get('Metadata', {})
-            print(f"Metadata for '{file_key}' in bucket '{bucket}': {metadata}")
+            #print(f"Metadata for '{file_key}' in bucket '{bucket}': {metadata}")
             return metadata
-        except self.s3_client.exceptions.NoSuchKey:
-            print(f"File '{file_key}' does not exist in bucket '{bucket}'.")
-        except self.s3_client.exceptions.NoSuchBucket:
-            print(f"Bucket '{bucket}' does not exist.")
+        except ClientError as e:
+            # For missing objects or buckets, return None silently so callers can treat it as "does not exist".
+            code = e.response.get('Error', {}).get('Code')
+            if code in ('404', 'NotFound', 'NoSuchKey', 'NoSuchBucket'):
+                return None
+            # Other client errors should not be swallowed; re-raise to surface real issues.
+            raise
         except Exception as e:
-            print(f"An error occurred while retrieving metadata: {e}")
-            return None
+            # Unexpected exceptions should be propagated to aid debugging.
+            raise
 
     def verify_upload(self, bucket_name, file_key, local_md5) -> None:
         """

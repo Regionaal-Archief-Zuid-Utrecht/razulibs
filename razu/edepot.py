@@ -66,22 +66,29 @@ class EDepot(S3Storage):
         
         return result
 
-    def store_files_from_manifest(self, manifest_file, sip_directory):
+    def store_files_from_manifest(self, manifest_file, sip_directory, only_if_new=False):
         """
         Stores files listed in the manifest into their respective S3 buckets.
 
         :param manifest_file: The path to the manifest file.
         :param sip_directory: The directory where the files listed in the manifest are located.
+        :param only_if_new: If True, only upload files if the key does not already exist in the bucket.
         """
         manifest = Manifest.load_existing(sip_directory, manifest_file)
         # Bepaal bucket_name één keer (op basis van eerste entry)
         # Bepaal bucket_name als het padsegment na 'nl-wbdrazu', zonder begin/eindslash
         bucket_name = self._get_bucket_name(manifest_file)
-
+        print(f"{manifest_file} verwerken. Als key al bestaat dan wordt er niets geprint.")
         for key, entry in manifest.entries.items():
             local_filename = os.path.join(sip_directory, key)
             properties = entry.to_dict()
-            print(key)
+            #print(key)
+            if only_if_new:
+                # Check of de key al bestaat in de bucket
+                meta = self.get_file_metadata(bucket_name, key)
+                if meta is not None:
+                    #print(f"SKIP: {key} bestaat al in bucket {bucket_name}")
+                    continue
             self.store_file(bucket_name, key, local_filename, properties)
 
         # Upload manifest file zelf
