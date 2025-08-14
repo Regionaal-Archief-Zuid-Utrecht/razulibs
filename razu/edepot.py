@@ -78,7 +78,7 @@ class EDepot(S3Storage):
         # Bepaal bucket_name één keer (op basis van eerste entry)
         # Bepaal bucket_name als het padsegment na 'nl-wbdrazu', zonder begin/eindslash
         bucket_name = self._get_bucket_name(manifest_file)
-        print(f"{manifest_file} verwerken. Als key al bestaat dan wordt er niets geprint.")
+        print(f"{manifest_file} verwerken.")
         for key, entry in manifest.entries.items():
             local_filename = os.path.join(sip_directory, key)
             properties = entry.to_dict()
