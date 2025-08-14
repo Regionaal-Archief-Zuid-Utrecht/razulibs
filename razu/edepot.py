@@ -87,7 +87,7 @@ class EDepot(S3Storage):
                 # Check of de key al bestaat in de bucket
                 meta = self.get_file_metadata(bucket_name, key)
                 if meta is not None:
-                    #print(f"SKIP: {key} bestaat al in bucket {bucket_name}")
+                    print(f"SKIP-EXISTING: {key}", end="\r")
                     continue
             self.store_file(bucket_name, key, local_filename, properties)
 
