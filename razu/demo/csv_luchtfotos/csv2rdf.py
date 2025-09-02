@@ -30,9 +30,8 @@ def main():
     bestandsformaten = ConceptResolver("bestandsformaat")
     betrokkenheden = ConceptResolver("betrokkenheid")
     dekkingintijdtypen = ConceptResolver("dekkingintijdtype")
-    licenties = ConceptResolver("licentie")
+    beperkinggebruiktypen = ConceptResolver("beperkinggebruiktype")
     locaties = ConceptResolver("locatie")
-    openbaarheden = ConceptResolver("openbaarheid")
     soorten = ConceptResolver("soort")
     waarderingen = ConceptResolver("waardering")
 
@@ -159,11 +158,11 @@ def main():
             LDTO.beperkingGebruik: [
                 { 
                     RDF.type: LDTO.BeperkingGebruikGegevens, 
-                    LDTO.beperkingGebruikType: URIRef(licenties.get_concept_uri(row['Auteursrecht']))
+                    LDTO.beperkingGebruikType: URIRef(beperkinggebruiktypen.get_concept_uri(row['Auteursrecht']))
                 },
                 { 
                     RDF.type: LDTO.BeperkingGebruikGegevens,     
-                    LDTO.beperkingGebruikType: URIRef(openbaarheden.get_concept_uri('Openbaar'))
+                    LDTO.beperkingGebruikType: URIRef(beperkinggebruiktypen.get_concept_uri('Openbaar'))
                 }
             ],
             GEO.scale: row['Schaal'],
