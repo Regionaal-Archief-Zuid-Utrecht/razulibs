@@ -38,6 +38,7 @@ for dir in `ls -d */${REPOSITORY_ID}/` ; do   # this a simple sanity check
     if [ -n "$bucket" ]; then
         echo "Synchronizing collection $dir to ${bucket} in ${LOCAL_EDEPOT_BASEDIR}" | sed "s@/${REPOSITORY_ID}/@@"
         rsync -r --info=stats2 ${REPOSITORY_ID} ${LOCAL_EDEPOT_BASEDIR}${bucket}/
+        echo
     else
         echo "Skipping collection $dir: empty bucket" | sed "s@/${REPOSITORY_ID}/@@"
     fi
