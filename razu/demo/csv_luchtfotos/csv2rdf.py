@@ -30,9 +30,8 @@ def main():
     bestandsformaten = ConceptResolver("bestandsformaat")
     betrokkenheden = ConceptResolver("betrokkenheid")
     dekkingintijdtypen = ConceptResolver("dekkingintijdtype")
-    licenties = ConceptResolver("licentie")
+    beperkinggebruiktypen = ConceptResolver("beperkinggebruiktype")
     locaties = ConceptResolver("locatie")
-    openbaarheden = ConceptResolver("openbaarheid")
     soorten = ConceptResolver("soort")
     waarderingen = ConceptResolver("waardering")
 
@@ -159,11 +158,11 @@ def main():
             LDTO.beperkingGebruik: [
                 { 
                     RDF.type: LDTO.BeperkingGebruikGegevens, 
-                    LDTO.beperkingGebruikType: URIRef(licenties.get_concept_uri(row['Auteursrecht']))
+                    LDTO.beperkingGebruikType: URIRef(beperkinggebruiktypen.get_concept_uri(row['Auteursrecht']))
                 },
                 { 
                     RDF.type: LDTO.BeperkingGebruikGegevens,     
-                    LDTO.beperkingGebruikType: URIRef(openbaarheden.get_concept_uri('Openbaar'))
+                    LDTO.beperkingGebruikType: URIRef(beperkinggebruiktypen.get_concept_uri('Openbaar'))
                 }
             ],
             GEO.scale: row['Schaal'],
@@ -221,7 +220,7 @@ def main():
             LDTO.bestandsformaat: URIRef(bestandsformaten.get_concept_uri(droid_row['PUID'])),
             LDTO.omvang: Literal(int(droid_row['SIZE']), datatype=XSD.integer),
             LDTO.URLBestand: Literal(
-                f"https://{context.archive_creator_id.lower()}.{context.storage_base_domain}/{bestand.uid}"
+                f"https://{context.archive_creator_id.lower()}.{context.storage_base_domain}/{bestand._id_factory.make_s3_path_from_id(bestand.id)}{bestand.uid}"
                 f".{bestandsformaten.get_concept_value(droid_row['PUID'], SKOS.notation)}",
                 datatype=XSD.anyURI
             )

@@ -12,7 +12,7 @@
 razu_base_uri: "https://data.razu.nl/"
 resource_identifier_segment: "id"
 default_entity_kind_segment: "object"
-razu_file_id: "NL-WbDRAZU"
+razu_file_id: "nl-wbdrazu"
 
 metadata_suffix: "meta"
 manifest_suffix: "manifest"

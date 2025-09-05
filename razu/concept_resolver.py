@@ -28,7 +28,6 @@ class Concept:
             <{self.uri}> <{predicate}> ?value .
         }} LIMIT 1
         """
-        
         sparql_service = SPARQLWrapper(self.sparql_endpoint)
         sparql_service.setQuery(query)
         sparql_service.setReturnFormat(JSON)
@@ -66,7 +65,7 @@ class ConceptResolver:
     @lru_cache(maxsize=256)
     def get_concept(self, term: str) -> Concept:
         """ Retrieves a Concept object for the given term. """
-        query = self._build_query(term)
+        query = self._build_uri_for_term_query(term)
         response = self._execute_query(query)
 
         if response:
@@ -84,13 +83,19 @@ class ConceptResolver:
         """ Get a concept's URI. """
         return self.get_concept(term).get_uri()
 
-    def _build_query(self, term: str) -> str:
+    def _build_uri_for_term_query(self, term: str) -> str:
         """ Builds the SPARQL query for a term. """
         return f"""
         {self.PREFIXES}
 
         SELECT ?uri WHERE {{
-            ?uri skos:prefLabel|schema:name|rdfs:label|skos:altLabel|schema:identifier|skos:notation "{term}".
+            {{ 
+                ?uri skos:prefLabel|schema:name|rdfs:label|skos:altLabel|schema:identifier|skos:notation "{term}".
+            }} UNION {{
+                ?uri skos:prefLabel|schema:name|rdfs:label|skos:altLabel|schema:identifier|skos:notation "{term}"@nl.
+            }} UNION {{
+                ?uri skos:prefLabel|schema:name|rdfs:label|skos:altLabel|schema:identifier|skos:notation "{term}"@en.
+            }}
         }} LIMIT 1
         """
 

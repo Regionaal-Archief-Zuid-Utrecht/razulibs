@@ -115,7 +115,7 @@ class S3Storage:
             print(f"Failed to set versioning status for bucket '{bucket_name}': {e}")
             return False
 
-    def store_file(self, bucket_name, filename, metadata) -> None:
+    def store_file(self, bucket_name, object_key, local_filename, metadata) -> None:
         """
         Uploads a file to the specified S3 bucket along with its metadata.
 
@@ -125,11 +125,11 @@ class S3Storage:
         """
         try:
             # Controleer of het bestand bestaat
-            if not os.path.exists(filename):
-                raise FileNotFoundError(f"The file {filename} was not found.")
+            if not os.path.exists(local_filename):
+                raise FileNotFoundError(f"The file {local_filename} was not found.")
                 
             # Bepaal het MIME-type
-            mime_type, _ = mimetypes.guess_type(filename)
+            mime_type, _ = mimetypes.guess_type(object_key)
             if mime_type is None:
                 mime_type = 'application/octet-stream'
             
@@ -139,24 +139,22 @@ class S3Storage:
                 "ContentType": mime_type
             }
             
-            # Upload het bestand met open() om ervoor te zorgen dat de bestandsgrootte bekend is
-            object_key = os.path.basename(filename)
             
             # Gebruik upload_file in plaats van put_object voor grote bestanden
             # upload_file handelt automatisch de bestandsgrootte en chunking af
             self.s3_client.upload_file(
-                filename,
+                local_filename,
                 bucket_name,
                 object_key,
                 ExtraArgs=extra_args
             )
-            print(f"File {filename} uploaded successfully.")
+            print(f"File {local_filename} uploaded successfully to {bucket_name}: {object_key} .")
         except FileNotFoundError:
-            print(f"The file {filename} was not found.")
+            print(f"The file {local_filename} was not found.")
         except NoCredentialsError:
             print("Credentials not available.")
         except Exception as e:
-            print(f"An error occurred: Failed to upload {filename} to {bucket_name}/{os.path.basename(filename)}: {e}")
+            print(f"An error occurred: Failed to upload {local_filename} to {bucket_name}: {object_key}: {e}")
 
     def get_file_metadata(self, bucket: str, file_key: str) -> dict:
         """
@@ -169,15 +167,18 @@ class S3Storage:
         try:
             response = self.s3_client.head_object(Bucket=bucket, Key=file_key)
             metadata = response.get('Metadata', {})
-            print(f"Metadata for '{file_key}' in bucket '{bucket}': {metadata}")
+            #print(f"Metadata for '{file_key}' in bucket '{bucket}': {metadata}")
             return metadata
-        except self.s3_client.exceptions.NoSuchKey:
-            print(f"File '{file_key}' does not exist in bucket '{bucket}'.")
-        except self.s3_client.exceptions.NoSuchBucket:
-            print(f"Bucket '{bucket}' does not exist.")
+        except ClientError as e:
+            # For missing objects or buckets, return None silently so callers can treat it as "does not exist".
+            code = e.response.get('Error', {}).get('Code')
+            if code in ('404', 'NotFound', 'NoSuchKey', 'NoSuchBucket'):
+                return None
+            # Other client errors should not be swallowed; re-raise to surface real issues.
+            raise
         except Exception as e:
-            print(f"An error occurred while retrieving metadata: {e}")
-            return None
+            # Unexpected exceptions should be propagated to aid debugging.
+            raise
 
     def verify_upload(self, bucket_name, file_key, local_md5) -> None:
         """
@@ -231,15 +232,28 @@ class S3Storage:
         except Exception as e:
             print(f"An error occurred while updating ACL: {e}")
         
-    def get_bucket_contents(self, bucket_name: str) -> list:
+    def get_bucket_contents(self, bucket_name: str, prefix: str = None) -> list:
         """
-        Gets a list of all object keys in the specified S3 bucket.
+        Gets a list of all object keys in the specified S3 bucket using pagination.
         
         :param bucket_name: The name of the bucket to list objects from.
-        :return: List of object keys in the bucket.
+        :param prefix: Optional prefix to filter the listed objects.
+        :return: List of all object keys in the bucket (optionally filtered by prefix).
         """
-        response = self.s3_client.list_objects_v2(Bucket=bucket_name)
-        return [obj['Key'] for obj in response.get('Contents', [])]
+        paginator = self.s3_client.get_paginator('list_objects_v2')
+        pagination_params = {'Bucket': bucket_name}
+        if prefix:
+            pagination_params['Prefix'] = prefix
+
+        page_iterator = paginator.paginate(**pagination_params)
+
+        all_keys = []
+        for page in page_iterator:
+            contents = page.get('Contents', [])
+            all_keys.extend(obj['Key'] for obj in contents)
+
+        return all_keys
+
     
     def get_bucket_policy(self, bucket_name) -> str:
         """
@@ -413,6 +427,36 @@ class S3Storage:
             print(f"An error occurred while deleting bucket '{bucket_name}': {e}")
             return False
 
+    def delete_file(self, bucket_name, file_key):
+        """
+        Deletes a specific file (object) from an S3 bucket.
+        
+        :param bucket_name: The name of the bucket containing the file to delete.
+        :param file_key: The key (filename) of the object to delete.
+        :return: True if the file was deleted successfully, False otherwise.
+        """
+        try:
+            # Check if the bucket exists
+            try:
+                self.s3_client.head_bucket(Bucket=bucket_name)
+            except ClientError as e:
+                if e.response['Error']['Code'] == '404':
+                    print(f"Bucket '{bucket_name}' does not exist.")
+                    return False
+                raise
+                
+            # Delete the file
+            self.s3_client.delete_object(Bucket=bucket_name, Key=file_key)
+            print(f"File '{file_key}' deleted successfully from bucket '{bucket_name}'.")
+            return True
+            
+        except ClientError as e:
+            print(f"Failed to delete file '{file_key}' from bucket '{bucket_name}': {e}")
+            return False
+        except Exception as e:
+            print(f"An error occurred while deleting file '{file_key}' from bucket '{bucket_name}': {e}")
+            return False
+            
     def _encode_metadata(self, metadata):
         """
         URL encode metadata values to handle non-ASCII characters.

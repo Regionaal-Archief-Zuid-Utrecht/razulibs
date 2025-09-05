@@ -18,14 +18,24 @@ class EDepot(S3Storage):
     """
 
     @staticmethod
-    def _get_bucket_name(properties):
+    def _get_bucket_name(manifest_file):
         """
-        Retrieves the bucket name from the properties of a file in the manifest.
+        Bepaalt de bucket name als het padsegment na 'nl-wbdrazu' in het manifest_file pad.
+        Gooit een exception als dit niet lukt.
 
-        :param properties: A dictionary of file properties from the manifest.
-        :return: The bucket name as a lowercase string.
+        :param manifest_file: Het pad naar het manifest-bestand.
+        :return: De bucket name als string.
         """
-        return Concept(properties["Source"]).get_value(SKOS.notation).lower()
+        manifest_path = os.path.normpath(manifest_file)
+        if 'nl-wbdrazu' in manifest_path:
+            after = manifest_path.split('nl-wbdrazu', 1)[1]
+            segments = after.strip(os.sep).split(os.sep)
+            if segments and segments[0]:
+                return segments[0]
+            else:
+                raise ValueError(f"Kan bucket_name niet bepalen uit manifest_file: '{manifest_file}' (geen segment na 'nl-wbdrazu')")
+        else:
+            raise ValueError(f"Kan bucket_name niet bepalen uit manifest_file: '{manifest_file}' (geen 'nl-wbdrazu' in pad)")
 
     def print_output(self, method: Callable[..., T], *args, print_output: bool = True, 
                                   pretty_print: bool = True, **kwargs) -> Optional[T]:
@@ -56,19 +66,35 @@ class EDepot(S3Storage):
         
         return result
 
-    def store_files_from_manifest(self, manifest_file, sip_directory):
+    def store_files_from_manifest(self, manifest_file, sip_directory, only_if_new=False):
         """
         Stores files listed in the manifest into their respective S3 buckets.
 
         :param manifest_file: The path to the manifest file.
         :param sip_directory: The directory where the files listed in the manifest are located.
+        :param only_if_new: If True, only upload files if the key does not already exist in the bucket.
         """
         manifest = Manifest.load_existing(sip_directory, manifest_file)
-        for filename, entry in manifest.entries.items():
-            full_filename = os.path.join(sip_directory, filename)
+        # Bepaal bucket_name één keer (op basis van eerste entry)
+        # Bepaal bucket_name als het padsegment na 'nl-wbdrazu', zonder begin/eindslash
+        bucket_name = self._get_bucket_name(manifest_file)
+        print(f"{manifest_file} verwerken.")
+        for key, entry in manifest.entries.items():
+            local_filename = os.path.join(sip_directory, key)
             properties = entry.to_dict()
-            bucket_name = self._get_bucket_name(properties)
-            self.store_file(bucket_name, full_filename, properties)
+            #print(key)
+            if only_if_new:
+                # Check of de key al bestaat in de bucket
+                meta = self.get_file_metadata(bucket_name, key)
+                if meta is not None:
+                    print(f"SKIP-EXISTING: {key}", end="\r")
+                    continue
+            self.store_file(bucket_name, key, local_filename, properties)
+
+        # Upload manifest file zelf
+        manifest_rel_key = os.path.relpath(manifest_file, sip_directory)
+        print(manifest_rel_key)
+        self.store_file(bucket_name, manifest_rel_key, manifest_file, {})
 
     def validate_uploaded_files_from_manifest(self, manifest_file, sip_directory):
         """
@@ -78,9 +104,9 @@ class EDepot(S3Storage):
         :param sip_directory: The directory where the files listed in the manifest are located.
         """
         manifest = Manifest.load_existing(sip_directory, manifest_file)
+        bucket_name = self._get_bucket_name(manifest_file)
         for filename, entry in manifest.entries.items():
             properties = entry.to_dict()
-            bucket_name = self._get_bucket_name(properties)
             md = properties["MD5Hash"]
             self.verify_upload(bucket_name, filename, md)
 
@@ -93,7 +119,8 @@ class EDepot(S3Storage):
         :param acl: The access control list setting to apply to the files (default is 'public-read').
         """
         manifest = Manifest.load_existing(sip_directory, manifest_file)
-        for filename, entry in manifest.entries.items():
+        bucket_name = self._get_bucket_name(manifest_file)
+        for key, entry in manifest.entries.items():
             properties = entry.to_dict()
-            bucket_name = self._get_bucket_name(properties)
-            self.update_acl(bucket_name, filename, acl)
+            print(f"{bucket_name} {key}, {acl}")
+            self.update_acl(bucket_name, key, acl)

@@ -52,7 +52,11 @@ class ConfigFileLocator:
         if home_config.is_file():
             return str(home_config)
 
-        return None
+        raise FileNotFoundError(
+            f"Configuration file '{self.config_filename}' not found in any of these locations:\n"
+            f"{self.get_search_locations()}\n\n"
+            f"Please create a '{self.config_filename}' file in one of these locations."
+        )
 
     def get_search_locations(self) -> str:
         """Get a description of all locations that were searched for the config file."""

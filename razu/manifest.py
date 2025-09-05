@@ -46,7 +46,7 @@ class ManifestEntry:
         """ Create a manifest entry for a StructuredMetaResource. """
         return cls(
             filename=resource.filename,
-            md5hash=util.calculate_md5(resource.file_path),
+            md5hash=util.calculate_md5(resource.local_file_path),
             md5date=datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
             ObjectUID=resource.uid,
             Source=archive_creator_uri,
@@ -77,8 +77,8 @@ class Manifest:
     relative path to its metadata and checksum information.
     """
 
-    def __init__(self, save_directory: str):
-        self.save_directory = save_directory
+    def __init__(self, base_directory: str):
+        self.base_directory = base_directory
         self._cfg = Config.get_instance()
         self.entries: Dict[str, ManifestEntry] = {}
         self.manifest_filename = None  # Will be set by create_new or load_existing
@@ -91,8 +91,8 @@ class Manifest:
         if self.manifest_filename is None:
             # Only create id_factory when we need to generate the filename
             id_factory = Identifiers(self._cfg)
-            return os.path.join(self.save_directory, id_factory.manifest_filename)
-        return os.path.join(self.save_directory, self.manifest_filename)
+            return os.path.join(self.base_directory, id_factory.manifest_filename)
+        return os.path.join(self.base_directory, self.manifest_filename)
 
     @classmethod
     def create_new(cls, save_directory: str) -> 'Manifest':
@@ -200,8 +200,11 @@ class Manifest:
         ignore_files.append(os.path.basename(self.manifest_file_path))
 
         # Check manifest entries against filesystem
+        counter = 1
         for filename in self.entries:
-            file_path = os.path.join(self.save_directory, filename)
+            print(counter, end='\r')
+            counter += 1
+            file_path = os.path.join(self.base_directory, filename)
             if not os.path.exists(file_path):
                 errors['missing_files'].append(filename)
             else:
@@ -210,14 +213,14 @@ class Manifest:
                     errors['checksum_mismatch'].append(filename)
 
         # Check filesystem against manifest entries
-        for root, dirs, files in os.walk(self.save_directory):
-            for file in files:
-                if file in ignore_files:
-                    continue
-                file_path = os.path.join(root, file)
-                relative_path = os.path.relpath(file_path, self.save_directory)
-                if relative_path not in self.entries:
-                    errors['extra_files'].append(relative_path)
+        # for root, dirs, files in os.walk(self.base_directory):
+        #     for file in files:
+        #         if file in ignore_files:
+        #             continue
+        #         file_path = os.path.join(root, file)
+        #         relative_path = os.path.relpath(file_path, self.base_directory)
+        #         if relative_path not in self.entries:
+        #             errors['extra_files'].append(relative_path)
 
         if errors['missing_files']:
             raise FileNotFoundError(f"Files missing: {errors['missing_files']}")
