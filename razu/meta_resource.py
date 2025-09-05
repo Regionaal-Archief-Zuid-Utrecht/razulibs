@@ -36,23 +36,26 @@ class MetaResource(RDFResource):
         return MetaResource._id_factory.make_filename_from_id(self.id)
 
     @property
-    def file_path(self) -> str:
+    def local_file_path(self) -> str:
         return os.path.join(MetaResource._context.sip_directory, self.filename)
+
+    def filestore_key(self) -> str:
+        return self._id_factory.make_s3_key_from_id(self.id)
  
     def save(self) -> bool:
         if self.is_modified:
             try:
-                with open(self.file_path, 'w', encoding='utf-8') as file:
+                with open(self.local_file_path, 'w', encoding='utf-8') as file:
                     file.write(self.graph.serialize(format='json-ld'))
                 self.is_modified = False
                 return True
             except IOError as e:
-                print(f"Error saving file {self.file_path}: {e}")
+                print(f"Error saving file {self.local_file_path}: {e}")
         return False 
 
     def load(self) -> None:
         self.graph = MetaGraph()
-        with open(self.file_path, 'r', encoding='utf-8') as file:
+        with open(self.local_file_path, 'r', encoding='utf-8') as file:
             self.graph.parse(data=file.read(), format="json-ld")
         self.is_modified = False
         self.is_from_existing = True
@@ -104,7 +107,7 @@ class StructuredMetaResource(MetaResource):
 
     @property
     def metadata_file_uri(self) -> str:
-        return f"{MetaResource._id_factory.cdn_base_uri}{self.uid}.{MetaResource._context.metadata_suffix}.{MetaResource._context.metadata_extension}"
+        return f"{MetaResource._id_factory.cdn_base_uri}{MetaResource._id_factory.make_s3_path_from_id(self.id)}{self.uid}.{MetaResource._context.metadata_suffix}.{MetaResource._context.metadata_extension}"
 
     @property
     def referenced_file_uri(self) -> str | None:

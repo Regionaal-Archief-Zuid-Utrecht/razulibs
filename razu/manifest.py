@@ -46,7 +46,7 @@ class ManifestEntry:
         """ Create a manifest entry for a StructuredMetaResource. """
         return cls(
             filename=resource.filename,
-            md5hash=util.calculate_md5(resource.file_path),
+            md5hash=util.calculate_md5(resource.local_file_path),
             md5date=datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
             ObjectUID=resource.uid,
             Source=archive_creator_uri,
