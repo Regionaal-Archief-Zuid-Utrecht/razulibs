@@ -48,7 +48,7 @@ Deze code zal, met gegeven brondata, RDF opleveren die in Turtle als volgt geser
     @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
     @prefix premis: <http://www.loc.gov/premis/rdf/v3/> .
     
-    <https://data.razu.nl/NL-WbDRAZU-G321-661-3> a mdto:Informatieobject, premis:Object;
+    <https://data.razu.nl/nl-wbdrazu-g0321-661-3> a mdto:Informatieobject, premis:Object;
         rdfs:label "Luchtfoto gemeente Houten" ;
         mdto:naam "Luchtfoto gemeente Houten" ;
         mdto:aggregatieniveau <https://data.razu.nl/id/aggregatieniveau/96f7399fb1c5d3b7d2acdc48dac3d71e> ;
