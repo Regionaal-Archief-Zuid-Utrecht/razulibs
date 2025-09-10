@@ -4,7 +4,7 @@
 
 ## Doel
 
-Deze code wordt ontwikkeld voor gebruik in de pre-ingest voor het [common ground](https://commonground.nl/) digitaal magazijn van het RAZU ([Regionaal Archief Zuid-Utrecht](https://www.razu.nl/)). Het doel is hiermee te komen tot een zo eenvoudig mogelijk te configureren (*scripten*) datatransformatie en -validatie, waarbij zo veel mogelijk standaard Python libraries gebruikt worden. De basis wordt gevormd door [RDFLib](https://rdflib.readthedocs.io/).
+1Deze code wordt ontwikkeld voor gebruik in de pre-ingest voor het [common ground](https://commonground.nl/) digitaal magazijn van het RAZU ([Regionaal Archief Zuid-Utrecht](https://www.razu.nl/)). Het doel is hiermee te komen tot een zo eenvoudig mogelijk te configureren (*scripten*) datatransformatie en -validatie, waarbij zo veel mogelijk standaard Python libraries gebruikt worden. De basis wordt gevormd door [RDFLib](https://rdflib.readthedocs.io/).
 
 Het RAZU werkt hierbij met een op [MDTO](https://www.nationaalarchief.nl/archiveren/mdto) gebaseerd informatiemodel in RDF, maar de brondata kan in principe tot in iedere gewenste RDF-vorm getransformeerd worden.
 
