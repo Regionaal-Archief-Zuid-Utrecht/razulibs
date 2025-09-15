@@ -24,6 +24,9 @@ class S3Storage:
     
     The class initializes an S3 client using credentials (endpoint, access key, and secret key)
     retrieved from environment variables. The credentials should be stored in a `.env` file.
+    Lookup order for `.env` is:
+    1) The current working directory (so different projects/buckets can use their own creds)
+    2) Fallback to the module directory (this file's directory)
 
     NOTE: On my client "sudo hwclock -s" is sometimes required (when clock is 'skewed')
 
@@ -37,10 +40,16 @@ class S3Storage:
     def __init__(self) -> None:
         """
         Initializes the S3 client with credentials and endpoint information from environment variables.
-        The credentials and endpoint are loaded from a .env file.
+        The credentials and endpoint are loaded from a .env file. Lookup order:
+        first from the current working directory, then fallback to the module directory.
         """
-        env_path = os.path.join(os.path.dirname(__file__), '.env')
-        load_dotenv(env_path)
+        # Prefer .env from current working directory, then fallback to module directory
+        cwd_env_path = os.path.join(os.getcwd(), '.env')
+        if os.path.exists(cwd_env_path):
+            load_dotenv(cwd_env_path)
+        else:
+            module_env_path = os.path.join(os.path.dirname(__file__), '.env')
+            load_dotenv(module_env_path)
 
         # Stel omgevingsvariabelen in om het MissingContentLength probleem op te lossen
         os.environ['AWS_REQUEST_CHECKSUM_CALCULATION'] = 'when_required'
