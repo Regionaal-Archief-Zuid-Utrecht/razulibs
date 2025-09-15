@@ -30,7 +30,7 @@ fi
 
 # sync each sip:
 pushd "$sipsdir"
-for dir in `ls -d */${REPOSITORY_ID}/` ; do   # this a simple sanity check
+for dir in $(ls -d */${REPOSITORY_ID}/) ; do   # this a simple sanity check
     cd $dir
     cd ..
     bucket=`ls ${REPOSITORY_ID}/`
