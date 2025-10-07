@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import argparse    
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -291,8 +292,7 @@ class Manifest:
 
 if __name__ == "__main__":
     """Command-line interface for managing a file manifest."""
-    import argparse
-    
+
     parser = argparse.ArgumentParser(description="Manage file manifests for directories")
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
     
@@ -307,14 +307,18 @@ if __name__ == "__main__":
                               help="Don't include file metadata in manifest")
     
     # Validate command
-    validate_parser = subparsers.add_parser("validate", help="Validate directory against manifest")
-    validate_parser.add_argument("directory", help="Directory to validate")
+    validate_parser = subparsers.add_parser("validate", help="Validate a manifest (files available and correct checksum)")
     validate_parser.add_argument("manifest_filename", help="Manifest file to validate against")
     validate_parser.add_argument("--ignore", "-i", nargs="+", dest="ignore_files",
                                 help="Files to ignore during validation")
     
     # Parse arguments
-    args = parser.parse_args()
+    # If no subcommand is given, interpret the invocation as 'validate'
+    # This allows: `script.py <manifest_filename>` -> `script.py validate <manifest_filename>`
+    argv = sys.argv[1:]
+    if argv and argv[0] not in ("create", "validate"):
+        argv = ["validate"] + argv
+    args = parser.parse_args(argv)
     
     if not args.command:
         parser.print_help()
@@ -332,7 +336,14 @@ if __name__ == "__main__":
             print(f"Created manifest with {len(manifest.entries)} entries at {manifest.manifest_file_path}")
             
         elif args.command == "validate":
-            manifest = Manifest.load_existing(args.directory, manifest_filename=args.manifest_filename)
+            # Derive base directory as three directories up from the manifest filename path
+            manifest_path = os.path.abspath(args.manifest_filename)
+            base_directory = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(manifest_path))))
+
+            # print(base_directory)
+            # exit(1)
+
+            manifest = Manifest.load_existing(base_directory, manifest_filename=args.manifest_filename)
             errors = manifest.validate(ignore_files=args.ignore_files)
             if any(errors.values()):
                 print("Validation failed:")
@@ -340,7 +351,7 @@ if __name__ == "__main__":
                     if files:
                         print(f"{error_type}: {files}")
             else:
-                print(f"Directory {args.directory} complies with manifest {args.manifest_filename} and validated successfully.")
+                print(f"Manifest {manifest.manifest_file_path} and its contents validated successfully.")
                 if args.ignore_files:
                     print(f"Note: The following files were ignored during validation: {', '.join(args.ignore_files)}")
     except Exception as e:
