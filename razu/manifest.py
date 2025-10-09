@@ -339,7 +339,7 @@ if __name__ == "__main__":
             manifest = Manifest.load_existing(str(base_directory), manifest_filename=manifest_relpath)
             errors = manifest.validate(ignore_files=args.ignore_files)
             if any(errors.values()):
-                print("Validation failed:")
+                print(f"Validation failed for {manifest.manifest_file_path}:")
                 for error_type, files in errors.items():
                     if files:
                         print(f"{error_type}: {files}")
