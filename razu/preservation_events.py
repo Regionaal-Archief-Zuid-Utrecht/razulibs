@@ -8,8 +8,9 @@ from razu.meta_graph import MetaGraph, PREMIS, XSD, EROR, ERAR, PROV, RDF
 from razu.decorators import unless_locked
 from razu.rdf_resource import RDFResource
 
-# https://data.razu.nl/id/event/NL-WbDRAZU-K50907905-500-e17676
-# https://data.razu.nl/id/event/NL-WbDRAZU-{archiefvormer}-{toegang}-{timestamp}
+# URIs for events:
+# https://data.razu.nl/id/event/nl-wbdrazu-k50907905-500-e17676
+# => https://data.razu.nl/id/event/nl-wbdrazu-{archiefvormer}-{toegang}-{sequential_id}
 
 class PreservationEvents:
 
