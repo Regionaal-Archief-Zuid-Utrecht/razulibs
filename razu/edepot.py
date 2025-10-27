@@ -189,4 +189,10 @@ class EDepot(S3Storage):
             self.update_acl(bucket_name, key, acl)
             updated_count += 1
             
+        # Update the ACL of the manifest file itself if any file ACL was updated
+        if updated_count > 0:
+            manifest_rel_key = os.path.relpath(manifest_file, sip_directory)
+            print(f"{bucket_name} {manifest_rel_key}, {acl} (manifest)")
+            self.update_acl(bucket_name, manifest_rel_key, acl)
+            
         print(f"\nACL update voltooid: {updated_count} bestanden bijgewerkt, {filtered_count} gefilterd.")
