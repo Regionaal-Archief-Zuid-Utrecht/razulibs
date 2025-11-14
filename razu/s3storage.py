@@ -147,8 +147,7 @@ class S3Storage:
                 "Metadata": self._encode_metadata(metadata), 
                 "ContentType": mime_type
             }
-            
-            
+
             # Gebruik upload_file in plaats van put_object voor grote bestanden
             # upload_file handelt automatisch de bestandsgrootte en chunking af
             self.s3_client.upload_file(

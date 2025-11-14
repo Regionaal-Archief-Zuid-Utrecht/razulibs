@@ -26,20 +26,20 @@ class EDepot(S3Storage):
 
         :param manifest_file: Het pad naar het manifest-bestand.
         :return: De bucket name als string.
-
-        N.B. this function is used in store_files_from_manifest method but it doesn't necessarily work. it uses the os separator (ex. /) to split the path and find the bucket name.
-        It will not work if manifest files are stored with a name like"NL-WbDRAZU-K50907905-500" using hyphens.
         """
         manifest_path = os.path.normpath(manifest_file)
         if 'nl-wbdrazu' in manifest_path:
             after = manifest_path.split('nl-wbdrazu', 1)[1]
-            segments = after.strip(os.sep).split(os.sep)
-            if segments and segments[0]:
-                return segments[0]
-            else:
-                raise ValueError(f"Kan bucket_name niet bepalen uit manifest_file: '{manifest_file}' (geen segment na 'nl-wbdrazu')")
-        else:
-            raise ValueError(f"Kan bucket_name niet bepalen uit manifest_file: '{manifest_file}' (geen 'nl-wbdrazu' in pad)")
+            after = after.split("-")[1]
+            # segments = after.strip(os.sep).split(os.sep)
+            return after
+            # if segments and segments[0]:
+            #     print(segments[0])
+            #     return segments[0]
+        #     else:
+        #         raise ValueError(f"Kan bucket_name niet bepalen uit manifest_file: '{manifest_file}' (geen segment na 'nl-wbdrazu')")
+        # else:
+        #     raise ValueError(f"Kan bucket_name niet bepalen uit manifest_file: '{manifest_file}' (geen 'nl-wbdrazu' in pad)")
 
     def print_output(self, method: Callable[..., T], *args, print_output: bool = True, 
                                   pretty_print: bool = True, **kwargs) -> Optional[T]:
@@ -145,11 +145,13 @@ class EDepot(S3Storage):
             uploaded_count += 1
 
         print(f"\nUpload voltooid: {uploaded_count} bestanden geüpload, {filtered_count} gefilterd.")
+        print(bucket_name)
 
         # Upload manifest file zelf
         manifest_rel_key = os.path.relpath(manifest_file, sip_directory)
         print(manifest_rel_key)
         self.store_file(bucket_name, manifest_rel_key, manifest_file, {})
+
 
     def delete_files_from_manifest(self, manifest_file, bucket_name):
             """
@@ -253,6 +255,7 @@ class EDepot(S3Storage):
                 else:
                     print("Operation Cancelled.")
                     return
+            
 
     def validate_uploaded_files_from_manifest(self, manifest_file, sip_directory):
         """
