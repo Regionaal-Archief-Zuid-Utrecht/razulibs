@@ -117,7 +117,7 @@ def collect_rdf(manifest_path_arg, outfile=None):
         except Exception as e:
             print(f"  [{i}/{len(meta_files)}] Error reading {fname}: {e}")
 
-    print() # Newline after loop
+    print()
     # Check for invalid triples before serializing
     invalid_triples = []
     for triple in g:
