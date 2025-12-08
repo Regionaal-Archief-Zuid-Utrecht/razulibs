@@ -1,8 +1,9 @@
-import os
 import sys
 import json
+import argparse    
 from datetime import datetime
 from typing import Dict, List, Optional
+from pathlib import Path
 
 from razu.config import Config
 from razu.identifiers import Identifiers
@@ -77,11 +78,12 @@ class Manifest:
     relative path to its metadata and checksum information.
     """
 
-    def __init__(self, base_directory: str):
-        self.base_directory = base_directory
+    def __init__(self, base_directory: str | Path):
+        # Store base directory as a Path internally
+        self.base_directory = Path(base_directory)
         self._cfg = Config.get_instance()
         self.entries: Dict[str, ManifestEntry] = {}
-        self.manifest_filename = None  # Will be set by create_new or load_existing
+        self.manifest_filename = None  # Will be set by create_new or load_existing (stored as relative Path or str)
         self.is_valid = True
         self.is_modified = False
 
@@ -91,8 +93,8 @@ class Manifest:
         if self.manifest_filename is None:
             # Only create id_factory when we need to generate the filename
             id_factory = Identifiers(self._cfg)
-            return os.path.join(self.base_directory, id_factory.manifest_filename)
-        return os.path.join(self.base_directory, self.manifest_filename)
+            return str(Path(self.base_directory) / id_factory.manifest_filename)
+        return str(Path(self.base_directory) / self.manifest_filename)
 
     @classmethod
     def create_new(cls, save_directory: str) -> 'Manifest':
@@ -100,7 +102,7 @@ class Manifest:
         manifest = cls(save_directory)
         # For new manifests, we always need the id_factory
         id_factory = Identifiers(manifest._cfg)
-        manifest.manifest_filename = id_factory.manifest_filename
+        manifest.manifest_filename = Path(id_factory.manifest_filename)
         manifest.is_valid = False  # No manifest yet, cannot be valid
         return manifest
 
@@ -113,10 +115,10 @@ class Manifest:
             manifest_filename: Optional explicit manifest filename. If not provided, uses id_factory to generate name.
         """
         manifest = cls(save_directory)
-        manifest.manifest_filename = manifest_filename
+        manifest.manifest_filename = Path(manifest_filename) if manifest_filename is not None else None
         manifest_path = manifest.manifest_file_path
         
-        if not os.path.exists(manifest_path):
+        if not Path(manifest_path).exists():
             raise FileNotFoundError(f"Manifest file not found at '{manifest_path}'")
             
         manifest.load(manifest_path)
@@ -197,30 +199,20 @@ class Manifest:
         }
 
         ignore_files = ignore_files or []
-        ignore_files.append(os.path.basename(self.manifest_file_path))
+        ignore_files.append(Path(self.manifest_file_path).name)
 
         # Check manifest entries against filesystem
         counter = 1
         for filename in self.entries:
             print(counter, end='\r')
             counter += 1
-            file_path = os.path.join(self.base_directory, filename)
-            if not os.path.exists(file_path):
+            file_path = self.base_directory / filename
+            if not file_path.exists():
                 errors['missing_files'].append(filename)
             else:
-                current_md5 = util.calculate_md5(file_path)
+                current_md5 = util.calculate_md5(str(file_path))
                 if current_md5 != self.entries[filename].md5hash:
                     errors['checksum_mismatch'].append(filename)
-
-        # Check filesystem against manifest entries
-        # for root, dirs, files in os.walk(self.base_directory):
-        #     for file in files:
-        #         if file in ignore_files:
-        #             continue
-        #         file_path = os.path.join(root, file)
-        #         relative_path = os.path.relpath(file_path, self.base_directory)
-        #         if relative_path not in self.entries:
-        #             errors['extra_files'].append(relative_path)
 
         if errors['missing_files']:
             raise FileNotFoundError(f"Files missing: {errors['missing_files']}")
@@ -247,42 +239,44 @@ class Manifest:
             manifest.manifest_filename = manifest_filename
             
         ignore_files = ignore_files or []
-        ignore_files.append(os.path.basename(manifest.manifest_file_path))
+        ignore_files.append(Path(manifest.manifest_file_path).name)
         
-        # Scan directory and add all files to manifest
-        for root, _, files in os.walk(directory):
-            for file in files:
-                if file in ignore_files:
-                    continue
-                    
-                file_path = os.path.join(root, file)
-                relative_path = os.path.relpath(file_path, directory)
-                
-                # Skip the manifest file itself
-                if relative_path == os.path.basename(manifest.manifest_file_path):
-                    continue
-                    
-                # Calculate MD5 hash
-                md5hash = util.calculate_md5(file_path)
-                md5date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-                
-                # Add optional metadata
-                metadata = {}
-                if include_metadata:
-                    file_stat = os.stat(file_path)
-                    metadata.update({
-                        'FileSize': file_stat.st_size,
-                        'LastModified': util.get_last_modified(file_path),
-                        'FileExtension': util.get_full_extension(file),
-                    })
-                
-                # Add entry to manifest
-                manifest.add_entry(
-                    relative_path,
-                    md5hash=md5hash,
-                    md5date=md5date,
-                    **metadata
-                )
+        # Scan directory and add all files to manifest (pathlib)
+        directory_path = Path(directory)
+        manifest_basename = Path(manifest.manifest_file_path).name
+        for file_path in directory_path.rglob('*'):
+            if not file_path.is_file():
+                continue
+            if file_path.name in ignore_files:
+                continue
+
+            relative_path = file_path.relative_to(directory_path).as_posix()
+
+            # Skip the manifest file itself
+            if relative_path == manifest_basename:
+                continue
+
+            # Calculate MD5 hash
+            md5hash = util.calculate_md5(str(file_path))
+            md5date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
+            # Add optional metadata
+            metadata = {}
+            if include_metadata:
+                file_stat = file_path.stat()
+                metadata.update({
+                    'FileSize': file_stat.st_size,
+                    'LastModified': util.get_last_modified(str(file_path)),
+                    'FileExtension': util.get_full_extension(file_path.name),
+                })
+
+            # Add entry to manifest
+            manifest.add_entry(
+                relative_path,
+                md5hash=md5hash,
+                md5date=md5date,
+                **metadata
+            )
         
         manifest.is_valid = True
         manifest.is_modified = True
@@ -291,8 +285,7 @@ class Manifest:
 
 if __name__ == "__main__":
     """Command-line interface for managing a file manifest."""
-    import argparse
-    
+
     parser = argparse.ArgumentParser(description="Manage file manifests for directories")
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
     
@@ -307,14 +300,18 @@ if __name__ == "__main__":
                               help="Don't include file metadata in manifest")
     
     # Validate command
-    validate_parser = subparsers.add_parser("validate", help="Validate directory against manifest")
-    validate_parser.add_argument("directory", help="Directory to validate")
+    validate_parser = subparsers.add_parser("validate", help="Validate a manifest (files available and correct checksum)")
     validate_parser.add_argument("manifest_filename", help="Manifest file to validate against")
     validate_parser.add_argument("--ignore", "-i", nargs="+", dest="ignore_files",
                                 help="Files to ignore during validation")
     
     # Parse arguments
-    args = parser.parse_args()
+    # If no subcommand is given, interpret the invocation as 'validate'
+    # This allows: `script.py <manifest_filename>` -> `script.py validate <manifest_filename>`
+    argv = sys.argv[1:]
+    if argv and argv[0] not in ("create", "validate"):
+        argv = ["validate"] + argv
+    args = parser.parse_args(argv)
     
     if not args.command:
         parser.print_help()
@@ -332,15 +329,22 @@ if __name__ == "__main__":
             print(f"Created manifest with {len(manifest.entries)} entries at {manifest.manifest_file_path}")
             
         elif args.command == "validate":
-            manifest = Manifest.load_existing(args.directory, manifest_filename=args.manifest_filename)
+            # Derive base directory as three directories up from the manifest filename path (relative approach)
+            manifest_path = Path(args.manifest_filename).resolve()
+            # three directories up -> parents[3]
+            base_directory = manifest_path.parents[3]
+            # manifest path relative to base_directory (keeps nested structure)
+            manifest_relpath = str(manifest_path.relative_to(base_directory))
+
+            manifest = Manifest.load_existing(str(base_directory), manifest_filename=manifest_relpath)
             errors = manifest.validate(ignore_files=args.ignore_files)
             if any(errors.values()):
-                print("Validation failed:")
+                print(f"Validation failed for {manifest.manifest_file_path}:")
                 for error_type, files in errors.items():
                     if files:
                         print(f"{error_type}: {files}")
             else:
-                print(f"Directory {args.directory} complies with manifest {args.manifest_filename} and validated successfully.")
+                print(f"Manifest {manifest.manifest_file_path} and its contents validated successfully.")
                 if args.ignore_files:
                     print(f"Note: The following files were ignored during validation: {', '.join(args.ignore_files)}")
     except Exception as e:
