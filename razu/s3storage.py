@@ -66,6 +66,7 @@ class S3Storage:
             aws_secret_access_key=self.secret_key
         )
 
+
     def check_or_create_bucket(self, bucket_name, enable_versioning=False) -> bool:
         """
         Checks if a bucket exists in the S3 storage and creates it if it does not exist.
@@ -98,6 +99,7 @@ class S3Storage:
                 print(f"An error occurred while checking bucket '{bucket_name}': {e}")
                 return False
                 
+
     def set_bucket_versioning(self, bucket_name, status="Enabled") -> bool:
         """
         Sets the versioning status on an S3 bucket.
@@ -124,6 +126,30 @@ class S3Storage:
             print(f"Failed to set versioning status for bucket '{bucket_name}': {e}")
             return False
 
+    
+    def get_bucket_versioning(self, bucket_name) -> str:
+        """
+        Gets the versioning status of an S3 bucket.
+        
+        :param bucket_name: The name of the bucket to check versioning status for.
+        :return: The versioning status ('Enabled', 'Suspended', or 'Not enabled') of the bucket. 
+        """
+        try:
+            response = self.s3_client.get_bucket_versioning(Bucket=bucket_name)
+            
+            # If 'Status' key exists in the response, versioning is either Enabled or Suspended
+            if 'Status' in response:
+                status = response['Status']
+                print(f"Versioning status for bucket '{bucket_name}': {status}")
+                return status
+            else:
+                print(f"Versioning is not enabled for bucket '{bucket_name}'.") 
+                return "Not enabled"
+        except Exception as e:
+            print(f"Failed to get versioning status for bucket '{bucket_name}': {e}")
+            return "Error"
+
+
     def store_file(self, bucket_name, object_key, local_filename, metadata) -> None:
         """
         Uploads a file to the specified S3 bucket along with its metadata.
@@ -148,8 +174,8 @@ class S3Storage:
                 "ContentType": mime_type
             }
 
-            # Gebruik upload_file in plaats van put_object voor grote bestanden
-            # upload_file handelt automatisch de bestandsgrootte en chunking af
+            # Use upload_file instead of put_object for large files
+            # upload_file automatically handles file size and chunking
             self.s3_client.upload_file(
                 local_filename,
                 bucket_name,
@@ -163,6 +189,7 @@ class S3Storage:
             print("Credentials not available.")
         except Exception as e:
             print(f"An error occurred: Failed to upload {local_filename} to {bucket_name}: {object_key}: {e}")
+
 
     def get_file_metadata(self, bucket: str, file_key: str) -> dict:
         """
@@ -187,6 +214,7 @@ class S3Storage:
         except Exception as e:
             # Unexpected exceptions should be propagated to aid debugging.
             raise
+
 
     def verify_upload(self, bucket_name, file_key, local_md5) -> None:
         """
@@ -226,6 +254,7 @@ class S3Storage:
             else:
                 print(f"Upload verification failed for {file_key}. Local MD5: {local_md5}, S3 ETag: {s3_etag}")
 
+
     def update_acl(self, bucket_name, file_key, acl="public-read") -> None:
         """
         Updates the ACL (Access Control List) for a specific object in the S3 bucket.
@@ -237,9 +266,26 @@ class S3Storage:
         try:
             response = self.s3_client.put_object_acl(Bucket=bucket_name, Key=file_key, ACL=acl)
             print(f"ACL updated for {file_key} to {acl}.")
+            print(response)
         except Exception as e:
             print(f"An error occurred while updating ACL: {e}")
         
+
+    def get_object_acl(self, bucket_name, file_key):
+        """
+        Retrieves the ACL of a specific object in an S3 bucket.
+
+        :param bucket_name: The name of the bucket containing the object.
+        :param file_key: The key (filename) of the object.
+        """
+        try:
+            response = self.s3_client.get_object_acl(Bucket=bucket_name, Key=file_key)
+            for grant in response['Grants']:
+                print(f"Grantee: {grant['Grantee']}, Permission: {grant['Permission']}")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
+
     def get_bucket_contents(self, bucket_name: str, prefix: str = None) -> list:
         """
         Gets a list of all object keys in the specified S3 bucket using pagination.
@@ -283,20 +329,7 @@ class S3Storage:
                 print(f"An error occurred: {e}")
                 return ""
             
-    def get_object_acl(self, bucket_name, file_key):
-        """
-        Retrieves the ACL of a specific object in an S3 bucket.
-
-        :param bucket_name: The name of the bucket containing the object.
-        :param file_key: The key (filename) of the object.
-        """
-        try:
-            response = self.s3_client.get_object_acl(Bucket=bucket_name, Key=file_key)
-            for grant in response['Grants']:
-                print(f"Grantee: {grant['Grantee']}, Permission: {grant['Permission']}")
-        except Exception as e:
-            print(f"An error occurred: {e}")
-
+    
     def get_block_public_access(self, bucket_name):
         """
         Checks if Block Public Access is enabled for a specific S3 bucket.
@@ -335,27 +368,6 @@ class S3Storage:
         except (NoCredentialsError, ClientError) as e:
             raise e
 
-    def get_bucket_versioning(self, bucket_name) -> str:
-        """
-        Gets the versioning status of an S3 bucket.
-        
-        :param bucket_name: The name of the bucket to check versioning status for.
-        :return: The versioning status ('Enabled', 'Suspended', or 'Not enabled') of the bucket.
-        """
-        try:
-            response = self.s3_client.get_bucket_versioning(Bucket=bucket_name)
-            
-            # If 'Status' key exists in the response, versioning is either Enabled or Suspended
-            if 'Status' in response:
-                status = response['Status']
-                print(f"Versioning status for bucket '{bucket_name}': {status}")
-                return status
-            else:
-                print(f"Versioning is not enabled for bucket '{bucket_name}'.")
-                return "Not enabled"
-        except Exception as e:
-            print(f"Failed to get versioning status for bucket '{bucket_name}': {e}")
-            return "Error"
 
     def delete_bucket(self, bucket_name, force=False) -> bool:
         """
@@ -467,7 +479,7 @@ class S3Storage:
             
     def _encode_metadata(self, metadata):
         """
-        URL encode metadata values to handle non-ASCII characters.
+        URL encode metadata values to handle non-ASCII characters that are not allowed or not safe in URLs.
         
         :param metadata: Dictionary with metadata
         :return: Dictionary with URL-encoded metadata values
@@ -475,7 +487,8 @@ class S3Storage:
         encoded_metadata = {}
         for key, value in metadata.items():
             if isinstance(value, str):
-                encoded_metadata[key] = urllib.parse.quote(value)
+                encoded_metadata[key] = urllib.parse.quote(value) 
             else:
                 encoded_metadata[key] = urllib.parse.quote(str(value))
         return encoded_metadata
+
