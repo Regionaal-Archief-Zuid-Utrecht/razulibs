@@ -492,3 +492,28 @@ class S3Storage:
                 encoded_metadata[key] = urllib.parse.quote(str(value))
         return encoded_metadata
 
+
+    def update_object_metadata(self, bucket_name, object_key, new_metadata, acl='private'):
+        '''
+        to modify metadata of an object, there is no dedicated method in boto3, but one can do so by using copy_object 
+        with the same bucket as source and destination and with parameter MetadataDirective='REPLACE'
+
+        this function takes in input
+
+        :bucket_name: the name of the bucket where the metadata to modify are stored
+        :object_key: the key of the object with metadata to modify
+        :new_metadata: the new metadata in a dictionary ex:  Metadata = {
+                                                                "MD5Hash": "4e7e5862f3f3d824b12939f778cc5c9b",
+                                                                "MD5HashDate": "2025-04-18T05:32:22.094702"
+                                                            }
+
+        !! THIS FUNCTION IS WRITTEN TO REPLACE METADATA ENTIRELY, IF YOU WANT TO ADD INFORMATION TO EXISTING METADATA
+        YOU SHOULD FIRST RETRIEVE OLD METADATA WITH head_object  AND THEN COMBINE THEM WITH YOUR NEW METADATA BEFORE PASSING THE DICT AS PARAMETER 
+        OF copy_object
+
+        By default the method sets ACL to private, if you want to keep them public specify in input 'public_read'
+        It returns the result the new object s3 metadata.
+        '''
+                                                    
+        response = self.s3_client.copy_object(ACL=acl, Bucket=bucket_name, CopySource={'Bucket': bucket_name, 'Key': object_key}, Key=object_key, Metadata=new_metadata, MetadataDirective='REPLACE')
+        return response
