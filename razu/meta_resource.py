@@ -2,13 +2,12 @@ import os
 from rdflib import URIRef, Literal, BNode
 from typing import Callable, Any
 
-from razu.incrementer import Incrementer
 from razu.config import Config
-from razu.identifiers import Identifiers
+# from razu.identifiers import Identifiers # change with integration of identifiers service also I deleted the Incrementer import
 from razu.rdf_resource import RDFResource
 from razu.meta_graph import MetaGraph, RDF, LDTO, DCT, PREMIS, XSD, SKOS
 from razu.concept_resolver import ConceptResolver
-import razu.util as util
+import razu.utils as utils
 
 
 class MetaResource(RDFResource):
@@ -16,31 +15,47 @@ class MetaResource(RDFResource):
     An RDF Resource tailored in the context of an RAZU edepot SIP.
     Provides load(), save() and identifier logic.
     """
-    _counter = Incrementer(0)
+    # _counter = Incrementer(0)
     _context = Config.get_instance()
-    _id_factory = Identifiers(_context)
+    # _id_factory = Identifiers(_context) 
 
-    def __init__(self, id: str | None = None):
-        self.id = id if id else str(MetaResource._counter.next())
-        uri = MetaResource._id_factory.make_uri_from_id(self.id)
+    def __init__(self, id: str | None = None, uri: str | None = None):
+        # OLD CODE (before removing Identifiers dependency):
+        # if uri:
+        #     self.id = id
+        #     super().__init__(uri=uri)
+        # else:
+        #     self.id = id if id else str(MetaResource._counter.next())
+        #     uri = MetaResource._id_factory.make_uri_from_id(self.id)
+        #     super().__init__(uri=uri)
+        
+        # NEW CODE: Requires both id and uri to be passed explicitly
+        if not uri:
+            raise ValueError("MetaResource requires both 'id' and 'uri' to be provided")
+        self.id = id
         super().__init__(uri=uri)
         self.is_modified = True
         self.is_from_existing = False
 
     @property
-    def uid(self) -> str:
-        return MetaResource._id_factory.make_uid_from_id(self.id)
-
-    @property
     def filename(self) -> str:
-        return MetaResource._id_factory.make_filename_from_id(self.id)
+        """Default filename implementation - should be overridden in subclasses."""
+        # OLD CODE: return MetaResource._id_factory.make_filename_from_id(self.id)
+        # NEW CODE: Use self.id directly with config suffixes
+        cfg = MetaResource._context
+        return f"{self.id}.{cfg.metadata_suffix}.{cfg.metadata_extension}"
 
     @property
     def local_file_path(self) -> str:
         return os.path.join(MetaResource._context.sip_directory, self.filename)
 
-    def filestore_key(self) -> str:
-        return self._id_factory.make_s3_key_from_id(self.id)
+    # OLD CODE (removed methods that used _id_factory):
+    # @property
+    # def uid(self) -> str:
+    #     return MetaResource._id_factory.make_uid_from_id(self.id)
+    #
+    # def filestore_key(self) -> str:
+    #     return self._id_factory.make_s3_key_from_id(self.id)
  
     def save(self) -> bool:
         if self.is_modified:
@@ -77,10 +92,17 @@ class StructuredMetaResource(MetaResource):
     _licenties = ConceptResolver("licentie")
     _waarderingen = ConceptResolver("waardering")
 
-    def __init__(self, id: str | None = None, rdf_type=LDTO.Informatieobject):
-        super().__init__(id)
-        self._init_rdf_properties(rdf_type)
+    def __init__(self, id: str | None = None, uri: str | None = None):
+        super().__init__(id, uri=uri)
+        # self._init_rdf_properties(rdf_type) changed
         self.based_on_sources = set()
+
+    @property
+    def filename(self) -> str:
+        """Override parent's filename to use self.id directly without factory call chain."""
+        # This override ensures we use self.id directly (same as parent now, but kept for clarity)
+        cfg = MetaResource._context
+        return f"{self.id}.{cfg.metadata_suffix}.{cfg.metadata_extension}"
 
     def add(self, predicate: URIRef, obj, transformer: Callable = Literal) -> None:
         """Add a triple to the graph and mark as modified."""
@@ -105,9 +127,6 @@ class StructuredMetaResource(MetaResource):
     def has_referenced_file(self) -> bool:
         return self._get_object_value(LDTO.URLBestand, self.uri) is not None
 
-    @property
-    def metadata_file_uri(self) -> str:
-        return f"{MetaResource._id_factory.cdn_base_uri}{MetaResource._id_factory.make_s3_path_from_id(self.id)}{self.uid}.{MetaResource._context.metadata_suffix}.{MetaResource._context.metadata_extension}"
 
     @property
     def referenced_file_uri(self) -> str | None:
@@ -153,8 +172,8 @@ class StructuredMetaResource(MetaResource):
         self.add_properties({
             LDTO.dekkingInTijd: { 
                 RDF.type: LDTO.DekkingInTijdGegevens,
-                LDTO.dekkingInTijdBeginDatum: util.date_type(start_date),
-                LDTO.dekkingInTijdEindDatum: util.date_type(end_date),
+                LDTO.dekkingInTijdBeginDatum: utils.date_type(start_date),
+                LDTO.dekkingInTijdEindDatum: utils.date_type(end_date),
                 LDTO.dekkingInTijdType: URIRef(StructuredMetaResource._dekkingintijdtypen.get_concept_uri("Van toepassing"))
             }
         })
@@ -164,7 +183,7 @@ class StructuredMetaResource(MetaResource):
             LDTO.event: {
                 RDF.type: LDTO.EventGegevens,
                 LDTO.eventType: URIRef(StructuredMetaResource._eventtypen.get_concept_uri(event_type)),
-                LDTO.eventTijd: util.date_type(event_date),
+                LDTO.eventTijd: utils.date_type(event_date),
                 LDTO.eventVerantwoordelijkeActor: URIRef(StructuredMetaResource._actoren.get_concept_uri(event_actor))
             } 
         })
@@ -174,7 +193,7 @@ class StructuredMetaResource(MetaResource):
             LDTO.event: {
                 RDF.type: LDTO.EventGegevens,
                 LDTO.eventType: URIRef(StructuredMetaResource._eventtypen.get_concept_uri("Publicatie")),
-                LDTO.eventTijd: util.date_type(publication_date)
+                LDTO.eventTijd: utils.date_type(publication_date)
             } 
         })
 
@@ -188,11 +207,16 @@ class StructuredMetaResource(MetaResource):
             }
         })
 
-    def set_fileproperties_by_puid(self, puid) -> None:
+    def set_fileproperties_by_puid(self, puid, cdn_base_uri: str) -> None:
+        """Set file properties by PUID. Requires cdn_base_uri to be passed in."""
+        # OLD CODE: Used self.uid and MetaResource._id_factory.cdn_base_uri
+        # ext_filename = f"{self.uid}.{file_extension}"
+        # url = f"{MetaResource._id_factory.cdn_base_uri}{ext_filename}"
+        # NEW CODE: Use self.id and accept cdn_base_uri as parameter
         ext_file_fileformat_uri = StructuredMetaResource._bestandsformaten.get_concept(puid).get_uri()
         file_extension = StructuredMetaResource._bestandsformaten.get_concept(puid).get_value(SKOS.notation)
-        ext_filename = f"{self.uid}.{file_extension}"
-        url = f"{MetaResource._id_factory.cdn_base_uri}{ext_filename}"
+        ext_filename = f"{self.id}.{file_extension}"
+        url = f"{cdn_base_uri}{ext_filename}"
         self.add_properties({
             LDTO.bestandsformaat: ext_file_fileformat_uri,
             LDTO.URLBestand: Literal(url, datatype=XSD.anyURI),
@@ -232,21 +256,5 @@ class StructuredMetaResource(MetaResource):
         return None
 
     def validate_referenced_file_md5checksum(self) -> bool:
-        return util.calculate_md5(os.path.join(MetaResource._context.sip_directory, self.referenced_file_filename)) == self.referenced_file_md5checksum
+        return utils.calculate_md5(os.path.join(MetaResource._context.sip_directory, self.referenced_file_filename)) == self.referenced_file_md5checksum
 
-    def _init_rdf_properties(self, rdf_type) -> None:
-        self.add_properties({
-            RDF.type: rdf_type,
-            LDTO.identificatie: {
-                RDF.type: LDTO.IdentificatieGegevens,
-                LDTO.identificatieBron: "e-Depot RAZU",
-                LDTO.identificatieKenmerk: self.uri
-            },
-            DCT.hasFormat: URIRef(self.metadata_file_uri)
-        })
-        if rdf_type == LDTO.Informatieobject:
-            self.add_properties({
-                LDTO.waardering: StructuredMetaResource._waarderingen.get_concept('B').get_uri(),
-                LDTO.archiefvormer: StructuredMetaResource._actoren.get_concept(MetaResource._context.archive_creator_id).get_uri()
-            })
-        self.add_triple(URIRef(self.metadata_file_uri), RDF.type, PREMIS.File)
