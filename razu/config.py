@@ -109,7 +109,7 @@ class Config:
     def get_instance(cls) -> 'Config':
         """Get the global Config instance, initializing it if needed."""
         if cls._instance is None:
-            cls._instance = cls()
+            raise RuntimeError("Config not initialized. Call Config.initialize() first.")
         return cls._instance
 
     @classmethod

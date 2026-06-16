@@ -5,8 +5,8 @@ from typing import Callable, Any
 from razu.config import Config
 # from razu.identifiers import Identifiers # change with integration of identifiers service also I deleted the Incrementer import
 from razu.rdf_resource import RDFResource
-from razu.meta_graph import MetaGraph, RDF, LDTO, DCT, PREMIS, XSD, SKOS
-from razu.concept_resolver import ConceptResolver
+from razu.meta_graph import MetaGraph, LDTO, DCT, RAZU, XSD, BAG, SCHEMA, GEO, RDFS, OWL, PICO, PNV, SKOS, PREMIS, PO
+from razu.concept_resolver import ConceptBuilder
 import razu.utils as utils
 
 
@@ -16,7 +16,6 @@ class MetaResource(RDFResource):
     Provides load(), save() and identifier logic.
     """
     # _counter = Incrementer(0)
-    _context = Config.get_instance()
     # _id_factory = Identifiers(_context) 
 
     def __init__(self, id: str | None = None, uri: str | None = None):
@@ -29,11 +28,12 @@ class MetaResource(RDFResource):
         #     uri = MetaResource._id_factory.make_uri_from_id(self.id)
         #     super().__init__(uri=uri)
         
-        # NEW CODE: Requires both id and uri to be passed explicitly
+        # NEW CODE: Requires uri to be passed explicitly; id is optional (needed only for save)
         if not uri:
-            raise ValueError("MetaResource requires both 'id' and 'uri' to be provided")
+            raise ValueError("MetaResource requires 'uri' to be provided")
         self.id = id
         super().__init__(uri=uri)
+        self.graph = MetaGraph()
         self.is_modified = True
         self.is_from_existing = False
 
@@ -42,12 +42,12 @@ class MetaResource(RDFResource):
         """Default filename implementation - should be overridden in subclasses."""
         # OLD CODE: return MetaResource._id_factory.make_filename_from_id(self.id)
         # NEW CODE: Use self.id directly with config suffixes
-        cfg = MetaResource._context
+        cfg = Config.get_instance()
         return f"{self.id}.{cfg.metadata_suffix}.{cfg.metadata_extension}"
 
     @property
     def local_file_path(self) -> str:
-        return os.path.join(MetaResource._context.sip_directory, self.filename)
+        return os.path.join(Config.get_instance().sip_directory, self.filename)
 
     # OLD CODE (removed methods that used _id_factory):
     # @property
@@ -82,15 +82,15 @@ class StructuredMetaResource(MetaResource):
     and properties for easy access to key parts of the graph data.
     """
 
-    _actoren = ConceptResolver("actor")
-    _aggregatieniveaus = ConceptResolver("aggregatieniveau")
-    _algoritmes = ConceptResolver("algoritme")
-    _beperkingen_openbaarheid = ConceptResolver("openbaarheid")
-    _bestandsformaten = ConceptResolver("bestandsformaat")
-    _dekkingintijdtypen = ConceptResolver("dekkingintijdtype")
-    _eventtypen = ConceptResolver("eventtype")
-    _licenties = ConceptResolver("licentie")
-    _waarderingen = ConceptResolver("waardering")
+    _actoren = ConceptBuilder("actor")
+    _aggregatieniveaus = ConceptBuilder("aggregatieniveau")
+    _algoritmes = ConceptBuilder("algoritme")
+    _beperkingen_openbaarheid = ConceptBuilder("openbaarheid")
+    _bestandsformaten = ConceptBuilder("bestandsformaat")
+    _dekkingintijdtypen = ConceptBuilder("dekkingintijdtype")
+    _eventtypen = ConceptBuilder("eventtype")
+    _licenties = ConceptBuilder("licentie")
+    _waarderingen = ConceptBuilder("waardering")
 
     def __init__(self, id: str | None = None, uri: str | None = None):
         super().__init__(id, uri=uri)
@@ -101,7 +101,7 @@ class StructuredMetaResource(MetaResource):
     def filename(self) -> str:
         """Override parent's filename to use self.id directly without factory call chain."""
         # This override ensures we use self.id directly (same as parent now, but kept for clarity)
-        cfg = MetaResource._context
+        cfg = Config.get_instance()
         return f"{self.id}.{cfg.metadata_suffix}.{cfg.metadata_extension}"
 
     def add(self, predicate: URIRef, obj, transformer: Callable = Literal) -> None:
@@ -157,7 +157,7 @@ class StructuredMetaResource(MetaResource):
         self.add_properties({RDF.type: rdf_type})
 
     def set_archive_creator(self) -> None:
-        self.add_properties({LDTO.archiefvormer: MetaResource._context.archive_creator_uri})
+        self.add_properties({LDTO.archiefvormer: Config.get_instance().archive_creator_uri})
 
     def set_name(self, name: str) -> None:
         self.add_properties({LDTO.naam: name})
@@ -256,5 +256,5 @@ class StructuredMetaResource(MetaResource):
         return None
 
     def validate_referenced_file_md5checksum(self) -> bool:
-        return utils.calculate_md5(os.path.join(MetaResource._context.sip_directory, self.referenced_file_filename)) == self.referenced_file_md5checksum
+        return utils.calculate_md5(os.path.join(Config.get_instance().sip_directory, self.referenced_file_filename)) == self.referenced_file_md5checksum
 

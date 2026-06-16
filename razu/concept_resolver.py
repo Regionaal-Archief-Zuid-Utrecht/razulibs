@@ -2,7 +2,7 @@ import sys
 from functools import lru_cache
 from SPARQLWrapper import SPARQLWrapper, JSON
 from rdflib import URIRef
-from sparql_endpoint_manager import SparqlEndpointManager
+from razu.sparql_endpoint_manager import SparqlEndpointManager
 
 # class Concept:
 # represent a subject node of a thesaurus (URI)
@@ -58,7 +58,30 @@ class Concept:
         except Exception as e:
             print(f"Error querying the SPARQL endpoint: {e}")
     
-    # !! MG: to chache? and also exectuing query could be a reusable bit
+    def get_values(self, predicate: URIRef) -> list[str]:
+        """Returns all values for a given predicate as a list."""
+        query = f"""
+        PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX schema: <http://schema.org/>
+
+        SELECT ?value WHERE {{
+            <{self.uri}> <{predicate}> ?value .
+        }}
+        """
+        sparql_service = SPARQLWrapper(self.sparql_endpoint)
+        sparql_service.setQuery(query)
+        sparql_service.setReturnFormat(JSON)
+
+        try:
+            response = sparql_service.query().convert()
+            bindings = response.get('results', {}).get('bindings', [])
+            return [b['value']['value'] for b in bindings if 'value' in b]
+        except Exception as e:
+            print(f"Error querying the SPARQL endpoint: {e}")
+            return []
+
+    # !! MG: to cache? and also exectuing query could be a reusable bit
     def get_all_values(self) -> dict:
         """ Returns all values for this concept. """
         query = f"""

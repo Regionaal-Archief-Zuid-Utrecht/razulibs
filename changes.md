@@ -1,8 +1,8 @@
 ## config.yaml
 
 - Changed `razu_file_id` from `"NL-WbDRAZU"` to `"nl-wbdrazu"` (lowercase)
-- Changed `razu_base_uri` from `"https://data.razu.nl/"` to `"https://data.razu.nl/id/"` than I can simply what is after the slash in the code (object, perceel, etc. else here I don't know how to specify multiple segments bc it's a singleton and I need more than one at the same time)
-- 
+- Changed `razu_base_uri` from `"https://data.razu.nl/"` to `"https://data.razu.nl/id/"` than I can simply what is after the slash in the code (object, perceel, etc. else here I don't know how to specify multiple segments bc it's a singleton and I need more than one at the same time) . BUT this makes methods of ```sparql_endpoint_manager.py``` fail because it expects the uri to have a segment like `/{resource_identifier_segment}/`. so I left this specific config attribute there. `resource_identifier_segment: "id"`. (same for metadata suffix and metadata extension)
+- ``` def get_instance(cls) -``` was set to initialize the config instance if it didn't exist which is problematic if I want to load a different config file. I think one should have clarity about where a cfg is initialized and, especially because it is a singleton, it should be done only once. > now it returns an error if cls._instance is None.
 
 ## identifiers.py > razu_uris.py
 changing with the logic that this class will handle uris, namely:
@@ -18,6 +18,10 @@ changing with the logic that this class will handle uris, namely:
 they are both subclasses of RDFRsource, why in different files?
 
 I think the whole subclass dependencies are very convoluted. I can ignore the complexity for now, but still I need to change how StructuredMetaResource is initialized as it hard codes values for InformateObject and I need to define those myself.
+
+- ```python
+_context = Config.get_instance()
+``` removed, as it was running at import. iot should run at runtime (when called within class methods etc.)
 
 - eliminate `self._init_rdf_properties(rdf_type)` and related method `def _init_rdf_properties(self, rdf_type) -> None:`. This internal method indirectly called `add_properties` of RDFResource which adds graph triples from a dictionary in input (via the *omonimous* method of StructuredMetaResource which adds a is_new=bool, wrapper to work with load/save)
 
@@ -84,6 +88,9 @@ I already have the identifier so I don't need all these complex factory chain ca
         return meta_resource
     ```
 
+## concept_resolver.py
+
+- `get_all_values` returns now a list (if a predicate has twho objects they both get returned ex. SKOS.exactMatch)
 ######################################3
 
 csv2rdf.py (main)

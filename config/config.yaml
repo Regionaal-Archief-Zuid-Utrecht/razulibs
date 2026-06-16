@@ -18,10 +18,16 @@ sparql_endpoint_suffix: "/sparql"
 identifiers_db_path: "metadata/identifiers.db"
 metadata_db_path: "metadata/maisexp_bouwdossiers.db"
 technical_metadata_path: "metadata/8_bestand.csv"
-bag_metadata_path: "metadata/bag.db"
+bag_metadata_path: "metadata/bag.sqlite"
 
 # # Defaults for a run session:
 default_sip_directory: "sip" # it is used I/O folder, used firtly to save data and then called when using MetaResource.
 perceel_base_uri: "https://data.razu.nl/id/perceel/"
 object_base_uri: "https://data.razu.nl/id/object"
 
+
+# needed for the code to work 
+
+resource_identifier_segment: "id"
+metadata_suffix: "meta"
+metadata_extension: "json"
