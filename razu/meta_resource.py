@@ -28,9 +28,9 @@ class MetaResource(RDFResource):
         #     uri = MetaResource._id_factory.make_uri_from_id(self.id)
         #     super().__init__(uri=uri)
         
-        # NEW CODE: Requires uri to be passed explicitly; id is optional (needed only for save)
+        # NEW CODE: Requires both id and uri to be passed explicitly
         if not uri:
-            raise ValueError("MetaResource requires 'uri' to be provided")
+            raise ValueError("MetaResource requires both 'id' and 'uri' to be provided")
         self.id = id
         super().__init__(uri=uri)
         self.graph = MetaGraph()

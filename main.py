@@ -15,6 +15,7 @@ import json
 from tqdm import tqdm
 import uuid
 import re
+from datetime import datetime
 
 
 ###############
@@ -22,17 +23,28 @@ import re
 
 _bag_csv = pd.read_csv("metadata/bag-adresses-new.csv", dtype=str)
 
-# load metadata path (throu cfg) 
-script_directory = os.path.dirname(os.path.abspath(__file__))
-metadata_db_path = os.path.join(script_directory, f"./{cfg.metadata_db_path}")
-bag_metadata_path = os.path.join(script_directory, f"./{cfg.bag_metadata_path}")
+class DBConnection:
+    """Manages sqlite database connections. Use as context manager."""
+    def __init__(self, db_path: str): # a cfg.path obj?
 
-# load technical metadata db path (throu cfg) 
-technical_metadata_path = os.path.join(script_directory, f"./{cfg.technical_metadata_path}")
-# load identifiers db path (throu cfg) 
-identifiers_db_path = Database(os.path.join(script_directory, f"./{cfg.identifiers_db_path}"))
+        base = os.path.dirname(os.path.abspath(__file__))
+        self.conn = sqlite3.connect(os.path.join(base, f"./{db_path}"))
 
-id_generator = IdentifierGenerator(identifiers_db_path)
+    def close(self):
+        self.conn.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+        
+
+metadata_db = DBConnection(cfg.metadata_db_path)
+bag_db = DBConnection(cfg.bag_metadata_path)
+identifiers_db = Database(cfg.identifiers_db_path)
+
+id_generator = IdentifierGenerator(identifiers_db)
 
 locatie_builder = ConceptBuilder('locatie')
 classificate_builder = ConceptBuilder('soort')
@@ -46,10 +58,6 @@ private_graph = MetaGraph() # here only for final whole graph save in turtle for
 
 woonplaats_cache = {}
 
-# extra
-with open("kadnummer_base.json") as f:
-    kadnummer_prefix_map = json.load(f)
-
 # MAIS plaatsnamen that don't exist in BAG → map to BAG woonplaats
 plaatsnaam_bag_map = {
     "Overlangbroek": "Langbroek",
@@ -58,10 +66,11 @@ plaatsnaam_bag_map = {
 def make_storage_url(gemeente_code, toegang_code, stepped_dir):
     return f"https://{gemeente_code}.opslag.razu.nl/nl-wbdrazu/{gemeente_code}/{toegang_code.zfill(3)}/{stepped_dir}"
 
-
+#####################################
 # ARCHIEF
 
 def create_rdf(toegang_code, gemeente_code, archiefvormer):
+    global graph
     
     cfg = Config.get_instance()
 
@@ -80,12 +89,11 @@ def create_rdf(toegang_code, gemeente_code, archiefvormer):
     subject = URIRef(f"{RAZU}{identifier}")
     
     # query for additional data
-    with sqlite3.connect(metadata_db_path) as md_conn:
-        row = md_conn.execute(
+    row = metadata_db.conn.execute(
             "SELECT TITEL, DATERING, INLEIDING_TEKST FROM toegangen WHERE CODE = ?;",
             (toegang_code,),
         ).fetchone()
-        naam = " ".join(row[:2]) if row else ""
+    naam = " ".join(row[:2]) if row else ""
     #    omschrijving = str(row[2]) if row and row[2] else ""
     omschrijving = input("Enter omschrijving: ")
 
@@ -110,6 +118,7 @@ def create_rdf(toegang_code, gemeente_code, archiefvormer):
     archief.add_triple(URIRef(f"{storage_url}{identifier}.{cfg.metadata_suffix}.{cfg.metadata_extension}"), RDF.type, PREMIS.File)
     
     archief.save() # to change, 
+    graph += archief.graph
 
     # we have additional data in db shouldn't we use them?: 
     # toegangen.AUTEUR 'L.C.J.M. Rouppe van der Voort, R.J. Butterman, M.A. van der Eerden-Vonk, K.Th.H. Wildenbeest, E.F.W. Hinders ;
@@ -120,10 +129,12 @@ def create_rdf(toegang_code, gemeente_code, archiefvormer):
     # toegangen.OPMERKINGEN '' ;
     # .
 
-    # DOSSIER
+########################################
+    # DOSSIER - ARCHIEFSTUK - BESTAND
 
-    # import data
+    # import data (provisional method here)
     data = pd.read_csv("metadata/mf-008-adresses-new.csv", dtype=str)
+    technical_metadata = pd.read_csv("metadata/8_bestand.csv", dtype=str)
     
     prev_nummer = None
     dossier = None
@@ -134,6 +145,7 @@ def create_rdf(toegang_code, gemeente_code, archiefvormer):
             # save previous dossier before starting a new one
             if dossier is not None:
                 dossier.save()
+                graph += dossier.graph
 
             # move on to new node
             # make node identifier
@@ -154,6 +166,10 @@ def create_rdf(toegang_code, gemeente_code, archiefvormer):
             # Create new dossier MetaResource
             dossier = StructuredMetaResource(id=identifier, uri=subject)
 
+            # CREATE ARCHIEFSTUK AND BESTAND FOR THIS DOSSIER ########################
+            archiefstuk_metadata = technical_metadata[technical_metadata['INVNUMMER'] == invnummer] # already filtered per toegang
+            create_archiefstuk_Informatieobject(archiefstuk_metadata, invnummer, dossier, toegang_code, gemeente_code, archiefvormer_uri)
+
             dossier.add_properties({RDF.type: LDTO.Informatieobject,
                                     DCT.hasFormat: URIRef(f"{storage_url}{identifier}.{cfg.metadata_suffix}.{cfg.metadata_extension}"),
                                     LDTO.isOnderdeelVan: archief.uri,
@@ -171,7 +187,7 @@ def create_rdf(toegang_code, gemeente_code, archiefvormer):
                                         LDTO.dekkingInTijdBeginDatum: Literal(row['DATERING'], datatype=XSD.gYear)
                                     }
                                     })
-            archief.add_triple(URIRef(f"{storage_url}{identifier}.{cfg.metadata_suffix}.{cfg.metadata_extension}"), RDF.type, PREMIS.File)
+            dossier.add_triple(URIRef(f"{storage_url}{identifier}.{cfg.metadata_suffix}.{cfg.metadata_extension}"), RDF.type, PREMIS.File)
 
             # logic for LDTO.naam
             # Dossier - toegang - invnummer + bouwerk + street name + placename (+perceel) (at dossier level, kinda better to leave out the address, we can always index in es the adress name!)
@@ -197,8 +213,151 @@ def create_rdf(toegang_code, gemeente_code, archiefvormer):
     # save the last dossier
     if dossier is not None:
         dossier.save()
+        graph += dossier.graph
+
+    return graph, private_graph
+
+
+def create_archiefstuk_Informatieobject(archiefstuk_metadata, invnummer, dossier, toegang_code, gemeente_code, archiefvormer_uri):
+    global graph
+    cfg = Config.get_instance()
+
+    # get classifications:
+    bouwvergunning = classificate_builder.get_concept_obj_from_term('Bouwvergunning').uri
+    aanvraag_vergunning = classificate_builder.get_concept_obj_from_term('Aanvraag vergunning').uri
+    tekening = classificate_builder.get_concept_obj_from_term('Bouwtekening').uri
+    overig = classificate_builder.get_concept_obj_from_term('Document - niet nader gespecificeerd').uri
+
+    archiefstuk = None
+
+    for i, row in archiefstuk_metadata.iterrows():
+        filepath = row["FILE_PATH"]
+
+        # check if filepath contains a specific classification
+        has_classification = any(kw in filepath for kw in
+            ["TAB", "AANVRAAG-EN-VERGUNNING", "TEKENINGEN", "OVERIGE-DOCUMENTEN", "Overig", "Tekeningen", "Aanvraag_vergunning"])
+
+        # create new archiefstuk if: first iteration (no archiefstuk yet) OR has classification
+        need_new_archiefstuk = (archiefstuk is None) or has_classification
+
+        if need_new_archiefstuk:
+            # get archiefstuk identifier
+            identifier, is_new, stepped_dir = id_generator.generate(
+                producer=gemeente_code,
+                dataset=toegang_code,
+                type="Informatieobject",
+                aggregationlevel="Archiefstuk",
+                inventarisnummer=invnummer,
+                filepath=filepath
+            )
+            # make subject
+            subject = URIRef(f"{RAZU}{identifier}")
+
+            # make storage url
+            storage_url = make_storage_url(gemeente_code, toegang_code, stepped_dir)
+
+            # Create new archiefstuk MetaResource
+            archiefstuk = StructuredMetaResource(id=identifier, uri=subject)
+
+            # add triples
+            archiefstuk.add_properties({RDF.type: LDTO.Informatieobject,
+                                DCT.hasFormat: URIRef(f"{storage_url}{identifier}.{cfg.metadata_suffix}.{cfg.metadata_extension}"),
+                                LDTO.aggregatieniveau: URIRef(aggregatieniveau_builder.get_concept_obj_from_term("Archiefstuk").uri),
+                                LDTO.isOnderdeelVan: dossier.uri,
+                                LDTO.archiefvormer: URIRef(archiefvormer_uri),
+                                })
+
+            archiefstuk.add_triple(URIRef(f"{storage_url}{identifier}.{cfg.metadata_suffix}.{cfg.metadata_extension}"), RDF.type, PREMIS.File)
+
+            if has_classification:
+                # OPTIONAL triples
+                # get archiefstuk classification from filepath
+
+                if "TAB" in filepath:
+                    archiefstuk.add_property(LDTO.classificatie, URIRef("https://data.razu.nl/id/soort/tab"))
+                    archiefstuk.add_property(LDTO.naam, Literal("tab"))
+
+                elif "AANVRAAG-EN-VERGUNNING" in filepath or "Aanvraag_vergunning" in filepath:
+                    archiefstuk.add_property(LDTO.classificatie, URIRef(bouwvergunning))
+                    archiefstuk.add_property(LDTO.classificatie, URIRef(aanvraag_vergunning))
+            
+
+                elif "TEKENINGEN" in filepath or "Tekeningen" in filepath:
+                    archiefstuk.add_property(LDTO.classificatie, URIRef(tekening)) 
+                # archiefstuk.add_property(LDTO.naam, Literal("tekeningen"))
+
+                elif "OVERIGE-DOCUMENTEN" in filepath or "Overig" in filepath:
+                    archiefstuk.add_property(LDTO.classificatie, URIRef(overig))
+                    archiefstuk.add_property(LDTO.naam, Literal("overige documenten"))
+
+            else:
+                archiefstuk.add_property(LDTO.naam, Literal("[geen naam vastgelegd]"))
+                archiefstuk.add_property(LDTO.classificatie, URIRef(tekening))
+                archiefstuk.add_property(LDTO.classificatie, URIRef(bouwvergunning))
+                archiefstuk.add_property(LDTO.classificatie, URIRef(aanvraag_vergunning))
+                archiefstuk.add_property(LDTO.classificatie, URIRef(overig))
+
+            archiefstuk.save()
+            graph += archiefstuk.graph
+
+        # BESTAND: always created, linked to current archiefstuk
+        identifier, is_new, stepped_dir = id_generator.generate(
+            producer=gemeente_code,
+            dataset=toegang_code,
+            type="Bestand",
+            inventarisnummer=invnummer,
+            filepath=filepath
+        )
+
+        subject = URIRef(f"{RAZU}{identifier}")
+        bestand = StructuredMetaResource(id=identifier, uri=subject)
+
+        # get bestandsformaat
+        if pd.notna(row['id']) and row['id'] != 'UNKNOWN':
+            bestandsformaat_concept = format_builder.get_concept_obj_from_term(row['id'])
+            file_extension = bestandsformaat_concept.get_value(SKOS.notation)
+            bestand.add_property(LDTO.bestandsformaat, URIRef(bestandsformaat_concept.uri))
+        else:
+            file_extension = filepath.split(".")[-1].lower()
+
+        # make storage url for metadata and file
+        storage_url = make_storage_url(gemeente_code, toegang_code, stepped_dir)
+        file_storage_url = URIRef(f"{storage_url}{identifier}.{file_extension}")
+        metadata_storage_url = URIRef(f"{storage_url}{identifier}.{cfg.metadata_suffix}.{cfg.metadata_extension}")
+
+        bestand.add_properties({
+            RDF.type: LDTO.Bestand,
+            DCT.hasFormat: metadata_storage_url,
+            LDTO.isRepresentatieVan: archiefstuk.uri,
+            LDTO.naam: Literal(f"{identifier}.{file_extension}"),
+            LDTO.URLBestand: file_storage_url
+        })
+        
+        # TECHNICAL TRIPLES 
+        if pd.notna(row['ImageHeight']):
+            bestand.add_property(SCHEMA.height, Literal(int(float(row['ImageHeight'])), datatype=XSD.integer))
+        if pd.notna(row['ImageWidth']):
+            bestand.add_property(SCHEMA.width, Literal(int(float(row['ImageWidth'])), datatype=XSD.integer))    
+        if pd.notna(row['filesize']):
+            bestand.add_property(LDTO.omvang, Literal(int(float(row['filesize'])), datatype=XSD.integer))
+        if pd.notna(row['md5']):
+            bestand.add_properties({ LDTO.checksum: {
+                RDF.type: LDTO.ChecksumGegevens,
+                LDTO.checksumAlgoritme: URIRef("https://data.razu.nl/id/algoritme/7f138a09169b250e9dcb378140907378"),
+                LDTO.checksumWaarde: Literal(row['md5']),
+                LDTO.checksumDatum: Literal(datetime.now().isoformat(), datatype=XSD.dateTime)
+            }})
+
+        # original name part
+        bestand.add_triple(file_storage_url, RDF.type, PREMIS.File)
+        bestand.add_triple(file_storage_url, PREMIS.originalName, Literal(f"./{filepath}"))
+        bestand.add_triple(metadata_storage_url, RDF.type, PREMIS.File)
+
+        bestand.save()
+        graph += bestand.graph
 
     return True
+            
 
 ######## helpers ################
 
@@ -229,18 +388,16 @@ def get_nummeraanduiding_from_csv(adrs_data: pd.Series) -> dict | None:
     return d
 
 def get_openbareruimte_from_db(adrs_data: pd.Series) -> dict | None:
-    with sqlite3.connect(bag_metadata_path) as bag_conn:
-        cursor = bag_conn.cursor()
-        cursor.execute('''select OpenbareRuimte.bagID, OpenbareRuimte.naam from OpenbareRuimte join WPL on OpenbareRuimte.ligtIn == WPL.identificatie where OpenbareRuimte.naam = ? and WPL.naam = ?''', (adrs_data['STRAATNAAM'], bag_plaatsnaam(adrs_data['PLAATSNAAM'])))
-        result = cursor.fetchall()
-        if result:
-            return { 
-                RDF.type: BAG.OpenbareRuimte,
-                BAG.naam: Literal(adrs_data['STRAATNAAM']),
-                BAG.bagID: Literal(result[0][0]),
-                OWL.sameAs: URIRef(f"https://bag.basisregistraties.overheid.nl/bag/id/openbare-ruimte/{result[0][0]}") # ! N.B. in Woonplaats from the thesaurus the bag uri uses property skos:exactMatch
-                }
-        return None
+    cursor = bag_db.conn.execute('''select OpenbareRuimte.bagID, OpenbareRuimte.naam from OpenbareRuimte join WPL on OpenbareRuimte.ligtIn == WPL.identificatie where OpenbareRuimte.naam = ? and WPL.naam = ?''', (adrs_data['STRAATNAAM'], bag_plaatsnaam(adrs_data['PLAATSNAAM'])))
+    result = cursor.fetchall()
+    if result:
+        return { 
+            RDF.type: BAG.OpenbareRuimte,
+            BAG.naam: Literal(adrs_data['STRAATNAAM']),
+            BAG.bagID: Literal(result[0][0]),
+            OWL.sameAs: URIRef(f"https://bag.basisregistraties.overheid.nl/bag/id/openbare-ruimte/{result[0][0]}") # ! N.B. in Woonplaats from the thesaurus the bag uri uses property skos:exactMatch
+        }
+    return None
 
 def get_geometry_from_csv(adrs_data: pd.Series) -> dict | None:
     huisnummers = adrs_data['HUISNUMMERS'] if pd.notna(adrs_data['HUISNUMMERS']) else ""
@@ -268,38 +425,36 @@ def get_geometry_from_csv(adrs_data: pd.Series) -> dict | None:
     return None
 
 def get_actors_from_db(row: pd.Series) -> list | None: # returns a list of dictionaries
-    with sqlite3.connect(metadata_db_path) as actor_conn:
-        cursor = actor_conn.cursor()
-        cursor.execute('''select piv.ROL, piv.VOORLETTERS, piv.TUSSENVOEGSEL, piv.ACHTERNAAM, rpiv.ROL as ROL_RPIV, rpiv.ORGANISATIENAAM from bd left join toegangen on bd.TOEGANG_ID == toegangen.ID left join piv on bd.ID == piv.BD_ID left join rpiv on bd.ID == rpiv.BD_ID where toegangen.CODE == ? and bd.ID == ?;''', (row['CODE'], row['BD_ID']))
-        result = cursor.fetchall()
-        if result: # [('404', '1038518', 'Ring-vlamoven', '', '1935', '1935-1', None, None, None, None, None, None)]
-            actor_list = []
-            for actor_row in result:
-                if actor_row[3]:  # ACHTERNAAM
-                    name = f"{actor_row[1] or ''} {actor_row[2] or ''} {actor_row[3] or ''}".strip()
-                    actor_list.append({
-                        "type": PNV.PersonName,
-                        "rol": actor_row[0],  # piv.ROL
-                        "data": {
-                            RDF.type: PNV.PersonName,
-                            PNV.literalName: Literal(name),
-                            # PNV.givenName: Literal(actor_row[1] if actor_row[1] else ""),
-                            # PNV.baseSurname: Literal(actor_row[2] if actor_row[2] else ""),
-                            PNV.baseSurname: Literal(actor_row[3] if actor_row[3] else "")
-                        }
-                    })
-                if actor_row[5]:  # ORGANISATIENAAM
-                    actor_list.append({
-                        "type": SCHEMA.Organisation,
-                        "rol": actor_row[4],  # rpiv.ROL
-                        "data": {
-                            RDF.type: [SCHEMA.Organisation, LDTO.Actor],
-                            RDFS.label: Literal(actor_row[5])
-                        }
-                    })
+    cursor = metadata_db.conn.execute('''select piv.ROL, piv.VOORLETTERS, piv.TUSSENVOEGSEL, piv.ACHTERNAAM, rpiv.ROL as ROL_RPIV, rpiv.ORGANISATIENAAM from bd left join toegangen on bd.TOEGANG_ID == toegangen.ID left join piv on bd.ID == piv.BD_ID left join rpiv on bd.ID == rpiv.BD_ID where toegangen.CODE == ? and bd.ID == ?;''', (row['CODE'], row['BD_ID']))
+    result = cursor.fetchall()
+    if result: # [('404', '1038518', 'Ring-vlamoven', '', '1935', '1935-1', None, None, None, None, None, None)]
+        actor_list = []
+        for actor_row in result:
+            if actor_row[3]:  # ACHTERNAAM
+                name = f"{actor_row[1] or ''} {actor_row[2] or ''} {actor_row[3] or ''}".strip()
+                actor_list.append({
+                    "type": PNV.PersonName,
+                    "rol": actor_row[0],  # piv.ROL
+                    "data": {
+                        RDF.type: PNV.PersonName,
+                        PNV.literalName: Literal(name),
+                        # PNV.givenName: Literal(actor_row[1] if actor_row[1] else ""),
+                        # PNV.baseSurname: Literal(actor_row[2] if actor_row[2] else ""),
+                        PNV.baseSurname: Literal(actor_row[3] if actor_row[3] else "")
+                    }
+                })
+            if actor_row[5]:  # ORGANISATIENAAM
+                actor_list.append({
+                    "type": SCHEMA.Organisation,
+                    "rol": actor_row[4],  # rpiv.ROL
+                    "data": {
+                        RDF.type: [SCHEMA.Organisation, LDTO.Actor],
+                        RDFS.label: Literal(actor_row[5])
+                    }
+                })
 
-            return actor_list if actor_list else None
-        return None
+        return actor_list if actor_list else None
+    return None
 
 def make_actor_uri(actor_dict):
     """Generate a unique URI for each actor instance using a UUID."""
@@ -453,7 +608,10 @@ def main(gemeente_code, toegang_code):
     archiefvormer = archiefvormer_concept.get_value(SKOS.prefLabel)
 
     # now call functions to write rdf :)
-    create_rdf(toegang_code, gemeente_code, archiefvormer)
+    graph, private_graph = create_rdf(toegang_code, gemeente_code, archiefvormer)
+
+    print(graph.serialize(format='turtle', destination=f"{cfg.default_sip_directory}/{toegang_code}.ttl"))
+    print(private_graph.serialize(format='turtle', destination=f"{cfg.default_sip_directory}/{toegang_code}_private.ttl"))
 
 if __name__ == "__main__":
     main("g0352", "008")
