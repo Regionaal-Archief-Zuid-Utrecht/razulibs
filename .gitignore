@@ -9,4 +9,8 @@ output/
 venv
 .vscode/settings.json
 sip/
-metadata/*
+metadata/
+*.db
+*.sqlite
+*.sqlite3
+*.csv
