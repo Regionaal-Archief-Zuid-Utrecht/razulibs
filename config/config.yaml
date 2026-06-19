@@ -1,0 +1,33 @@
+# Copy this file to one of the following locations:
+# 1. The directory of the script that uses the library
+# 2. The current working directory
+# 3. The user's config directory:
+#    - Windows: %LOCALAPPDATA%\razu\config.yaml
+#    - macOS: ~/Library/Application Support/razu/config.yaml
+#    - Linux: ~/.config/razu/config.yaml
+
+
+perceel_base_uri: "https://data.razu.nl/id/perceel/"
+object_base_uri: "https://data.razu.nl/id/object"
+
+storage_base_domain: "opslag.razu.nl" # not needed because of idgenerator
+
+sparql_endpoint_prefix: "https://api.data.razu.nl/datasets/id/"
+sparql_endpoint_suffix: "/sparql"
+
+identifiers_db_path: "metadata/identifiers.db"
+metadata_db_path: "metadata/maisexp_bouwdossiers.db"
+technical_metadata_path: "metadata/8_bestand.csv"
+bag_metadata_path: "metadata/bag.sqlite"
+
+# # Defaults for a run session:
+default_sip_directory: "sip" # it is used I/O folder, used firtly to save data and then called when using MetaResource.
+perceel_base_uri: "https://data.razu.nl/id/perceel/"
+object_base_uri: "https://data.razu.nl/id/object"
+
+
+# needed for the code to work 
+
+resource_identifier_segment: "id"
+metadata_suffix: "meta"
+metadata_extension: "json"

@@ -13,12 +13,10 @@ import extra                # Functions specific for this import
 """	
 This demo aims to provide a simple example of how  metadata from a CSV file can be transformed to RDF.
 The RDF conforms to the MDTO derived model as used by RAZU.
-The RDF is displayed on screen and saved to the default output directory (known as "context.default_sip_directory").
+The RDF is displayed on screen and saved to the default output directory (known as "cfg.default_sip_directory").
 
 Make sure the settings file config.yaml is available, for example in the present working directory.
 """	
-
-
 
 def main():
     
@@ -36,20 +34,20 @@ def main():
     waarderingen = ConceptResolver("waardering")
 
     # Initialize global configuration
-    context = Config.initialize()
+    cfg = Config.initialize()
 
-    # Initialize the context with settings for this specific run
-    context.add_properties(
+    # Initialize the cfg with settings for this specific run
+    cfg.add_properties(
         archive_id="661",
         archive_creator_id=actoren.get_concept_value("Gemeente Houten", SKOS.notation),
-        sip_directory=context.default_sip_directory
+        sip_directory=cfg.default_sip_directory
     )
-    os.makedirs(context.sip_directory, exist_ok=True)
+    os.makedirs(cfg.sip_directory, exist_ok=True)
 
     # Read the CSV files with metadata and DROID outputs
     script_directory = os.path.dirname(os.path.abspath(__file__))
-    meta_path = os.path.join(script_directory, f"./{context.default_metadata_directory}/metadata.csv")
-    droid_path = os.path.join(script_directory, f"./{context.default_metadata_directory}/droid.csv")
+    meta_path = os.path.join(script_directory, f"./{cfg.default_metadata_directory}/metadata.csv")
+    droid_path = os.path.join(script_directory, f"./{cfg.default_metadata_directory}/droid.csv")
 
     meta_df = pd.read_csv(meta_path, delimiter=';')
     droid_df = pd.read_csv(droid_path, index_col='NAME')
@@ -79,7 +77,7 @@ def main():
                 LDTO.aggregatieniveau: URIRef(aggregatieniveaus.get_concept_uri("Archief")),
                 LDTO.identificatie: {
                     RDF.type: LDTO.IdentificatieGegevens,    
-                    LDTO.identificatieKenmerk: context.archive_id,
+                    LDTO.identificatieKenmerk: cfg.archive_id,
                     LDTO.identificatieBron: "Toegangen Regionaal Archief Zuid-Utrecht"
                 },
                 LDTO.waardering: URIRef(waarderingen.get_concept_uri("Blijvend te bewaren"))
@@ -129,7 +127,7 @@ def main():
             LDTO.identificatie: [
                 {
                     RDF.type: LDTO.IdentificatieGegevens,
-                    LDTO.identificatieBron: f"Inventarissen Toegang {context.archive_id} RAZU",
+                    LDTO.identificatieBron: f"Inventarissen Toegang {cfg.archive_id} RAZU",
                     LDTO.identificatieKenmerk: str(row['Inventarisnummer']) 
                 },
                 {
@@ -220,7 +218,7 @@ def main():
             LDTO.bestandsformaat: URIRef(bestandsformaten.get_concept_uri(droid_row['PUID'])),
             LDTO.omvang: Literal(int(droid_row['SIZE']), datatype=XSD.integer),
             LDTO.URLBestand: Literal(
-                f"https://{context.archive_creator_id.lower()}.{context.storage_base_domain}/{bestand._id_factory.make_s3_path_from_id(bestand.id)}{bestand.uid}"
+                f"https://{cfg.archive_creator_id.lower()}.{cfg.storage_base_domain}/{bestand._id_factory.make_s3_path_from_id(bestand.id)}{bestand.uid}"
                 f".{bestandsformaten.get_concept_value(droid_row['PUID'], SKOS.notation)}",
                 datatype=XSD.anyURI
             )
