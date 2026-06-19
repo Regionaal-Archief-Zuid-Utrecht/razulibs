@@ -16,7 +16,6 @@ PICO = Namespace("https://personsincontext.org/model#")
 RAZU = Namespace("https://data.razu.nl/id/object/") # https://data.razu.nl/id/object/
 XSD = Namespace("http://www.w3.org/2001/XMLSchema#")
 PNV = Namespace("https://w3id.org/pnv#")
-PO = Namespace("https://data.razu.nl/id/persoonsvermelding/")
 PN = Namespace("https://data.razu.nl/id/persoonsnaam/")
 
 class MetaGraph(Graph):
@@ -38,5 +37,4 @@ class MetaGraph(Graph):
         self.bind("bag", BAG)  #RAZU.identifier, where identifier is a RAZU id like nl-wbdrazu-g0352-002-1 then a URI is generated: https://data.example.org/id/nl-wbdrazu-g0352-002-1
         self.bind("xsd", XSD)
         self.bind("pnv", PNV)
-        self.bind("po", PO)
         self.bind("pn", PN)

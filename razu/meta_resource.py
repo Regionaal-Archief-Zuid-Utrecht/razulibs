@@ -5,7 +5,7 @@ from typing import Callable, Any
 from razu.config import Config
 # from razu.identifiers import Identifiers # change with integration of identifiers service also I deleted the Incrementer import
 from razu.rdf_resource import RDFResource
-from razu.meta_graph import MetaGraph, LDTO, DCT, RAZU, XSD, BAG, SCHEMA, GEO, RDFS, OWL, PICO, PNV, SKOS, PREMIS, PO
+from razu.meta_graph import MetaGraph, LDTO, DCT, RAZU, XSD, BAG, SCHEMA, GEO, RDFS, OWL, PICO, PNV, SKOS, PREMIS, PROV
 from razu.concept_resolver import ConceptBuilder
 import razu.utils as utils
 
