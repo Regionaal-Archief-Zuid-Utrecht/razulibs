@@ -5,7 +5,7 @@ cfg = Config.initialize(config_file="config/config.yaml")
 from src.database import Database # need tro install pip install -e /home/madda/coding/idgenerator
 from src.generator import IdentifierGenerator
 from rdflib import Namespace, RDF, URIRef, Literal, BNode
-from razu.meta_graph import MetaGraph, LDTO, DCT, RAZU, XSD, BAG, SCHEMA, GEO, RDFS, OWL, PICO, PNV, SKOS, PREMIS, PO
+from razu.meta_graph import MetaGraph, LDTO, DCT, RAZU, XSD, BAG, SCHEMA, GEO, RDFS, OWL, PICO, PNV, SKOS, PREMIS, PN, PROV
 import sqlite3
 import pandas as pd
 from razu.concept_resolver import ConceptBuilder, Concept
@@ -456,13 +456,11 @@ def get_actors_from_db(row: pd.Series) -> list | None: # returns a list of dicti
         return actor_list if actor_list else None
     return None
 
-def make_actor_uri(actor_dict):
+def make_personname_uri(actor_dict):
     """Generate a unique URI for each actor instance using a UUID."""
     uid = uuid.uuid4().hex
-    if actor_dict["type"] == PNV.PersonName:
-        return URIRef(f"{PO}{uid}")
-    else:
-        return URIRef(f"{SCHEMA}organization/{uid}")
+    if actor_dict["type"] == PN.PersonName:
+        return URIRef(f"{PNV}{uid}")
 
 def bag_plaatsnaam(plaatsnaam):
     """Map MAIS plaatsnaam to BAG woonplaats name if needed."""
@@ -560,34 +558,35 @@ def write_actor_graph(graph, subject, row):
     # N.B. actors = list, actors_dict = dict
     if actors:
         for actor_dict in actors:
-            actor_uri = make_actor_uri(actor_dict)
+             pname_uri = make_personname_uri(actor_dict)
 
-            subject.add_properties({
-                LDTO.betrokkene: {
-                    RDF.type: LDTO.BetrokkeneGegevens,
-                    LDTO.betrokkeneTypeRelatie: URIRef(betrokkenheid_builder.get_concept_obj_from_term(actor_dict["rol"]).uri), 
-                }
-            })
-
-            if actor_dict["type"] == PNV.PersonName: # make separate graph
-                actor = StructuredMetaResource(uri=actor_uri)
-                actor.add_properties({
-                    RDF.type: [PICO.PersonObservation, LDTO.Actor],
-                    PNV.hasName: actor_dict["data"]
+            if actor_dict["type"] == PNV.PersonName: 
+                pname = StructuredMetaResource(uri=pname_uri)
+                subject.add_properties({
+                    LDTO.betrokkene: {
+                        RDF.type: LDTO.BetrokkeneGegevens,
+                        LDTO.betrokkeneTypeRelatie: URIRef(betrokkenheid_builder.get_concept_obj_from_term(actor_dict["rol"]).uri),
+                        LDTO.betrokkeneActor: { 
+                            RDF.type: [PICO.PersonObservation, LDTO.Actor],
+                            PROV.hadPrimarySource: subject.uri,
+                            PNV.hasName: pname_uri
+                        }}                   
                 })  
 
-                private_graph += actor.graph
+                # make separate graph
+                pname.add_properties(actor_dict["data"])
+                pname.add_property(SCHEMA.isPartOf, URIRef("https://data.razu.nl/id/persoonsnaam/2bcd801b0ba9d094d79f0e11d4d30baf"))
 
-                # add to public:
-                subject.add_properties({
-                    LDTO.betrokkeneActor: actor_uri
-                })
-                subject.add_triple(actor_uri, RDF.type, LDTO.Actor)
-                subject.add_triple(actor_uri, RDF.type, PICO.PersonObservation)
+                private_graph += pname.graph
+
 
             elif actor_dict["type"] == SCHEMA.Organisation:
                 subject.add_properties({
-                    LDTO.betrokkeneActor: actor_dict["data"]
+                    LDTO.betrokkene: {
+                        RDF.type: LDTO.BetrokkeneGegevens,
+                        LDTO.betrokkeneTypeRelatie: URIRef(betrokkenheid_builder.get_concept_obj_from_term(actor_dict["rol"]).uri),
+                        LDTO.betrokkeneActor: actor_dict["data"]
+                    }
                 })
 
 ###########
