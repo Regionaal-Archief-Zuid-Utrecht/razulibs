@@ -66,6 +66,7 @@ plaatsnaam_bag_map = {
 def make_storage_url(gemeente_code, toegang_code, stepped_dir):
     return f"https://{gemeente_code}.opslag.razu.nl/nl-wbdrazu/{gemeente_code}/{toegang_code.zfill(3)}/{stepped_dir}"
 
+
 #####################################
 # ARCHIEF
 
@@ -95,8 +96,7 @@ def create_rdf(toegang_code, gemeente_code, archiefvormer):
         ).fetchone()
     naam = " ".join(row[:2]) if row else ""
     #    omschrijving = str(row[2]) if row and row[2] else ""
-    omschrijving = input("Enter omschrijving: ")
-
+    omschrijving = "tmp"
     # make storage url (instead of identifiers.py)
     storage_url = make_storage_url(gemeente_code, toegang_code, stepped_dir)
 
@@ -133,7 +133,7 @@ def create_rdf(toegang_code, gemeente_code, archiefvormer):
     # DOSSIER - ARCHIEFSTUK - BESTAND
 
     # import data (provisional method here)
-    data = pd.read_csv("metadata/mf-008-adresses-new.csv", dtype=str)
+    data = pd.read_csv("metadata/mf-008-adresses.csv", dtype=str)
     technical_metadata = pd.read_csv("metadata/8_bestand.csv", dtype=str)
     
     prev_nummer = None
@@ -459,8 +459,8 @@ def get_actors_from_db(row: pd.Series) -> list | None: # returns a list of dicti
 def make_personname_uri(actor_dict):
     """Generate a unique URI for each actor instance using a UUID."""
     uid = uuid.uuid4().hex
-    if actor_dict["type"] == PN.PersonName:
-        return URIRef(f"{PNV}{uid}")
+    if actor_dict["type"] == PNV.PersonName:
+        return URIRef(f"{PN}{uid}")
 
 def bag_plaatsnaam(plaatsnaam):
     """Map MAIS plaatsnaam to BAG woonplaats name if needed."""
@@ -517,7 +517,7 @@ def write_adres_graph(graph, subject, row): # N.B. skipping perceelen data for n
     if not geo_dict:
         geo_dict = {}
         geo_dict[GEO.asWKT] = Literal("POINT EMPTY", datatype=GEO.wktLiteral)
-        geo_dict[GEO.crs] = URIRef("http://www.opengis.net/example")
+        geo_dict[GEO.crs] = URIRef("http://www.opengis.net/def/crs/OGC/1.3/CRS84")
         geo_dict[RDF.type] = GEO.Geometry
         geo_dict[RDFS.label] = Literal("Geen geometrie beschikbaar")
 
@@ -531,14 +531,7 @@ def write_adres_graph(graph, subject, row): # N.B. skipping perceelen data for n
     
     if woonplaats:
         nummeraanduiding_dict[BAG.ligtIn] = woonplaats.uri
-
-        # add woonplaats triples to graph
-        # for match in woonplaats.get_values(SKOS.exactMatch):
-        #     dossier.add_triple(woonplaats.uri, SKOS.exactMatch, URIRef(match))
-        # for scheme in woonplaats.get_values(SKOS.inScheme):
-        #     dossier.add_triple(woonplaats.uri, SKOS.inScheme, URIRef(scheme))
-        
-    
+          
     # add adress triples!! finally
 
     subject.add_properties({
@@ -558,7 +551,7 @@ def write_actor_graph(graph, subject, row):
     # N.B. actors = list, actors_dict = dict
     if actors:
         for actor_dict in actors:
-             pname_uri = make_personname_uri(actor_dict)
+            pname_uri = make_personname_uri(actor_dict)
 
             if actor_dict["type"] == PNV.PersonName: 
                 pname = StructuredMetaResource(uri=pname_uri)
