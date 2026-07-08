@@ -420,7 +420,7 @@ def get_geometry_from_csv(adrs_data: pd.Series) -> dict | None:
             RDF.type: GEO.Geometry,
             RDFS.label: Literal("Representatief punt"),
             GEO.asWKT: Literal(asWKT, datatype=GEO.wktLiteral),
-            GEO.crs: URIRef("http://www.opengis.net/example")
+            GEO.crs: URIRef("http://www.opengis.net/def/crs/OGC/1.3/CRS84")
         }
     return None
 

@@ -126,6 +126,7 @@ class ConceptBuilder:
         else:
             raise ValueError(f"Invalid thesaurus type: {type(thesaurus)}")
 
+    @lru_cache(maxsize=256)
     def get_concept_obj_from_term(self, term: str) -> Concept:
         """ Retrieves a Concept object for the given Literal value term. """
         query = f"""
