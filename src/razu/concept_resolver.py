@@ -14,14 +14,14 @@ from razu.sparql_endpoint_manager import SparqlEndpointManager
 # - get_value(predicate: URIRef) -> str: Fetches the value for a given predicate for this concept.
 # - get_all_values() -> dict: Fetches all values for this concept.
 
-# class ConceptBuilder:
+# class ConceptResolver:
 # --> Attributes:
 # - thesaurus: a name or a URI of a RAZU thesaurus
 # --> Methods:
 # - get_concept_from_term(term: str) -> Concept: Resolves a term to a Concept object.
 
 # USE
-# Either initialize a Concept class independently if URI is known, or initialize it from a ConceptBuilder if you only know some values of the concept.
+# Either initialize a Concept class independently if URI is known, or initialize it from a ConceptResolver if you only know some values of the concept.
 # Both classes call methods from SparqlEndpointManager to determine the SPARQL endpoint.
 
 class Concept:
@@ -107,7 +107,7 @@ class Concept:
             print(f"Error querying the SPARQL endpoint: {e}")
 
 
-class ConceptBuilder:
+class ConceptResolver:
     """
     Resolves URIs for terms from a vocabulary and creates Concept objects.
     """
@@ -169,8 +169,8 @@ class ConceptBuilder:
 # print("\n##############################\n")
 # print(c.uri, c.graph_uri, c.sparql_endpoint)
 
-# c_builder = ConceptBuilder(URIRef("https://data.razu.nl/id/actor/bd4867122112bf6248d97334ea20479e"))
+# c_builder = ConceptResolver(URIRef("https://data.razu.nl/id/actor/bd4867122112bf6248d97334ea20479e"))
 # print(c_builder.get_concept_obj_from_term("Joris van Bennekom").get_value(URIRef("http://www.w3.org/2004/02/skos/core#prefLabel")))
 # print("\n##############################\n")
-# c_build_term = ConceptBuilder("locatie")
+# c_build_term = ConceptResolver("locatie")
 # print(c_build_term.get_concept_obj_from_term("Zeist (plaats)").get_value(URIRef("http://www.w3.org/2004/02/skos/core#prefLabel")))

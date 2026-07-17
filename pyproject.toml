@@ -1,0 +1,18 @@
+[project]
+name = "razulibs"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "harlequin>=2.5.2",
+    "ipykernel>=7.3.0",
+    "razu-idgenerator",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv.sources]
+razu-idgenerator = { path = "../idgenerator", editable = true }

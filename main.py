@@ -8,7 +8,7 @@ from rdflib import Namespace, RDF, URIRef, Literal, BNode
 from razu.meta_graph import MetaGraph, LDTO, DCT, RAZU, XSD, BAG, SCHEMA, GEO, RDFS, OWL, PICO, PNV, SKOS, PREMIS, PN, PROV
 import sqlite3
 import pandas as pd
-from razu.concept_resolver import ConceptBuilder, Concept
+from razu.concept_resolver import ConceptResolver, Concept
 from razu.meta_resource import MetaResource, StructuredMetaResource
 import os
 import json
@@ -46,12 +46,12 @@ identifiers_db = Database(cfg.identifiers_db_path)
 
 id_generator = IdentifierGenerator(identifiers_db)
 
-locatie_builder = ConceptBuilder('locatie')
-classificate_builder = ConceptBuilder('soort')
-format_builder = ConceptBuilder('bestandsformaat')
-betrokkenheid_builder = ConceptBuilder('betrokkenheid')
-aggregatieniveau_builder = ConceptBuilder("aggregatieniveau")
-actor_builder = ConceptBuilder("actor")
+locatie_builder = ConceptResolver('locatie')
+classificate_builder = ConceptResolver('soort')
+format_builder = ConceptResolver('bestandsformaat')
+betrokkenheid_builder = ConceptResolver('betrokkenheid')
+aggregatieniveau_builder = ConceptResolver("aggregatieniveau")
+actor_builder = ConceptResolver("actor")
 
 graph = MetaGraph() # here only for final whole graph save in turtle format
 private_graph = MetaGraph() # here only for final whole graph save in turtle format

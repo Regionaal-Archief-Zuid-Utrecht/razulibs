@@ -6,7 +6,7 @@ from razu.config import Config
 # from razu.identifiers import Identifiers # change with integration of identifiers service also I deleted the Incrementer import
 from razu.rdf_resource import RDFResource
 from razu.meta_graph import MetaGraph, LDTO, DCT, RAZU, XSD, BAG, SCHEMA, GEO, RDFS, OWL, PICO, PNV, SKOS, PREMIS, PROV
-from razu.concept_resolver import ConceptBuilder
+from razu.concept_resolver import ConceptResolver
 import razu.utils as utils
 
 
@@ -82,15 +82,15 @@ class StructuredMetaResource(MetaResource):
     and properties for easy access to key parts of the graph data.
     """
 
-    _actoren = ConceptBuilder("actor")
-    _aggregatieniveaus = ConceptBuilder("aggregatieniveau")
-    _algoritmes = ConceptBuilder("algoritme")
-    _beperkingen_openbaarheid = ConceptBuilder("openbaarheid")
-    _bestandsformaten = ConceptBuilder("bestandsformaat")
-    _dekkingintijdtypen = ConceptBuilder("dekkingintijdtype")
-    _eventtypen = ConceptBuilder("eventtype")
-    _licenties = ConceptBuilder("licentie")
-    _waarderingen = ConceptBuilder("waardering")
+    _actoren = ConceptResolver("actor")
+    _aggregatieniveaus = ConceptResolver("aggregatieniveau")
+    _algoritmes = ConceptResolver("algoritme")
+    _beperkingen_openbaarheid = ConceptResolver("openbaarheid")
+    _bestandsformaten = ConceptResolver("bestandsformaat")
+    _dekkingintijdtypen = ConceptResolver("dekkingintijdtype")
+    _eventtypen = ConceptResolver("eventtype")
+    _licenties = ConceptResolver("licentie")
+    _waarderingen = ConceptResolver("waardering")
 
     def __init__(self, id: str | None = None, uri: str | None = None):
         super().__init__(id, uri=uri)
