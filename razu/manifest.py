@@ -215,10 +215,17 @@ class Manifest:
                 if current_md5 != self.entries[filename].md5hash:
                     errors['checksum_mismatch'].append(filename)
 
-        if errors['missing_files']:
-            raise FileNotFoundError(f"Files missing: {errors['missing_files']}")
-        if errors['extra_files']:
-            raise FileExistsError(f"Extra files found: {errors['extra_files']}")
+        # Check for extra files in the directory
+        for file_path in self.base_directory.rglob('*'):
+            if not file_path.is_file():
+                continue
+            relative_path = file_path.relative_to(self.base_directory).as_posix()
+            if relative_path in self.entries:
+                continue
+            if file_path.name in ignore_files:
+                continue
+            errors['extra_files'].append(relative_path)
+
         return errors
         
     @classmethod
@@ -349,7 +356,6 @@ if __name__ == "__main__":
         elif args.command == "validate":
             manifest_arg = Path(args.manifest_filename)
             if manifest_arg.is_dir():
-                cfg = Config.get_instance()
                 manifest_files = [
                     f for f in manifest_arg.iterdir()
                     if f.is_file() and f.name.endswith(f".{cfg.manifest_suffix}.{cfg.metadata_extension}")
