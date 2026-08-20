@@ -7,6 +7,7 @@ build/
 out.ttl
 output/
 venv
+.venv
 razu/demo/csv_luchtfotos/sip
 .vscode/settings.json
 *.db
