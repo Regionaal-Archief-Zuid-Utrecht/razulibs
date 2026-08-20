@@ -253,8 +253,9 @@ class Manifest:
 
             relative_path = file_path.relative_to(directory_path).as_posix()
 
-            # Skip the manifest file itself
-            if relative_path == manifest_basename:
+            # Skip manifest and eventlog files
+            if (relative_path.endswith(f".{manifest._cfg.manifest_suffix}.{manifest._cfg.metadata_extension}") or
+                    relative_path.endswith(f".{manifest._cfg.eventlog_suffix}.{manifest._cfg.metadata_extension}")):
                 continue
 
             # Calculate MD5 hash
@@ -346,12 +347,24 @@ if __name__ == "__main__":
             print(f"Created manifest with {len(manifest.entries)} entries at {manifest.manifest_file_path}")
             
         elif args.command == "validate":
-            # Derive base directory as three directories up from the manifest filename path (relative approach)
-            manifest_path = Path(args.manifest_filename).resolve()
-            # three directories up -> parents[3]
-            base_directory = manifest_path.parents[3]
-            # manifest path relative to base_directory (keeps nested structure)
-            manifest_relpath = str(manifest_path.relative_to(base_directory))
+            manifest_arg = Path(args.manifest_filename)
+            if manifest_arg.is_dir():
+                cfg = Config.get_instance()
+                manifest_files = [
+                    f for f in manifest_arg.iterdir()
+                    if f.is_file() and f.name.endswith(f".{cfg.manifest_suffix}.{cfg.metadata_extension}")
+                ]
+                if not manifest_files:
+                    raise FileNotFoundError(f"No manifest file found in '{manifest_arg}'")
+                if len(manifest_files) > 1:
+                    raise ValueError(f"Multiple manifest files found in '{manifest_arg}': {[f.name for f in manifest_files]}")
+                manifest_path = manifest_files[0].resolve()
+                base_directory = manifest_path.parent
+                manifest_relpath = manifest_path.name
+            else:
+                manifest_path = manifest_arg.resolve()
+                base_directory = manifest_path.parent
+                manifest_relpath = manifest_path.name
 
             manifest = Manifest.load_existing(str(base_directory), manifest_filename=manifest_relpath)
             ignore_files = list(args.ignore_files) if args.ignore_files else []
