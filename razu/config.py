@@ -31,7 +31,7 @@ class ConfigFileLocator:
         config_file = Path(self.config_filename)
 
         # 1. Check script directory
-        calling_frame = inspect.stack()[2]
+        calling_frame = inspect.stack()[3]
         script_dir = Path(calling_frame.filename).parent
         script_config = script_dir / config_file
         self._searched_locations.append(script_dir)
