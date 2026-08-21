@@ -39,8 +39,8 @@ class Identifiers:
 
     @property
     def manifest_filename(self) -> str:
-        """Generate the filename of the manifest, like 'nl-wbdrazu-g0321-661.manifest.json'."""
-        return f"{self.uid_base}.{self.config.manifest_suffix}.{self.config.metadata_extension}"
+        """Return the filename of the manifest, always 'manifest.json'."""
+        return "manifest.json"
     
     @property
     def eventlog_filename(self) -> str:

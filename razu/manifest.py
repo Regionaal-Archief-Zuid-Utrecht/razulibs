@@ -260,9 +260,8 @@ class Manifest:
 
             relative_path = file_path.relative_to(directory_path).as_posix()
 
-            # Skip manifest and eventlog files
-            if (relative_path.endswith(f".{manifest._cfg.manifest_suffix}.{manifest._cfg.metadata_extension}") or
-                    relative_path.endswith(f".{manifest._cfg.eventlog_suffix}.{manifest._cfg.metadata_extension}")):
+            # Skip the manifest file itself
+            if relative_path == manifest_basename:
                 continue
 
             # Calculate MD5 hash
@@ -307,10 +306,6 @@ if __name__ == "__main__":
                               help="Files to ignore during scanning")
     create_parser.add_argument("--no-metadata", dest="include_metadata", action="store_false",
                               help="Don't include file metadata in manifest")
-    create_parser.add_argument("--archive-creator-id", dest="archive_creator_id",
-                              help="Archive creator ID (overrides config)")
-    create_parser.add_argument("--archive-id", dest="archive_id",
-                              help="Archive ID (overrides config)")
     
     # Validate command
     validate_parser = subparsers.add_parser("validate", help="Validate a manifest (files available and correct checksum)")
@@ -319,10 +314,6 @@ if __name__ == "__main__":
                                 help="Files to ignore during validation")
     validate_parser.add_argument("--progress", "-p", action="store_true",
                                 help="Show progress counter during validation")
-    validate_parser.add_argument("--archive-creator-id", dest="archive_creator_id",
-                                help="Archive creator ID (overrides config)")
-    validate_parser.add_argument("--archive-id", dest="archive_id",
-                                help="Archive ID (overrides config)")
     
     # Parse arguments
     # If no subcommand is given, interpret the invocation as 'validate'
@@ -338,11 +329,6 @@ if __name__ == "__main__":
     
     try:
         Config.initialize()
-        cfg = Config.get_instance()
-        if getattr(args, 'archive_creator_id', None):
-            cfg._settings['archive_creator_id'] = args.archive_creator_id
-        if getattr(args, 'archive_id', None):
-            cfg._settings['archive_id'] = args.archive_id
         if args.command == "create":
             manifest = Manifest.create_from_directory(
                 args.directory,
@@ -356,9 +342,10 @@ if __name__ == "__main__":
         elif args.command == "validate":
             manifest_arg = Path(args.manifest_filename)
             if manifest_arg.is_dir():
+                id_factory = Identifiers(Config.get_instance())
                 manifest_files = [
                     f for f in manifest_arg.iterdir()
-                    if f.is_file() and f.name.endswith(f".{cfg.manifest_suffix}.{cfg.metadata_extension}")
+                    if f.is_file() and f.name == id_factory.manifest_filename
                 ]
                 if not manifest_files:
                     raise FileNotFoundError(f"No manifest file found in '{manifest_arg}'")

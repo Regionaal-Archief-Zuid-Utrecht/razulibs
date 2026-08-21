@@ -40,8 +40,8 @@ def test_event_uri_prefix(identifiers):
     assert identifiers.event_uri_prefix == expected
 
 def test_manifest_filename(identifiers):
-    """Test generatie van de manifest bestandsnaam."""
-    expected = "NL-WbDRAZU-G0321-661.manifest.json"
+    """Test dat de manifest bestandsnaam altijd 'manifest.json' is."""
+    expected = "manifest.json"
     assert identifiers.manifest_filename == expected
 
 def test_eventlog_filename(identifiers):
