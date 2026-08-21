@@ -1,3 +1,4 @@
+import json
 import pytest
 from pathlib import Path
 from razu.config import Config
@@ -81,3 +82,104 @@ def test_validate_checksum_mismatch_fails(manifest_setup):
     (tmp_path / 'a.txt').write_text('modified')
     errors = manifest.validate()
     assert 'a.txt' in errors['checksum_mismatch']
+
+
+def test_validate_with_filename_prefix(manifest_setup):
+    """Validation should support a filename prefix that is not part of the local path."""
+    manifest, tmp_path = manifest_setup
+    manifest_path = Path(manifest.manifest_file_path)
+    data = json.loads(manifest_path.read_text())
+    prefix = "nl-wbdrazu/k50907905/689/"
+    prefixed = {f"{prefix}{k}": v for k, v in data.items()}
+    manifest_path.write_text(json.dumps(prefixed))
+    loaded = Manifest.load_existing(str(tmp_path), manifest_filename='manifest.json')
+    errors = loaded.validate(filename_prefix=prefix)
+    assert not errors['missing_files']
+    assert not errors['checksum_mismatch']
+    assert not errors['extra_files']
+
+
+def test_validate_extra_file_with_filename_prefix(manifest_setup):
+    """Extra files should be reported with the logical prefixed path."""
+    manifest, tmp_path = manifest_setup
+    manifest_path = Path(manifest.manifest_file_path)
+    data = json.loads(manifest_path.read_text())
+    prefix = "nl-wbdrazu/k50907905/689/"
+    prefixed = {f"{prefix}{k}": v for k, v in data.items()}
+    manifest_path.write_text(json.dumps(prefixed))
+    (tmp_path / 'extra.txt').write_text('extra')
+    loaded = Manifest.load_existing(str(tmp_path), manifest_filename='manifest.json')
+    errors = loaded.validate(filename_prefix=prefix)
+    assert f"{prefix}extra.txt" in errors['extra_files']
+
+
+def test_validate_missing_file_with_filename_prefix(manifest_setup):
+    """Missing files should be reported with the manifest key including prefix."""
+    manifest, tmp_path = manifest_setup
+    manifest_path = Path(manifest.manifest_file_path)
+    data = json.loads(manifest_path.read_text())
+    prefix = "nl-wbdrazu/k50907905/689/"
+    prefixed = {f"{prefix}{k}": v for k, v in data.items()}
+    manifest_path.write_text(json.dumps(prefixed))
+    (tmp_path / 'a.txt').unlink()
+    loaded = Manifest.load_existing(str(tmp_path), manifest_filename='manifest.json')
+    errors = loaded.validate(filename_prefix=prefix)
+    assert f"{prefix}a.txt" in errors['missing_files']
+
+
+def test_create_with_filename_prefix(config, tmp_path):
+    """Creating a manifest with a filename prefix should prepend it to all entry keys."""
+    (tmp_path / 'a.txt').write_text('A')
+    (tmp_path / 'b.txt').write_text('BB')
+    subdir = tmp_path / 'subdir'
+    subdir.mkdir()
+    (subdir / 'c.txt').write_text('CCC')
+
+    prefix = "nl-wbdrazu/k50907905/689/"
+    manifest = Manifest.create_from_directory(str(tmp_path), filename_prefix=prefix)
+    assert f"{prefix}a.txt" in manifest.entries
+    assert f"{prefix}subdir/c.txt" in manifest.entries
+
+
+def test_create_validate_with_filename_prefix(config, tmp_path):
+    """A manifest created with a filename prefix should validate with the same prefix."""
+    (tmp_path / 'a.txt').write_text('A')
+    (tmp_path / 'b.txt').write_text('BB')
+
+    prefix = "archive/123/"
+    manifest = Manifest.create_from_directory(str(tmp_path), filename_prefix=prefix)
+    manifest.save()
+
+    loaded = Manifest.load_existing(str(tmp_path), manifest_filename='manifest.json')
+    errors = loaded.validate(filename_prefix=prefix)
+    assert not errors['missing_files']
+    assert not errors['checksum_mismatch']
+    assert not errors['extra_files']
+
+
+def test_create_validate_without_filename_prefix_fails(config, tmp_path):
+    """A manifest created with a filename prefix should not validate without the prefix."""
+    (tmp_path / 'a.txt').write_text('A')
+    (tmp_path / 'b.txt').write_text('BB')
+
+    prefix = "archive/123/"
+    manifest = Manifest.create_from_directory(str(tmp_path), filename_prefix=prefix)
+    manifest.save()
+
+    loaded = Manifest.load_existing(str(tmp_path), manifest_filename='manifest.json')
+    errors = loaded.validate()
+    assert errors['missing_files'] or errors['extra_files']
+
+
+def test_create_validate_with_different_filename_prefix_fails(config, tmp_path):
+    """A manifest created with a filename prefix should not validate with a different prefix."""
+    (tmp_path / 'a.txt').write_text('A')
+    (tmp_path / 'b.txt').write_text('BB')
+
+    prefix = "archive/123/"
+    manifest = Manifest.create_from_directory(str(tmp_path), filename_prefix=prefix)
+    manifest.save()
+
+    loaded = Manifest.load_existing(str(tmp_path), manifest_filename='manifest.json')
+    errors = loaded.validate(filename_prefix="other/")
+    assert errors['missing_files'] or errors['extra_files']

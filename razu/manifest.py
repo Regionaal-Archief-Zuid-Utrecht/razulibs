@@ -182,12 +182,13 @@ class Manifest:
             }
         self.is_modified = False
 
-    def validate(self, ignore_files: list = None, show_progress: bool = False) -> dict:
+    def validate(self, ignore_files: list = None, show_progress: bool = False, filename_prefix: str = None) -> dict:
         """ Verify 1 to 1 relationship between manifest entries and files in the directory. 
 
         Args:
             ignore_files: Optional list of filenames to ignore when checking for extra files.
                          The manifest file itself is always ignored.
+            filename_prefix: Optional prefix in manifest entry paths that is not part of the local filesystem path.
 
         Returns:
             dict: A dictionary of errors with keys 'missing_files', 'checksum_mismatch', and 'extra_files'
@@ -201,13 +202,18 @@ class Manifest:
         ignore_files = list(ignore_files) if ignore_files else []
         ignore_files.append(Path(self.manifest_file_path).name)
 
+        filename_prefix = filename_prefix or ""
+        if filename_prefix and not filename_prefix.endswith('/'):
+            filename_prefix += '/'
+
         # Check manifest entries against filesystem
         counter = 1
         for filename in self.entries:
             if show_progress:
                 print(counter, end='\r', file=sys.stderr)
             counter += 1
-            file_path = self.base_directory / filename
+            relative_path = filename[len(filename_prefix):] if filename_prefix and filename.startswith(filename_prefix) else filename
+            file_path = self.base_directory / relative_path
             if not file_path.exists():
                 errors['missing_files'].append(filename)
             else:
@@ -220,17 +226,19 @@ class Manifest:
             if not file_path.is_file():
                 continue
             relative_path = file_path.relative_to(self.base_directory).as_posix()
-            if relative_path in self.entries:
+            logical_path = f"{filename_prefix}{relative_path}" if filename_prefix else relative_path
+            if logical_path in self.entries:
                 continue
             if file_path.name in ignore_files:
                 continue
-            errors['extra_files'].append(relative_path)
+            errors['extra_files'].append(logical_path)
 
         return errors
         
     @classmethod
     def create_from_directory(cls, directory: str, manifest_filename: str = None, 
-                              ignore_files: list = None, include_metadata: bool = False) -> 'Manifest':
+                              ignore_files: list = None, include_metadata: bool = False,
+                              filename_prefix: Optional[str] = None) -> 'Manifest':
         """Create a new manifest by scanning all files in a directory.
         
         Args:
@@ -238,6 +246,7 @@ class Manifest:
             manifest_filename: Optional explicit manifest filename. If not provided, uses id_factory to generate name.
             ignore_files: Optional list of filenames to ignore when scanning
             include_metadata: Whether to include file metadata like size and last modified date (default: False)
+            filename_prefix: Optional prefix to prepend to every relative file path in the manifest
             
         Returns:
             A new Manifest instance with entries for all files in the directory
@@ -245,6 +254,9 @@ class Manifest:
         manifest = cls.create_new(directory)
         if manifest_filename:
             manifest.manifest_filename = manifest_filename
+        
+        if filename_prefix and not filename_prefix.endswith('/'):
+            filename_prefix += '/'
             
         ignore_files = ignore_files or []
         ignore_files.append(Path(manifest.manifest_file_path).name)
@@ -278,9 +290,10 @@ class Manifest:
                     'FileExtension': util.get_full_extension(file_path.name),
                 })
 
-            # Add entry to manifest
+            # Add entry to manifest, optionally with a filename prefix
+            entry_path = f"{filename_prefix}{relative_path}" if filename_prefix else relative_path
             manifest.add_entry(
-                relative_path,
+                entry_path,
                 md5hash=md5hash,
                 md5date=md5date,
                 **metadata
@@ -304,6 +317,8 @@ if __name__ == "__main__":
                               help="Output manifest filename (default: auto-generated)")
     create_parser.add_argument("--ignore", "-i", nargs="+", dest="ignore_files",
                               help="Files to ignore during scanning")
+    create_parser.add_argument("--filename-prefix", dest="filename_prefix",
+                              help="Prefix to prepend to every relative file path in the manifest")
     
     # Validate command
     validate_parser = subparsers.add_parser("validate", help="Validate a manifest (files available and correct checksum)")
@@ -312,6 +327,8 @@ if __name__ == "__main__":
                                 help="Files to ignore during validation")
     validate_parser.add_argument("--progress", "-p", action="store_true",
                                 help="Show progress counter during validation")
+    validate_parser.add_argument("--filename-prefix", dest="filename_prefix",
+                                help="Prefix in manifest entry paths that is not part of the local filesystem path")
     
     # Parse arguments
     # If no subcommand is given, interpret the invocation as 'validate'
@@ -331,7 +348,8 @@ if __name__ == "__main__":
             manifest = Manifest.create_from_directory(
                 args.directory,
                 manifest_filename=args.manifest_filename,
-                ignore_files=args.ignore_files
+                ignore_files=args.ignore_files,
+                filename_prefix=args.filename_prefix
             )
             manifest.save()
             print(f"Created manifest with {len(manifest.entries)} entries at {manifest.manifest_file_path}")
@@ -360,7 +378,7 @@ if __name__ == "__main__":
             ignore_files = list(args.ignore_files) if args.ignore_files else []
             timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
             try:
-                errors = manifest.validate(ignore_files=ignore_files, show_progress=args.progress)
+                errors = manifest.validate(ignore_files=ignore_files, show_progress=args.progress, filename_prefix=args.filename_prefix)
                 has_errors = any(errors.values())
                 if has_errors:
                     error_parts = []
