@@ -41,6 +41,15 @@ def test_create_manifest_no_errors(manifest_setup):
     assert Path(manifest.manifest_file_path).exists()
 
 
+def test_create_manifest_without_metadata(manifest_setup):
+    """Creating a manifest should not include FileSize, LastModified or FileExtension."""
+    manifest, tmp_path = manifest_setup
+    for entry in manifest.entries.values():
+        assert 'FileSize' not in entry.metadata
+        assert 'LastModified' not in entry.metadata
+        assert 'FileExtension' not in entry.metadata
+
+
 def test_validate_created_manifest(manifest_setup):
     """A freshly created manifest should validate without errors."""
     manifest, tmp_path = manifest_setup

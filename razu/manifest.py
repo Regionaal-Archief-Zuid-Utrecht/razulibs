@@ -230,14 +230,14 @@ class Manifest:
         
     @classmethod
     def create_from_directory(cls, directory: str, manifest_filename: str = None, 
-                              ignore_files: list = None, include_metadata: bool = True) -> 'Manifest':
+                              ignore_files: list = None, include_metadata: bool = False) -> 'Manifest':
         """Create a new manifest by scanning all files in a directory.
         
         Args:
             directory: Directory to scan for files
             manifest_filename: Optional explicit manifest filename. If not provided, uses id_factory to generate name.
             ignore_files: Optional list of filenames to ignore when scanning
-            include_metadata: Whether to include file metadata like size and last modified date
+            include_metadata: Whether to include file metadata like size and last modified date (default: False)
             
         Returns:
             A new Manifest instance with entries for all files in the directory
@@ -304,8 +304,6 @@ if __name__ == "__main__":
                               help="Output manifest filename (default: auto-generated)")
     create_parser.add_argument("--ignore", "-i", nargs="+", dest="ignore_files",
                               help="Files to ignore during scanning")
-    create_parser.add_argument("--no-metadata", dest="include_metadata", action="store_false",
-                              help="Don't include file metadata in manifest")
     
     # Validate command
     validate_parser = subparsers.add_parser("validate", help="Validate a manifest (files available and correct checksum)")
@@ -333,8 +331,7 @@ if __name__ == "__main__":
             manifest = Manifest.create_from_directory(
                 args.directory,
                 manifest_filename=args.manifest_filename,
-                ignore_files=args.ignore_files,
-                include_metadata=args.include_metadata
+                ignore_files=args.ignore_files
             )
             manifest.save()
             print(f"Created manifest with {len(manifest.entries)} entries at {manifest.manifest_file_path}")
